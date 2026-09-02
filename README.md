@@ -5,7 +5,7 @@ Notion. Site estático, publicado no GitHub Pages.
 
 ## Como funciona
 
-O painel tem duas fontes de dados, com dois níveis de automação diferentes:
+O painel tem três fontes de dados, com níveis de automação diferentes:
 
 1. **NPS (Databricks) — 100% automático.** Toda segunda-feira, um workflow do
    GitHub Actions (`.github/workflows/update-nps-data.yml`) roda o script
@@ -25,6 +25,14 @@ O painel tem duas fontes de dados, com dois níveis de automação diferentes:
 Enquanto a planilha não estiver configurada, o site usa
 `data/zendesk_semanal_template.csv` como exemplo (já com os dados de
 maio–agosto que estavam no Notion).
+
+3. **Metas do NPS — preenchido à mão, raramente.** A liderança define a meta
+   de NPS por mês na planilha "Metas 2S - Isa Experience" (a mesma que já
+   existe hoje, com as metas do semestre por KPI). Esses números não mudam
+   toda semana, então ficam num arquivo simples, `data/metas.json`, editado
+   só quando a meta do mês muda. O site usa isso para mostrar a linha de
+   "meta" no gráfico de histórico do NPS e o "Real vs. Meta" no card
+   principal — igual ao que já existia no Notion.
 
 ## Configuração — passo a passo
 
@@ -99,7 +107,27 @@ Colunas esperadas no CSV (a primeira linha do template já traz isso):
 | `resolucao_ia_pct` | `40` | número, sem o `%` |
 | `narrativa` | texto livre | as "alavancas da semana" |
 
-### 4. Espelhar no Google Sites (acesso restrito ao domínio ISA)
+### 4. Atualizar a meta do NPS
+
+Sempre que a meta do mês mudar na planilha "Metas 2S - Isa Experience", edite
+`data/metas.json` e suba a alteração. Formato:
+
+```json
+{
+  "nps": {
+    "baseline": 39,
+    "2026-09": 48.6,
+    "2026-10": 54.3
+  }
+}
+```
+
+Cada chave é um mês (`AAAA-MM`) e o valor é a meta de NPS daquele mês. O site
+usa isso para desenhar a linha "NPS meta" no histórico e o "Real vs. Meta" no
+card principal. Meses sem meta cadastrada simplesmente não mostram essa
+comparação.
+
+### 5. Espelhar no Google Sites (acesso restrito ao domínio ISA)
 
 Depois que o site estiver publicado e testado, para deixar o acesso restrito
 a quem tem e-mail `@isasaude.com`:
@@ -139,6 +167,7 @@ css/styles.css                  Estilos (Design System ISA)
 js/app.js                       Lógica de carregamento e renderização
 js/config.js                    URL da planilha do Zendesk (preencher)
 data/nps.json                   Dados de NPS (gerado automaticamente)
+data/metas.json                 Metas de NPS por mês (editar à mão, raramente)
 data/zendesk_semanal_template.csv  Modelo/fallback dos dados do Zendesk
 scripts/fetch_databricks.py     Script que busca e processa os dados do Databricks
 .github/workflows/update-nps-data.yml  Roda o script acima toda semana

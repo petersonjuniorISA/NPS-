@@ -64,6 +64,16 @@
     return n.toLocaleString("pt-BR", { minimumFractionDigits: casas ?? 1, maximumFractionDigits: casas ?? 1 });
   }
 
+  const MONTH_LABELS_PT = {
+    "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
+    "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
+    "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
+  };
+
+  function monthLabel(mesKey) {
+    return MONTH_LABELS_PT[mesKey.slice(5, 7)] || mesKey;
+  }
+
   function scoreBadgeClass(v) {
     if (v === null) return "badge-neutral";
     if (v >= 4.2) return "badge-positive";
@@ -81,6 +91,16 @@
   async function loadNpsData() {
     const res = await fetch("data/nps.json", { cache: "no-store" });
     return res.json();
+  }
+
+  async function loadMetas() {
+    try {
+      const res = await fetch("data/metas.json", { cache: "no-store" });
+      if (res.ok) return res.json();
+    } catch (e) {
+      console.warn("Sem metas cadastradas (data/metas.json).", e);
+    }
+    return { nps: {} };
   }
 
   async function loadZendeskRows() {
@@ -128,7 +148,7 @@
     });
   }
 
-  function renderKpis(data) {
+  function renderKpis(data, metas) {
     document.getElementById("kpi-nps").textContent = fmt(data.kpi.nps_geral, 1);
     document.getElementById("kpi-total").textContent = data.kpi.total_respostas;
 
@@ -139,6 +159,16 @@
       trendEl.textContent = (up ? "↑ " : "↓ ") + fmt(Math.abs(data.kpi.nps_geral_variacao_pct), 1) + "% vs. mês anterior";
     } else {
       trendEl.textContent = "";
+    }
+
+    const metaEl = document.getElementById("kpi-nps-meta");
+    const metaMes = metas.nps && metas.nps[data.current_month];
+    if (typeof metaMes === "number" && metaMes > 0) {
+      const realVsMeta = Math.round((data.kpi.nps_geral / metaMes) * 100);
+      metaEl.innerHTML = "Meta do mês: <b>" + fmt(metaMes, 1) + "</b> · Real vs. Meta: " +
+        "<span class='badge " + (realVsMeta >= 100 ? "badge-positive" : "badge-negative") + "'>" + realVsMeta + "%</span>";
+    } else {
+      metaEl.textContent = "";
     }
 
     const total = data.kpi.promotores + data.kpi.neutros + data.kpi.detratores;
@@ -212,14 +242,28 @@
     });
   }
 
-  function renderHistoricoChart(data, zendeskRows) {
+  function renderHistoricoChart(data, zendeskRows, metas) {
     const ctx = document.getElementById("chart-historico");
-    const labels = data.historico_nps.map(h => h.label);
-    const npsSeries = data.historico_nps.map(h => h.nps);
+
+    const npsByMonth = {};
+    data.historico_nps.forEach(h => { npsByMonth[h.mes] = h.nps; });
+    const metaByMonth = metas.nps || {};
+
+    const months = Array.from(new Set([
+      ...data.historico_nps.map(h => h.mes),
+      ...Object.keys(metaByMonth).filter(k => k !== "baseline")
+    ])).sort();
+
+    const labels = months.map(m => {
+      const found = data.historico_nps.find(h => h.mes === m);
+      return found ? found.label : monthLabel(m);
+    });
+    const npsSeries = months.map(m => npsByMonth[m] ?? null);
+    const metaSeries = months.map(m => (typeof metaByMonth[m] === "number" ? metaByMonth[m] : null));
 
     const csatByMonth = {};
     zendeskRows.filter(r => (num(r.semana) ?? 0) === 0).forEach(r => { csatByMonth[r.mes] = num(r.csat_humano); });
-    const csatSeries = data.historico_nps.map(h => csatByMonth[h.mes] ?? null);
+    const csatSeries = months.map(m => csatByMonth[m] ?? null);
 
     new Chart(ctx, {
       type: "line",
@@ -227,14 +271,26 @@
         labels,
         datasets: [
           {
-            label: "NPS",
+            label: "NPS realizado",
             data: npsSeries,
             borderColor: CHART_COLORS.blue,
             backgroundColor: CHART_COLORS.blueSoft,
             fill: true,
             tension: 0.3,
             yAxisID: "y",
-            pointRadius: 4
+            pointRadius: 4,
+            spanGaps: false
+          },
+          {
+            label: "NPS meta",
+            data: metaSeries,
+            borderColor: CHART_COLORS.grayText,
+            borderDash: [4, 4],
+            backgroundColor: "transparent",
+            tension: 0.3,
+            yAxisID: "y",
+            pointRadius: 2,
+            spanGaps: true
           },
           {
             label: "CSAT Humano (Zendesk)",
@@ -345,7 +401,7 @@
   }
 
   async function init() {
-    const [data, zendesk] = await Promise.all([loadNpsData(), loadZendeskRows()]);
+    const [data, zendesk, metas] = await Promise.all([loadNpsData(), loadZendeskRows(), loadMetas()]);
 
     if (!zendesk.fromRemote) {
       document.getElementById("stale-alert").style.display = "flex";
@@ -353,10 +409,10 @@
 
     renderUpdatedBadge(data);
     populateMonthSelect(data);
-    renderKpis(data);
+    renderKpis(data, metas);
     renderPerguntasChart(data);
     renderEspecialidadeChart(data);
-    renderHistoricoChart(data, zendesk.rows);
+    renderHistoricoChart(data, zendesk.rows, metas);
     renderSatisfacaoTable(data);
     renderZendeskMensalTable(zendesk.rows);
     renderZendeskSemanalTable(zendesk.rows, data.current_month);
