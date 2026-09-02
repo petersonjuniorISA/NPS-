@@ -1,22 +1,23 @@
 """Busca as respostas de NPS no Databricks e gera data/nps.json.
 
-Executado automaticamente pelo workflow .github/workflows/update-nps-data.yml
-(toda semana), mas também pode ser rodado manualmente:
+Executado automaticamente toda semana pelo Agendador de Tarefas do Windows
+(veja scripts/weekly_update.ps1), usando o login OAuth salvo localmente
+(rode `databricks auth login --host https://dbc-0fbb1123-410c.cloud.databricks.com`
+uma vez, na máquina que vai rodar a tarefa agendada).
+
+Também pode ser rodado manualmente:
 
     pip install -r requirements.txt
-    export DATABRICKS_HOST=dbc-xxxxxxxx-xxxx.cloud.databricks.com
-    export DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/xxxxxxxxxxxxxxxx
-    export DATABRICKS_TOKEN=dapiXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    export DATABRICKS_TABLE=catalogo.esquema.tabela
     python scripts/fetch_databricks.py
 
-Onde encontrar cada variável:
-- DATABRICKS_HOST / DATABRICKS_HTTP_PATH: no Databricks, vá em
-  "SQL Warehouses" > escolha o warehouse > aba "Connection details".
-- DATABRICKS_TOKEN: no Databricks, "User Settings" > "Developer" >
-  "Access tokens" > "Generate new token".
-- DATABRICKS_TABLE: nome completo (catalog.schema.tabela) da tabela que
-  alimenta o dashboard "NPS ISAs" — peça ao time de dados se não souber.
+HOST, HTTP_PATH e TABLE já vêm com valor padrão (o warehouse e a tabela do
+dashboard "NPS ISAs"). Só é preciso definir variáveis de ambiente se algo
+mudar:
+    DATABRICKS_HOST, DATABRICKS_HTTP_PATH, DATABRICKS_TABLE
+
+Se a variável DATABRICKS_TOKEN estiver definida, o script usa um Personal
+Access Token (ex.: no GitHub Actions) em vez do login OAuth local — útil se
+no futuro o time de dados liberar tokens e a automação for movida pra nuvem.
 """
 
 import json
@@ -26,10 +27,10 @@ from datetime import datetime, timezone
 import pandas as pd
 from databricks import sql
 
-DATABRICKS_HOST = os.environ["DATABRICKS_HOST"]
-DATABRICKS_HTTP_PATH = os.environ["DATABRICKS_HTTP_PATH"]
-DATABRICKS_TOKEN = os.environ["DATABRICKS_TOKEN"]
-DATABRICKS_TABLE = os.environ["DATABRICKS_TABLE"]
+DATABRICKS_HOST = os.environ.get("DATABRICKS_HOST", "dbc-0fbb1123-410c.cloud.databricks.com")
+DATABRICKS_HTTP_PATH = os.environ.get("DATABRICKS_HTTP_PATH", "/sql/1.0/warehouses/8cd8e339bbea1ffd")
+DATABRICKS_TOKEN = os.environ.get("DATABRICKS_TOKEN")  # se ausente, usa login OAuth (databricks auth login)
+DATABRICKS_TABLE = os.environ.get("DATABRICKS_TABLE", "isa_experience_dev.gold.fact_inps_response")
 
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "nps.json")
 
@@ -59,13 +60,15 @@ MONTH_LABELS_PT = {
 
 
 def fetch_dataframe() -> pd.DataFrame:
-    with sql.connect(
-        server_hostname=DATABRICKS_HOST,
-        http_path=DATABRICKS_HTTP_PATH,
-        access_token=DATABRICKS_TOKEN,
-    ) as conn:
+    connect_kwargs = dict(server_hostname=DATABRICKS_HOST, http_path=DATABRICKS_HTTP_PATH)
+    if DATABRICKS_TOKEN:
+        connect_kwargs["access_token"] = DATABRICKS_TOKEN
+    else:
+        connect_kwargs["auth_type"] = "databricks-oauth"
+
+    with sql.connect(**connect_kwargs) as conn:
         with conn.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM {DATABRICKS_TABLE}")
+            cursor.execute(f"SELECT * FROM {DATABRICKS_TABLE} WHERE is_answered")
             rows = cursor.fetchall()
             return pd.DataFrame([r.asDict() for r in rows])
 

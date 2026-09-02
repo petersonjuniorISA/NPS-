@@ -7,13 +7,21 @@ Notion. Site estático, publicado no GitHub Pages.
 
 O painel tem três fontes de dados, com níveis de automação diferentes:
 
-1. **NPS (Databricks) — 100% automático.** Toda segunda-feira, um workflow do
-   GitHub Actions (`.github/workflows/update-nps-data.yml`) roda o script
-   `scripts/fetch_databricks.py`, que consulta a tabela de respostas do NPS no
-   Databricks, calcula os indicadores (NPS geral, distribuição, nota por
-   pergunta, NPS por especialidade, satisfação por especialidade, histórico) e
-   sobrescreve `data/nps.json`. O site lê esse arquivo direto — ninguém precisa
-   preencher nada.
+1. **NPS (Databricks) — 100% automático.** Toda segunda-feira às 8h, o
+   Agendador de Tarefas do Windows roda `scripts/weekly_update.ps1` na
+   máquina do Peterson, que chama `scripts/fetch_databricks.py` — esse
+   script consulta a tabela de respostas do NPS no Databricks (usando login
+   OAuth salvo localmente, sem token), calcula os indicadores (NPS geral,
+   distribuição, nota por pergunta, NPS por especialidade, satisfação por
+   especialidade, histórico), sobrescreve `data/nps.json` e sobe direto pro
+   GitHub. O site lê esse arquivo — ninguém precisa preencher nada.
+
+   Essa tarefa só roda com a máquina ligada e o usuário logado (ver seção
+   "Conectar no Databricks" abaixo pra saber por quê). Existe também um
+   workflow do GitHub Actions (`.github/workflows/update-nps-data.yml`) já
+   pronto, pra caso o time de dados libere um Personal Access Token no
+   futuro — aí a automação passa a rodar na nuvem em vez de na máquina
+   local.
 
 2. **Zendesk + narrativa semanal — preenchido à mão numa planilha.** Esses
    números hoje não vêm do Databricks, então continuam sendo preenchidos por
@@ -50,31 +58,52 @@ Como o repositório e o GitHub Pages são públicos por padrão, veja a seção
 
 ### 2. Conectar no Databricks
 
-Você vai precisar de um **Personal Access Token** e do **endereço do SQL
-Warehouse**. Quem tem acesso de dados/BI no Databricks consegue gerar isso em
-2 minutos:
+A conta do Peterson não tem permissão pra gerar Personal Access Token
+("Tokens are disabled for your organization"). Por isso a automação usa
+**login OAuth normal** (o mesmo processo de login do navegador), que já
+confirmou ter acesso de leitura à tabela (grupo `isa_experience_readers`).
 
-1. No Databricks, ícone do usuário (canto superior direito) > **User
-   Settings > Developer > Access tokens > Generate new token**. Copie o
-   token (ele só aparece uma vez).
-2. Em **SQL Warehouses**, abra o warehouse usado pelo dashboard "NPS ISAs" >
-   aba **Connection details**. Copie o **Server hostname** e o **HTTP path**.
-3. Descubra o nome completo (`catalog.schema.tabela`) da tabela que alimenta o
-   dashboard — pergunte ao time de dados, ou procure em **Catalog** pelas
-   tabelas dentro de `isa_experience_dev` (foi o catálogo com esse nome que
-   apareceu disponível durante a configuração inicial deste projeto).
-4. No GitHub, vá em **Settings > Secrets and variables > Actions > New
-   repository secret** e crie 4 secrets:
-   - `DATABRICKS_HOST` → o server hostname (ex: `dbc-xxxxxxxx-xxxx.cloud.databricks.com`)
-   - `DATABRICKS_HTTP_PATH` → o HTTP path (ex: `/sql/1.0/warehouses/xxxxxxxxxxxxxxxx`)
-   - `DATABRICKS_TOKEN` → o token gerado no passo 1
-   - `DATABRICKS_TABLE` → o nome completo da tabela (ex: `isa_experience_dev.nps.respostas`)
-5. Rode o workflow manualmente uma vez para testar: aba **Actions** >
-   "Atualiza dados do NPS" > **Run workflow**. Se der certo, `data/nps.json`
-   é atualizado automaticamente com os dados reais.
+A limitação: esse login fica salvo de forma segura *na máquina onde foi
+feito*, então a automação só roda **nessa máquina, com o usuário logado**
+(por isso o Agendador de Tarefas do Windows, e não um workflow na nuvem).
 
-Sem esses secrets, o site continua funcionando normalmente com os dados de
-exemplo (agosto/2026) que já estão em `data/nps.json`.
+**Configuração inicial (uma vez só, na máquina que vai rodar a tarefa):**
+
+1. Instalar o CLI do Databricks: `winget install --id Databricks.DatabricksCLI -e`
+2. Rodar `databricks auth login --host https://dbc-0fbb1123-410c.cloud.databricks.com`
+   — abre o navegador, faz login normal com a conta `@isasaude.com`.
+3. Testar: `python scripts/fetch_databricks.py` — se funcionar, escreve
+   `data/nps.json` com dados reais.
+4. Registrar a tarefa agendada (Windows), toda segunda às 8h:
+
+   ```powershell
+   $scriptPath = "C:\Users\Peterson.Junior\Programação\NPS-\scripts\weekly_update.ps1"
+   $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -NoProfile -File `"$scriptPath`""
+   $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8:00AM
+   $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd
+   Register-ScheduledTask -TaskName "NPS-ISAs-AtualizacaoSemanal" -Action $action -Trigger $trigger -Settings $settings -Description "Atualiza o painel de NPS dos ISAs com dados do Databricks e publica no GitHub"
+   ```
+
+Isso já está feito nesta máquina. Pontos de atenção:
+
+- **A automação só roda com o PC ligado e você logado** no horário
+  agendado (segunda 8h). Se o PC estiver desligado, aquela semana não
+  atualiza sozinha — `StartWhenAvailable` faz a tarefa rodar assim que o PC
+  ligar de novo, mas não recupera retroativamente.
+- **A sessão OAuth pode expirar** (troca de senha, política de segurança da
+  empresa). Se a tarefa começar a falhar, rode `databricks auth login`
+  de novo manualmente. Os logs de cada execução ficam em `logs/` (não
+  versionados).
+- Se um dia o time de dados liberar um Personal Access Token, dá pra migrar
+  pra automação na nuvem: basta cadastrar `DATABRICKS_TOKEN`,
+  `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH` e `DATABRICKS_TABLE` como
+  secrets em **Settings > Secrets and variables > Actions** do repositório
+  — o workflow `.github/workflows/update-nps-data.yml` já está pronto e
+  passa a ser usado automaticamente assim que o token existir (o script
+  prioriza `DATABRICKS_TOKEN` quando ele está definido).
+
+Sem nenhuma dessas duas automações configuradas, o site continua
+funcionando com os últimos dados gravados em `data/nps.json`.
 
 ### 3. Criar a planilha do Zendesk + narrativa semanal
 
