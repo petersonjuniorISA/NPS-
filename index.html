@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPS dos ISAs</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="container">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">ISA</div>
+      <div>
+        <h1>NPS dos ISAs</h1>
+        <p>Painel semanal de experiência dos profissionais</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap: 12px;">
+      <select id="month-select" class="month-select"></select>
+      <div class="updated-badge" id="updated-badge">
+        <i data-lucide="refresh-cw"></i>
+        <span id="updated-text">carregando…</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="stale-alert" class="alert alert-warning" style="display:none;">
+    <i data-lucide="alert-triangle"></i>
+    <span>Não foi possível carregar a planilha de indicadores do Zendesk. Mostrando o modelo local de exemplo.</span>
+  </div>
+
+  <!-- KPIs -->
+  <section class="kpi-grid">
+    <div class="card kpi-card nps-geral">
+      <span class="kpi-label">NPS Geral</span>
+      <span class="kpi-value" id="kpi-nps">—</span>
+      <span class="kpi-trend up" id="kpi-nps-trend"></span>
+    </div>
+    <div class="card kpi-card">
+      <span class="kpi-label">Respostas no mês</span>
+      <span class="kpi-value" id="kpi-total">—</span>
+    </div>
+    <div class="card kpi-card" style="grid-column: span 2;">
+      <span class="kpi-label">Distribuição</span>
+      <div class="distribution-bar" id="dist-bar"></div>
+      <div class="legend-row">
+        <div class="legend-item"><span class="legend-dot dist-promotores"></span> Promotores: <b id="dist-promotores">—</b></div>
+        <div class="legend-item"><span class="legend-dot dist-neutros"></span> Neutros: <b id="dist-neutros">—</b></div>
+        <div class="legend-item"><span class="legend-dot dist-detratores"></span> Detratores: <b id="dist-detratores">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Nota por pergunta + histórico -->
+  <section class="section grid-2">
+    <div class="card">
+      <div class="section-title"><i data-lucide="bar-chart-3"></i> Média por pergunta do NPS</div>
+      <div class="chart-wrap"><canvas id="chart-perguntas"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><i data-lucide="trending-up"></i> Histórico do NPS</div>
+      <div class="chart-wrap"><canvas id="chart-historico"></canvas></div>
+    </div>
+  </section>
+
+  <!-- NPS por especialidade -->
+  <section class="section card">
+    <div class="section-title"><i data-lucide="stethoscope"></i> NPS por especialidade</div>
+    <div class="section-subtitle">% da amostra do mês e NPS calculado para cada especialidade</div>
+    <div class="chart-wrap"><canvas id="chart-especialidade"></canvas></div>
+  </section>
+
+  <!-- Satisfação por especialidade -->
+  <section class="section card">
+    <div class="section-title"><i data-lucide="table"></i> Satisfação por especialidade</div>
+    <div class="section-subtitle">Nota média (0–5) por pergunta, para cada especialidade</div>
+    <div class="table-scroll">
+      <table class="data-table" id="table-satisfacao">
+        <thead>
+          <tr>
+            <th>Especialidade</th>
+            <th>App Isa Atende</th>
+            <th>Comunicação</th>
+            <th>Experiência Geral</th>
+            <th>Gestão de Escalas</th>
+            <th>Pontualidade Pagamento</th>
+            <th>Suporte Chat</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Zendesk -->
+  <section class="section grid-2">
+    <div class="card">
+      <div class="section-title"><i data-lucide="headset"></i> Indicadores Zendesk — histórico mensal</div>
+      <div class="section-subtitle">Preenchido manualmente na planilha semanal</div>
+      <div class="table-scroll">
+        <table class="data-table" id="table-zendesk-mensal">
+          <thead>
+            <tr>
+              <th>Mês</th><th>CSAT IA</th><th>CSAT Humano</th><th>TMA 1ª resposta</th><th>TMR</th><th>FCR</th><th>Resolução IA</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title"><i data-lucide="calendar-days"></i> Week over week — mês atual</div>
+      <div class="table-scroll">
+        <table class="data-table" id="table-zendesk-semanal">
+          <thead>
+            <tr>
+              <th>Semana</th><th>Período</th><th>CSAT IA</th><th>CSAT Humano</th><th>TMA</th><th>TMR</th><th>FCR</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Narrativa semanal -->
+  <section class="section card">
+    <div class="section-title"><i data-lucide="notebook-pen"></i> Alavancas da semana</div>
+    <div class="section-subtitle">Ações e destaques registrados manualmente a cada semana</div>
+    <div class="timeline" id="timeline"></div>
+  </section>
+
+  <p class="footer-note">
+    NPS gerado automaticamente a partir do Databricks · Indicadores Zendesk e narrativa preenchidos manualmente na planilha semanal ·
+    <span id="footer-updated"></span>
+  </p>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
