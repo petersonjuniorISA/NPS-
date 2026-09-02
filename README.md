@@ -129,14 +129,16 @@ comparação.
 
 ### 5. Espelhar no Google Sites (acesso restrito ao domínio ISA)
 
-Depois que o site estiver publicado e testado, para deixar o acesso restrito
-a quem tem e-mail `@isasaude.com`:
+Já feito: **https://sites.google.com/isasaude.com/nps-dos-isas** — site
+criado no Google Sites (Workspace ISA Saúde), com um bloco de **Incorporar**
+apontando para a URL do GitHub Pages
+(`https://petersonjuniorisa.github.io/NPS-/`), e visibilidade padrão
+"Qualquer pessoa em ISA Saúde" (ou seja, restrito ao domínio
+`isasaude.com` por padrão — não precisou configurar nada extra).
 
-1. Crie (ou abra) o site no Google Sites, dentro do domínio da ISA.
-2. Adicione um bloco **Inserir > Incorporar** e cole a URL do GitHub Pages
-   (`https://petersonjuniorisa.github.io/NPS-/`).
-3. Em **Compartilhar**, restrinja o acesso ao domínio `isasaude.com` (ou aos
-   grupos/pessoas específicas que devem ver o painel).
+Para editar esse site depois (ex.: trocar o título, adicionar mais
+páginas): abra o link acima, clique no ícone de lápis/editar no canto
+inferior direito, e use **Publicar** quando terminar as alterações.
 
 **Importante sobre privacidade:** os dados incluem nome do profissional,
 cidade e comentários individuais. Restringir o acesso pelo Google Sites
