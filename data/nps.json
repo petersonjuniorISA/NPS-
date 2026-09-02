@@ -1,49 +1,230 @@
 {
-  "generated_at": "2026-09-01T00:00:00-03:00",
-  "source": "seed-manual",
+  "generated_at": "2026-09-02T21:10:07.067553+00:00",
+  "source": "databricks",
   "current_month": "2026-08",
   "kpi": {
-    "nps_geral": 61.9,
-    "nps_geral_variacao_pct": 20.5,
-    "total_respostas": 464,
-    "promotores": 338,
-    "neutros": 75,
-    "detratores": 51
+    "nps_geral": 61.5,
+    "nps_geral_variacao_pct": null,
+    "total_respostas": 470,
+    "promotores": 341,
+    "neutros": 77,
+    "detratores": 52
   },
   "media_por_pergunta": [
-    { "pergunta": "Pontualidade Pagamento", "media": 4.44 },
-    { "pergunta": "Gestão de Escalas", "media": 4.17 },
-    { "pergunta": "Experiência Geral", "media": 4.14 },
-    { "pergunta": "App Isa Atende", "media": 4.12 },
-    { "pergunta": "Comunicação", "media": 4.02 },
-    { "pergunta": "Suporte Chat", "media": 3.77 }
+    {
+      "pergunta": "Pontualidade Pagamento",
+      "media": 4.44
+    },
+    {
+      "pergunta": "Gestão de Escalas",
+      "media": 4.18
+    },
+    {
+      "pergunta": "Experiência Geral",
+      "media": 4.14
+    },
+    {
+      "pergunta": "App Isa Atende",
+      "media": 4.12
+    },
+    {
+      "pergunta": "Comunicação",
+      "media": 4.01
+    },
+    {
+      "pergunta": "Suporte Chat",
+      "media": 3.78
+    }
   ],
   "nps_por_especialidade": [
-    { "especialidade": "Psicologia", "pct_amostra": 17.6, "nps": 100.0 },
-    { "especialidade": "Terapia Ocupacional", "pct_amostra": 13.2, "nps": 100.0 },
-    { "especialidade": "Enfermeiro(a)", "pct_amostra": 21.9, "nps": 73.5 },
-    { "especialidade": "Medicina", "pct_amostra": 7.5, "nps": 66.7 },
-    { "especialidade": "Técnico em Enfermagem", "pct_amostra": 21.9, "nps": 61.8 },
-    { "especialidade": "Nutrição", "pct_amostra": 23.8, "nps": 60.0 },
-    { "especialidade": "Fisioterapia", "pct_amostra": 12.4, "nps": 55.2 },
-    { "especialidade": "Fonoaudiologia", "pct_amostra": 12.8, "nps": 50.0 },
-    { "especialidade": "Auxiliar de Enfermagem", "pct_amostra": 24.8, "nps": 51.9 }
+    {
+      "especialidade": "Psicologia",
+      "pct_amostra": 0.6,
+      "nps": 100.0
+    },
+    {
+      "especialidade": "Terapia Ocupacional",
+      "pct_amostra": 1.5,
+      "nps": 100.0
+    },
+    {
+      "especialidade": "Técnico de análises clínicas/patologia clínica/biodiagnósticos",
+      "pct_amostra": 0.2,
+      "nps": 100.0
+    },
+    {
+      "especialidade": "Enfermeiro (a)",
+      "pct_amostra": 10.9,
+      "nps": 74.5
+    },
+    {
+      "especialidade": "Medicina",
+      "pct_amostra": 1.3,
+      "nps": 66.7
+    },
+    {
+      "especialidade": "Tecnico em Enfermagem",
+      "pct_amostra": 54.5,
+      "nps": 61.7
+    },
+    {
+      "especialidade": "Nutrição",
+      "pct_amostra": 4.3,
+      "nps": 60.0
+    },
+    {
+      "especialidade": "Fisioterapia",
+      "pct_amostra": 12.3,
+      "nps": 55.2
+    },
+    {
+      "especialidade": "Auxiliar de Enfermagem",
+      "pct_amostra": 6.0,
+      "nps": 50.0
+    },
+    {
+      "especialidade": "Fonoaudiologia",
+      "pct_amostra": 4.7,
+      "nps": 50.0
+    },
+    {
+      "especialidade": "Biomedicina",
+      "pct_amostra": 0.2,
+      "nps": 0.0
+    },
+    {
+      "especialidade": "Biologia",
+      "pct_amostra": 0.2,
+      "nps": -100.0
+    }
   ],
   "satisfacao_por_especialidade": [
-    { "especialidade": "Auxiliar de Enfermagem", "n": 27, "app_isa_atende": 4.19, "comunicacao": 4.11, "experiencia_geral": 4.15, "gestao_escalas": 4.22, "pontualidade_pagamento": 4.63, "suporte_chat": 3.81 },
-    { "especialidade": "Enfermeiro(a)", "n": 49, "app_isa_atende": 4.22, "comunicacao": 4.22, "experiencia_geral": 4.31, "gestao_escalas": 4.31, "pontualidade_pagamento": 4.29, "suporte_chat": 4.02 },
-    { "especialidade": "Fisioterapia", "n": 58, "app_isa_atende": 4.19, "comunicacao": 3.91, "experiencia_geral": 4.14, "gestao_escalas": 4.26, "pontualidade_pagamento": 4.45, "suporte_chat": 3.72 },
-    { "especialidade": "Fonoaudiologia", "n": 22, "app_isa_atende": 3.73, "comunicacao": 3.59, "experiencia_geral": 3.91, "gestao_escalas": 4.18, "pontualidade_pagamento": 4.59, "suporte_chat": 3.14 },
-    { "especialidade": "Medicina", "n": 6, "app_isa_atende": 2.67, "comunicacao": 3.83, "experiencia_geral": 3.5, "gestao_escalas": 3.83, "pontualidade_pagamento": 3.83, "suporte_chat": 3.83 },
-    { "especialidade": "Nutrição", "n": 20, "app_isa_atende": 3.95, "comunicacao": 3.95, "experiencia_geral": 4.05, "gestao_escalas": 4.05, "pontualidade_pagamento": 4.0, "suporte_chat": 3.6 },
-    { "especialidade": "Psicologia", "n": 3, "app_isa_atende": 4.67, "comunicacao": 4.0, "experiencia_geral": 4.33, "gestao_escalas": 4.67, "pontualidade_pagamento": 4.67, "suporte_chat": 4.0 },
-    { "especialidade": "Técnico em Enfermagem", "n": 254, "app_isa_atende": 4.15, "comunicacao": 4.0, "experiencia_geral": 4.13, "gestao_escalas": 4.14, "pontualidade_pagamento": 4.48, "suporte_chat": 3.76 },
-    { "especialidade": "Terapia Ocupacional", "n": 7, "app_isa_atende": 3.57, "comunicacao": 4.43, "experiencia_geral": 4.14, "gestao_escalas": 4.0, "pontualidade_pagamento": 4.57, "suporte_chat": 4.14 }
+    {
+      "especialidade": "Enfermeiro (a)",
+      "n": 51,
+      "app_isa_atende": 4.22,
+      "comunicacao": 4.25,
+      "experiencia_geral": 4.33,
+      "gestao_escalas": 4.31,
+      "pontualidade_pagamento": 4.31,
+      "suporte_chat": 4.04
+    },
+    {
+      "especialidade": "Psicologia",
+      "n": 3,
+      "app_isa_atende": 4.67,
+      "comunicacao": 4.0,
+      "experiencia_geral": 4.33,
+      "gestao_escalas": 4.67,
+      "pontualidade_pagamento": 4.67,
+      "suporte_chat": 4.0
+    },
+    {
+      "especialidade": "Fisioterapia",
+      "n": 58,
+      "app_isa_atende": 4.19,
+      "comunicacao": 3.91,
+      "experiencia_geral": 4.14,
+      "gestao_escalas": 4.26,
+      "pontualidade_pagamento": 4.45,
+      "suporte_chat": 3.72
+    },
+    {
+      "especialidade": "Tecnico em Enfermagem",
+      "n": 256,
+      "app_isa_atende": 4.16,
+      "comunicacao": 4.0,
+      "experiencia_geral": 4.14,
+      "gestao_escalas": 4.14,
+      "pontualidade_pagamento": 4.48,
+      "suporte_chat": 3.77
+    },
+    {
+      "especialidade": "Terapia Ocupacional",
+      "n": 7,
+      "app_isa_atende": 3.57,
+      "comunicacao": 4.43,
+      "experiencia_geral": 4.14,
+      "gestao_escalas": 4.0,
+      "pontualidade_pagamento": 4.57,
+      "suporte_chat": 4.14
+    },
+    {
+      "especialidade": "Auxiliar de Enfermagem",
+      "n": 28,
+      "app_isa_atende": 4.18,
+      "comunicacao": 4.04,
+      "experiencia_geral": 4.11,
+      "gestao_escalas": 4.18,
+      "pontualidade_pagamento": 4.64,
+      "suporte_chat": 3.82
+    },
+    {
+      "especialidade": "Nutrição",
+      "n": 20,
+      "app_isa_atende": 3.95,
+      "comunicacao": 3.95,
+      "experiencia_geral": 4.05,
+      "gestao_escalas": 4.05,
+      "pontualidade_pagamento": 4.0,
+      "suporte_chat": 3.6
+    },
+    {
+      "especialidade": "Biologia",
+      "n": 1,
+      "app_isa_atende": 4.0,
+      "comunicacao": 4.0,
+      "experiencia_geral": 4.0,
+      "gestao_escalas": 4.0,
+      "pontualidade_pagamento": 4.0,
+      "suporte_chat": 4.0
+    },
+    {
+      "especialidade": "Técnico de análises clínicas/patologia clínica/biodiagnósticos",
+      "n": 1,
+      "app_isa_atende": 5.0,
+      "comunicacao": 5.0,
+      "experiencia_geral": 4.0,
+      "gestao_escalas": 5.0,
+      "pontualidade_pagamento": 3.0,
+      "suporte_chat": 5.0
+    },
+    {
+      "especialidade": "Fonoaudiologia",
+      "n": 22,
+      "app_isa_atende": 3.73,
+      "comunicacao": 3.59,
+      "experiencia_geral": 3.91,
+      "gestao_escalas": 4.18,
+      "pontualidade_pagamento": 4.59,
+      "suporte_chat": 3.14
+    },
+    {
+      "especialidade": "Medicina",
+      "n": 6,
+      "app_isa_atende": 2.67,
+      "comunicacao": 3.83,
+      "experiencia_geral": 3.5,
+      "gestao_escalas": 3.83,
+      "pontualidade_pagamento": 3.83,
+      "suporte_chat": 3.83
+    },
+    {
+      "especialidade": "Biomedicina",
+      "n": 1,
+      "app_isa_atende": 4.0,
+      "comunicacao": 4.0,
+      "experiencia_geral": 3.0,
+      "gestao_escalas": 4.0,
+      "pontualidade_pagamento": 3.0,
+      "suporte_chat": 4.0
+    }
   ],
   "historico_nps": [
-    { "mes": "2026-05", "label": "Maio", "nps": 38 },
-    { "mes": "2026-06", "label": "Junho", "nps": 39 },
-    { "mes": "2026-07", "label": "Julho", "nps": 45.8 },
-    { "mes": "2026-08", "label": "Agosto", "nps": 61.9 }
+    {
+      "mes": "2026-08",
+      "label": "Agosto",
+      "nps": 61.5
+    }
   ]
 }
