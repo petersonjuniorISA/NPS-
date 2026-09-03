@@ -1,12 +1,15 @@
 # Logo do painel
 
-Coloque aqui o arquivo `logo.png` (ou `logo.svg`, ajustando o caminho em
-`index.html`) com o logo da área. Ele aparece no topo da barra lateral.
+`logo.svg` é o logo do ISA Experience, exibido no topo da barra lateral e
+usado também como ícone da aba do navegador (favicon).
 
-Recomendações:
-- Formato quadrado ou próximo disso (o espaço é 42×42 px, com cantos arredondados)
-- PNG com fundo transparente funciona melhor
-- Pode subir direto pelo GitHub: **Add file → Upload files**, dentro desta pasta
+Para trocar: substitua `logo.svg` por outro arquivo com o mesmo nome
+(direto pelo GitHub: **Add file → Upload files**). Se preferir PNG, suba o
+arquivo e ajuste o `src` em `index.html` (duas ocorrências: a tag `<img>`
+da barra lateral e o `<link rel="icon">`).
 
-Enquanto o arquivo não existir, o painel mostra automaticamente um selo
-"ISA" em teal, sem quebrar nada.
+O logo aparece com 74px de largura e altura proporcional — vale usar um
+arquivo com fundo transparente, já que a barra lateral é azul-marinho.
+
+Se o arquivo não existir, o painel mostra automaticamente o texto
+"ISA EXP" em teal, sem quebrar o layout.
