@@ -36,7 +36,8 @@
     { key: "suporte_chat",           label: "Suporte Chat" }
   ];
 
-  const MIN_AMOSTRA = 5; // abaixo disso o número não sustenta uma decisão
+  const MIN_AMOSTRA = 5;  // abaixo disso o número não sustenta uma decisão
+  const MIN_SEMANA = 20;  // semana com menos que isso é amostra parcial, não tendência
 
   /* ---------- utilidades ---------- */
   const $  = s => document.querySelector(s);
@@ -498,8 +499,15 @@
         { type: "bar", label: "Respostas", data: sem.map(s => s.respostas), backgroundColor: "rgba(0,68,116,.16)",
           borderColor: "transparent", borderRadius: 4, maxBarThickness: 44, yAxisID: "y1", order: 2 },
         { type: "line", label: "NPS da semana", data: sem.map(s => s.nps), borderColor: C.teal,
-          backgroundColor: "transparent", tension: .3, borderWidth: 2.6, pointRadius: 4.5,
-          pointBackgroundColor: C.teal, pointBorderColor: "#fff", pointBorderWidth: 2, yAxisID: "y", order: 1 } ] },
+          backgroundColor: "transparent", tension: .3, borderWidth: 2.6, yAxisID: "y", order: 1,
+          // semana com poucas respostas fica com o ponto vazado, pra não passar por tendência
+          pointRadius: sem.map(s => s.respostas < MIN_SEMANA ? 4 : 4.5),
+          pointStyle: sem.map(s => s.respostas < MIN_SEMANA ? "circle" : "circle"),
+          pointBackgroundColor: sem.map(s => s.respostas < MIN_SEMANA ? "#fff" : C.teal),
+          pointBorderColor: sem.map(s => s.respostas < MIN_SEMANA ? C.teal : "#fff"),
+          pointBorderWidth: 2, borderDash: [], segment: {
+            borderDash: ctx => sem[ctx.p1DataIndex].respostas < MIN_SEMANA ? [5, 4] : undefined
+          } } ] },
       options: opcoes({ plugins: { legend: legenda() },
         // sem semana negativa, a escala começa em zero — senão metade do gráfico ficaria vazia
         scales: { y: { min: sem.some(s => s.nps < 0) ? -100 : 0, max: 100, grid: { color: C.grid } },
@@ -507,11 +515,18 @@
                         title: { display: true, text: "respostas", font: { size: 10 } } },
                   x: { grid: { display: false } } } }) });
 
-    $("#week-cards").innerHTML = sem.map(s =>
-      '<div class="week"><div class="week-n">Semana ' + s.semana + "</div>" +
-      '<div class="week-date">' + s.label + "</div>" +
-      '<div class="week-nps tabular" style="color:' + corNps(s.nps) + '">' + fmt(s.nps, 1) + "</div>" +
-      '<div class="week-meta">' + s.respostas + " respostas · " + s.promotores + "P " + s.neutros + "N " + s.detratores + "D</div></div>").join("");
+    $("#week-cards").innerHTML = sem.map(s => {
+      const parcial = s.respostas < MIN_SEMANA;
+      return '<div class="week' + (parcial ? " parcial" : "") + '">' +
+        '<div class="week-n">Semana ' + s.semana + (parcial ? ' <span class="week-tag">parcial</span>' : "") + "</div>" +
+        '<div class="week-date">' + s.label + "</div>" +
+        '<div class="week-nps tabular" style="color:' + (parcial ? "var(--gray-disabled)" : corNps(s.nps)) + '">' +
+          fmt(s.nps, 1) + "</div>" +
+        '<div class="week-meta">' + s.respostas + " respostas · " +
+          s.promotores + "P " + s.neutros + "N " + s.detratores + "D</div>" +
+        (parcial ? '<div class="week-meta">Amostra pequena demais para virar tendência.</div>' : "") +
+      "</div>";
+    }).join("");
   }
 
   function destaques() {

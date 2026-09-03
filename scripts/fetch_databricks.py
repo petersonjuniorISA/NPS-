@@ -22,6 +22,7 @@ no futuro o time de dados liberar tokens e a automação for movida pra nuvem.
 
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -59,11 +60,45 @@ MONTH_LABELS_PT = {
 }
 
 
+CLI_DIR_WINGET = os.path.join(
+    os.environ.get("LOCALAPPDATA", ""),
+    "Microsoft", "WinGet", "Packages",
+    "Databricks.DatabricksCLI_Microsoft.Winget.Source_8wekyb3d8bbwe",
+)
+
+
+def garantir_cli_no_path() -> bool:
+    """A CLI do Databricks guarda o token OAuth com refresh automático.
+
+    O PATH nem sempre chega até aqui (shell aberto antes da instalação, por
+    exemplo), então procuramos a instalação do winget antes de desistir.
+    """
+    if shutil.which("databricks"):
+        return True
+    if os.path.exists(os.path.join(CLI_DIR_WINGET, "databricks.exe")):
+        os.environ["PATH"] = CLI_DIR_WINGET + os.pathsep + os.environ.get("PATH", "")
+        return True
+    return False
+
+
 def fetch_dataframe() -> pd.DataFrame:
     connect_kwargs = dict(server_hostname=DATABRICKS_HOST, http_path=DATABRICKS_HTTP_PATH)
     if DATABRICKS_TOKEN:
         connect_kwargs["access_token"] = DATABRICKS_TOKEN
+    elif garantir_cli_no_path():
+        # Reaproveita o login já feito (`databricks auth login`): a CLI guarda o
+        # token no Gerenciador de Credenciais do Windows e o renova sozinha.
+        # Precisa ir pelo Config do SDK — passar auth_type="databricks-cli"
+        # direto pro connector não funciona: ele cai no fluxo de navegador e
+        # trava esperando alguém clicar, que foi o que quebrou a automação.
+        from databricks.sdk.core import Config
+        cfg = Config(host="https://" + DATABRICKS_HOST, auth_type="databricks-cli")
+        connect_kwargs["credentials_provider"] = lambda: cfg.authenticate
     else:
+        # Sem a CLI, cada execução abre o navegador pedindo login — só serve
+        # rodando à mão, nunca na tarefa agendada.
+        print("AVISO: CLI do Databricks não encontrada. Vai abrir o navegador "
+              "pedindo login; instale a CLI para a automação rodar sozinha.")
         connect_kwargs["auth_type"] = "databricks-oauth"
 
     with sql.connect(**connect_kwargs) as conn:
@@ -163,7 +198,7 @@ def semanas_do_mes(cur: pd.DataFrame) -> list:
             "semana": i,
             "inicio": inicio.strftime("%Y-%m-%d"),
             "fim": fim.strftime("%Y-%m-%d"),
-            "label": "%d/%m a %d/%m" % (inicio.day, inicio.month, fim.day, fim.month),
+            "label": f"{inicio.day}/{inicio.month} a {fim.day}/{fim.month}",
             "respostas": int(len(grupo)),
             "promotores": p,
             "neutros": n,

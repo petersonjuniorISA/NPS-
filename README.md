@@ -54,9 +54,20 @@ o bloco **Semana a semana** mostra o NPS de cada semana do mês escolhido
 (segunda a domingo, pela data em que a pessoa respondeu), com volume de
 respostas e a divisão promotor / neutro / detrator.
 
+Semanas com menos de 20 respostas aparecem marcadas como **parcial** (cartão
+pontilhado, ponto vazado no gráfico) — o número existe, mas não sustenta
+leitura de tendência.
+
 Meses sem respostas ainda (o mês corrente no começo, por exemplo) aparecem
 normalmente: os cartões de NPS ficam com "—" e um aviso no topo explica, mas
 Zendesk e alavancas continuam disponíveis.
+
+> **Sobre "ver setembro":** o mês de um respondente vem do `reference_month`
+> da tabela, que é o mês da *campanha* de NPS — não a data em que a pessoa
+> respondeu. Por isso respostas que chegaram no começo de setembro ainda
+> contam para agosto (aparecem na última semana de agosto, com o rótulo
+> "31/8 a 6/9"). Setembro só vira um mês próprio no seletor quando a
+> campanha de setembro for disparada.
 
 ## Configuração — passo a passo
 
@@ -106,10 +117,18 @@ Isso já está feito nesta máquina. Pontos de atenção:
   agendado (segunda 8h). Se o PC estiver desligado, aquela semana não
   atualiza sozinha — `StartWhenAvailable` faz a tarefa rodar assim que o PC
   ligar de novo, mas não recupera retroativamente.
+- **A CLI do Databricks precisa estar instalada.** É ela que guarda o token
+  OAuth (no Gerenciador de Credenciais do Windows, por causa do
+  `auth_storage = secure` no `~/.databrickscfg`) e o renova sozinha. O
+  script procura a CLI no PATH e, se não achar, na pasta do winget. Sem a
+  CLI, cada execução abre o navegador pedindo login — o que trava a tarefa
+  agendada, porque não há ninguém pra clicar.
 - **A sessão OAuth pode expirar** (troca de senha, política de segurança da
   empresa). Se a tarefa começar a falhar, rode `databricks auth login`
   de novo manualmente. Os logs de cada execução ficam em `logs/` (não
   versionados).
+- **O warehouse dorme depois de 5 minutos parado.** A primeira consulta
+  depois disso acorda ele e demora mais — é normal, não é erro.
 - Se um dia o time de dados liberar um Personal Access Token, dá pra migrar
   pra automação na nuvem: basta cadastrar `DATABRICKS_TOKEN`,
   `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH` e `DATABRICKS_TABLE` como

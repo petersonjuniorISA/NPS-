@@ -407,6 +407,12 @@ table.tbl tbody tr.on { background: var(--teal-soft); }
   gap: var(--sm); margin-top: var(--lg);
 }
 .week { border: 1px solid var(--gray-inactive); border-radius: 12px; padding: var(--md); }
+.week.parcial { border-style: dashed; background: var(--gray-bg); }
+.week-tag {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  background: var(--gray-inactive); color: var(--gray-body);
+  font-size: 9px; font-weight: 700; letter-spacing: .8px;
+}
 .week-n { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--chumbo); }
 .week-date { font-size: 11.5px; color: var(--gray-body); margin-top: 2px; }
 .week-nps { font-family: var(--serif); font-size: 26px; font-weight: 700; line-height: 1.1; margin-top: 10px; }
