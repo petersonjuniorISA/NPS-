@@ -159,6 +159,9 @@ funcionando com os últimos dados gravados em `data/nps.json`.
 
 ### 3. Atualizar os indicadores de Zendesk + narrativa semanal
 
+> **Link direto para editar:**
+> https://github.com/petersonjuniorISA/NPS-/edit/main/data/zendesk_semanal.csv
+
 Esses dados ficam em `data/zendesk_semanal.csv`, dentro do próprio
 repositório — **não é uma planilha do Google**. A ideia inicial era usar
 Google Sheets publicado como CSV, mas o Workspace da ISA bloqueia
