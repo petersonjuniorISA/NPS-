@@ -33,13 +33,12 @@ O painel tem três fontes de dados, com níveis de automação diferentes:
    origem do GitHub Pages), então basta editar e comitar — a próxima
    visita à página já reflete a mudança.
 
-3. **Metas do NPS — preenchido à mão, raramente.** A liderança define a meta
-   de NPS por mês na planilha "Metas 2S - Isa Experience" (a mesma que já
-   existe hoje, com as metas do semestre por KPI). Esses números não mudam
-   toda semana, então ficam num arquivo simples, `data/metas.json`, editado
-   só quando a meta do mês muda. O site usa isso para mostrar a linha de
-   "meta" no gráfico de histórico do NPS e o "Real vs. Meta" no card
-   principal — igual ao que já existia no Notion.
+3. **Metas SMART — preenchido à mão, raramente.** A liderança define as metas
+   do semestre na planilha "Metas 2S - Isa Experience". Esses números não
+   mudam toda semana, então ficam em `data/metas.json`, editado só quando a
+   meta é revisada. O painel cruza meta × realizado sozinho e mostra o
+   atingimento de cada objetivo (NPS, CSAT do SAC, Resolução com IA e FCR)
+   na página **Metas SMART**, além da linha de meta no histórico do NPS.
 
 ## Configuração — passo a passo
 
@@ -146,27 +145,42 @@ Colunas esperadas (a primeira linha do arquivo já traz isso):
 | `resolucao_ia_pct` | `40` | número, sem o `%` |
 | `narrativa` | texto livre | as "alavancas da semana" |
 
-### 4. Atualizar a meta do NPS
+### 4. Atualizar as metas SMART
 
-Sempre que a meta do mês mudar na planilha "Metas 2S - Isa Experience", edite
-`data/metas.json` e suba a alteração. Formato:
+As metas do semestre ficam em `data/metas.json` (espelho da planilha
+"Metas 2S - Isa Experience"). Cada objetivo tem a meta de cada mês e sabe
+de onde vem o realizado:
 
 ```json
 {
-  "nps": {
-    "baseline": 39,
-    "2026-09": 48.6,
-    "2026-10": 54.3
-  }
+  "id": "nps",
+  "label": "NPS",
+  "descricao": "Elevar o NPS da Isa para acima de 60 pontos até dezembro de 2026.",
+  "unidade": "pts",
+  "casas": 1,
+  "baseline": 39,
+  "alvo_final": 60,
+  "fonte_realizado": "nps",
+  "metas": { "2026-08": 46.5, "2026-09": 48.6, "2026-10": 54.3 }
 }
 ```
 
-Cada chave é um mês (`AAAA-MM`) e o valor é a meta de NPS daquele mês. O site
-usa isso para desenhar a linha "NPS meta" no histórico e o "Real vs. Meta" no
-card principal. Meses sem meta cadastrada simplesmente não mostram essa
-comparação.
+- `fonte_realizado: "nps"` → o realizado vem do Databricks (`data/nps.json`).
+- `fonte_realizado: "zendesk:csat_humano"` → vem da coluna `csat_humano` de
+  `data/zendesk_semanal.csv`. Vale para qualquer coluna daquele arquivo.
+- `alvo_final` é a meta de dezembro, usada no gráfico de trajetória e no
+  bloco "Onde estamos".
 
-### 5. Espelhar no Google Sites (acesso restrito ao domínio ISA)
+Com isso, a página **Metas SMART** calcula sozinha o "Real vs. meta" de cada
+objetivo — não precisa mexer em código quando a meta mudar, só neste arquivo.
+
+### 5. Trocar o logo
+
+Suba o logo da área como `assets/logo.png` (direto pelo GitHub:
+**Add file → Upload files**). Ele aparece no topo da barra lateral. Enquanto
+o arquivo não existir, o painel mostra um selo "ISA" em teal automaticamente.
+
+### 6. Espelhar no Google Sites (acesso restrito ao domínio ISA)
 
 Já feito: **https://sites.google.com/isasaude.com/nps-dos-isas** — site
 criado no Google Sites (Workspace ISA Saúde), com um bloco de **Incorporar**
@@ -203,12 +217,13 @@ E abrir `http://localhost:8000`.
 ## Estrutura
 
 ```
-index.html                      Página do painel
+index.html                      Painel (5 páginas: visão geral, especialidades, SAC, metas, alavancas)
 css/styles.css                  Estilos (Design System ISA)
 js/app.js                       Lógica de carregamento e renderização
 js/config.js                    URL da planilha do Zendesk (preencher)
 data/nps.json                   Dados de NPS (gerado automaticamente)
-data/metas.json                 Metas de NPS por mês (editar à mão, raramente)
+data/metas.json                 Metas SMART do semestre (editar à mão, raramente)
+assets/logo.png                 Logo da área exibido na barra lateral (opcional)
 data/zendesk_semanal.csv        Dados de Zendesk + narrativa (editar direto no GitHub)
 scripts/fetch_databricks.py     Script que busca e processa os dados do Databricks
 .github/workflows/update-nps-data.yml  Roda o script acima toda semana

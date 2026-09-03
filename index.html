@@ -3,151 +3,322 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NPS dos ISAs</title>
+<title>NPS dos ISAs · Painel de Experiência</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Blinker:wght@200;300;400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-<div class="container">
-
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">ISA</div>
-      <div>
-        <h1>NPS dos ISAs</h1>
-        <p>Painel semanal de experiência dos profissionais</p>
-      </div>
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <img src="assets/logo.png" alt="" class="brand-logo" id="brand-logo"
+         onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'brand-logo',textContent:'ISA'}))">
+    <div class="brand-text">
+      <div class="brand-name">Experiência</div>
+      <div class="brand-sub">NPS dos ISAs</div>
     </div>
-    <div style="display:flex; align-items:center; gap: 12px;">
-      <select id="month-select" class="month-select"></select>
-      <div class="updated-badge" id="updated-badge">
-        <i data-lucide="refresh-cw"></i>
-        <span id="updated-text">carregando…</span>
-      </div>
-    </div>
-  </header>
-
-  <div id="stale-alert" class="alert alert-warning" style="display:none;">
-    <i data-lucide="alert-triangle"></i>
-    <span>Não foi possível carregar a fonte externa de indicadores do Zendesk configurada em js/config.js. Mostrando data/zendesk_semanal.csv.</span>
   </div>
 
-  <!-- KPIs -->
-  <section class="kpi-grid">
-    <div class="card kpi-card nps-geral">
-      <span class="kpi-label">NPS Geral</span>
-      <span class="kpi-value" id="kpi-nps">—</span>
-      <span class="kpi-trend up" id="kpi-nps-trend"></span>
-      <span class="section-subtitle" id="kpi-nps-meta" style="margin:4px 0 0;"></span>
+  <nav class="nav">
+    <div class="nav-label">Painel</div>
+    <button class="nav-item active" data-page="visao">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      Visão geral
+    </button>
+    <button class="nav-item" data-page="especialidades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3v6a6 6 0 0 0 12 0V3"/><circle cx="18" cy="16" r="3"/><path d="M12 15v-2"/></svg>
+      Especialidades
+    </button>
+    <button class="nav-item" data-page="sac">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+      SAC &amp; Zendesk
+    </button>
+    <button class="nav-item" data-page="metas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
+      Metas SMART
+    </button>
+    <button class="nav-item" data-page="alavancas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/></svg>
+      Alavancas
+    </button>
+  </nav>
+
+  <div class="sidebar-foot">
+    <div class="pulse-row">
+      <span class="pulse"></span>
+      <span class="pulse-text">Dados vivos do <b>Databricks</b><br><span id="side-updated">carregando…</span></span>
     </div>
-    <div class="card kpi-card">
-      <span class="kpi-label">Respostas no mês</span>
-      <span class="kpi-value" id="kpi-total">—</span>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+  <div class="mobile-bar">
+    <button id="menu-toggle" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <strong style="font-size:15px;">NPS dos ISAs</strong>
+  </div>
+
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="page-title">Visão geral</div>
+      <div class="topbar-sub" id="page-sub">Panorama da experiência dos profissionais</div>
     </div>
-    <div class="card kpi-card" style="grid-column: span 2;">
-      <span class="kpi-label">Distribuição</span>
-      <div class="distribution-bar" id="dist-bar"></div>
-      <div class="legend-row">
-        <div class="legend-item"><span class="legend-dot dist-promotores"></span> Promotores: <b id="dist-promotores">—</b></div>
-        <div class="legend-item"><span class="legend-dot dist-neutros"></span> Neutros: <b id="dist-neutros">—</b></div>
-        <div class="legend-item"><span class="legend-dot dist-detratores"></span> Detratores: <b id="dist-detratores">—</b></div>
+    <div class="topbar-actions">
+      <select class="chip-select" id="month-select" aria-label="Mês de referência"></select>
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        <span id="updated-text">—</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="page-wrap">
+    <div id="alert-slot"></div>
+
+    <!-- ========== PÁGINA: VISÃO GERAL ========== -->
+    <section class="page active" id="page-visao">
+      <div class="hero">
+        <div class="hero-inner">
+          <div>
+            <div class="hero-eyebrow">NPS geral · <span id="hero-month">—</span></div>
+            <div class="hero-score">
+              <div class="hero-value" id="hero-nps">—</div>
+              <div class="hero-delta up" id="hero-delta"></div>
+            </div>
+            <div class="hero-desc" id="hero-desc">Índice de recomendação calculado sobre as respostas do mês.</div>
+            <div class="hero-stats" style="margin-top:20px;">
+              <div class="hero-stat">
+                <div class="hero-stat-top" style="background:#35D07F"></div>
+                <div class="hero-stat-value" id="hs-prom">—</div>
+                <div class="hero-stat-label">Promotores</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-top" style="background:#F2B705"></div>
+                <div class="hero-stat-value" id="hs-neut">—</div>
+                <div class="hero-stat-label">Neutros</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-top" style="background:#F06767"></div>
+                <div class="hero-stat-value" id="hs-detr">—</div>
+                <div class="hero-stat-label">Detratores</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-top" style="background:#00B9BB"></div>
+                <div class="hero-stat-value" id="hs-total">—</div>
+                <div class="hero-stat-label">Respostas</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="gauge-box">
+            <div class="gauge">
+              <svg width="152" height="152" viewBox="0 0 152 152">
+                <circle class="gauge-track" cx="76" cy="76" r="64" fill="none" stroke-width="13"/>
+                <circle class="gauge-fill" id="gauge-fill" cx="76" cy="76" r="64" fill="none" stroke-width="13"
+                        stroke-dasharray="402" stroke-dashoffset="402"/>
+              </svg>
+              <div class="gauge-center">
+                <div class="gauge-pct" id="gauge-pct">—</div>
+                <div class="gauge-cap">da meta</div>
+              </div>
+            </div>
+            <div class="gauge-legend" id="gauge-legend"></div>
+          </div>
+        </div>
       </div>
-    </div>
-  </section>
 
-  <!-- Nota por pergunta + histórico -->
-  <section class="section grid-2">
-    <div class="card">
-      <div class="section-title"><i data-lucide="bar-chart-3"></i> Média por pergunta do NPS</div>
-      <div class="chart-wrap"><canvas id="chart-perguntas"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="section-title"><i data-lucide="trending-up"></i> Histórico do NPS</div>
-      <div class="chart-wrap"><canvas id="chart-historico"></canvas></div>
-    </div>
-  </section>
+      <div class="grid grid-2-1">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Evolução do NPS</div>
+              <div class="card-sub">Realizado vs. meta mensal</div>
+            </div>
+            <div class="seg" id="seg-hist">
+              <button class="active" data-series="nps">NPS</button>
+              <button data-series="csat">+ CSAT</button>
+            </div>
+          </div>
+          <div class="chart-wrap h-280"><canvas id="chart-historico"></canvas></div>
+        </div>
 
-  <!-- NPS por especialidade -->
-  <section class="section card">
-    <div class="section-title"><i data-lucide="stethoscope"></i> NPS por especialidade</div>
-    <div class="section-subtitle">% da amostra do mês e NPS calculado para cada especialidade</div>
-    <div class="chart-wrap"><canvas id="chart-especialidade"></canvas></div>
-  </section>
-
-  <!-- Satisfação por especialidade -->
-  <section class="section card">
-    <div class="section-title"><i data-lucide="table"></i> Satisfação por especialidade</div>
-    <div class="section-subtitle">Nota média (0–5) por pergunta, para cada especialidade</div>
-    <div class="table-scroll">
-      <table class="data-table" id="table-satisfacao">
-        <thead>
-          <tr>
-            <th>Especialidade</th>
-            <th>App Isa Atende</th>
-            <th>Comunicação</th>
-            <th>Experiência Geral</th>
-            <th>Gestão de Escalas</th>
-            <th>Pontualidade Pagamento</th>
-            <th>Suporte Chat</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Zendesk -->
-  <section class="section grid-2">
-    <div class="card">
-      <div class="section-title"><i data-lucide="headset"></i> Indicadores Zendesk — histórico mensal</div>
-      <div class="section-subtitle">Preenchido manualmente na planilha semanal</div>
-      <div class="table-scroll">
-        <table class="data-table" id="table-zendesk-mensal">
-          <thead>
-            <tr>
-              <th>Mês</th><th>CSAT IA</th><th>CSAT Humano</th><th>TMA 1ª resposta</th><th>TMR</th><th>FCR</th><th>Resolução IA</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Distribuição</div>
+              <div class="card-sub">Promotores, neutros e detratores</div>
+            </div>
+          </div>
+          <div class="dist-bar" id="dist-bar"><span class="dist-prom"></span><span class="dist-neut"></span><span class="dist-detr"></span></div>
+          <div class="dist-legend" id="dist-legend"></div>
+          <div style="margin-top:20px;">
+            <div class="card-title" style="font-size:14px;margin-bottom:12px;">Nota média por dimensão</div>
+            <div class="chart-wrap h-200"><canvas id="chart-radar"></canvas></div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="card">
-      <div class="section-title"><i data-lucide="calendar-days"></i> Week over week — mês atual</div>
-      <div class="table-scroll">
-        <table class="data-table" id="table-zendesk-semanal">
-          <thead>
-            <tr>
-              <th>Semana</th><th>Período</th><th>CSAT IA</th><th>CSAT Humano</th><th>TMA</th><th>TMR</th><th>FCR</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Média por pergunta do NPS</div>
+              <div class="card-sub">Escala de 0 a 5 · passe o mouse para detalhes</div>
+            </div>
+          </div>
+          <div class="chart-wrap h-280"><canvas id="chart-perguntas"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Leitura rápida</div>
+              <div class="card-sub">Destaques calculados automaticamente</div>
+            </div>
+          </div>
+          <div id="insights"></div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Narrativa semanal -->
-  <section class="section card">
-    <div class="section-title"><i data-lucide="notebook-pen"></i> Alavancas da semana</div>
-    <div class="section-subtitle">Ações e destaques registrados manualmente a cada semana</div>
-    <div class="timeline" id="timeline"></div>
-  </section>
+    <!-- ========== PÁGINA: ESPECIALIDADES ========== -->
+    <section class="page" id="page-especialidades">
+      <div class="grid grid-4" id="esp-stats"></div>
 
-  <p class="footer-note">
-    NPS gerado automaticamente a partir do Databricks · Indicadores Zendesk e narrativa preenchidos manualmente na planilha semanal ·
-    <span id="footer-updated"></span>
-  </p>
+      <div class="grid grid-2-1">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">NPS por especialidade</div>
+              <div class="card-sub">Clique numa especialidade para ver o detalhamento</div>
+            </div>
+            <div class="seg" id="seg-esp">
+              <button class="active" data-sort="nps">Por NPS</button>
+              <button data-sort="amostra">Por volume</button>
+            </div>
+          </div>
+          <div class="barlist" id="esp-barlist"></div>
+        </div>
 
-</div>
+        <div class="card" id="esp-detail-card">
+          <div class="card-head"><div><div class="card-title">Detalhamento</div><div class="card-sub">Notas por dimensão</div></div></div>
+          <div id="esp-detail">
+            <div class="detail-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3h6M12 3v5"/><circle cx="12" cy="14" r="7"/></svg>
+              <div>Selecione uma especialidade ao lado para ver as notas detalhadas.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Satisfação por especialidade</div>
+            <div class="card-sub">Nota média (0–5) em cada dimensão · clique no cabeçalho para ordenar</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="tbl" id="tbl-satisfacao">
+            <thead><tr id="sat-head"></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PÁGINA: SAC & ZENDESK ========== -->
+    <section class="page" id="page-sac">
+      <div class="card-sub" id="sac-ref" style="margin:-6px 0 14px 2px;"></div>
+      <div class="grid grid-3" id="sac-stats"></div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">CSAT — IA e humano</div><div class="card-sub">Evolução mensal (escala 0–5)</div></div></div>
+          <div class="chart-wrap h-240"><canvas id="chart-csat"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">FCR e resolução com IA</div><div class="card-sub">Percentual por mês</div></div></div>
+          <div class="chart-wrap h-240"><canvas id="chart-fcr"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Week over week</div><div class="card-sub">Evolução semanal do mês corrente</div></div></div>
+          <div class="chart-wrap h-240"><canvas id="chart-wow"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Histórico mensal</div><div class="card-sub">Todos os indicadores de atendimento</div></div></div>
+          <div class="table-scroll">
+            <table class="tbl" id="tbl-zendesk">
+              <thead><tr>
+                <th>Mês</th><th class="num">CSAT IA</th><th class="num">CSAT Humano</th>
+                <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th><th class="num">Res. IA</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Detalhamento semanal</div><div class="card-sub">Semanas do mês corrente</div></div></div>
+        <div class="table-scroll">
+          <table class="tbl" id="tbl-semanal">
+            <thead><tr>
+              <th>Semana</th><th>Período</th><th class="num">CSAT IA</th><th class="num">CSAT Humano</th>
+              <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PÁGINA: METAS ========== -->
+    <section class="page" id="page-metas">
+      <div class="grid grid-4" id="goal-cards"></div>
+
+      <div class="grid grid-2-1">
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Trajetória até dezembro</div><div class="card-sub">Realizado (linha cheia) vs. meta (tracejada)</div></div></div>
+          <div class="chart-wrap h-320"><canvas id="chart-meta"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Onde estamos</div><div class="card-sub">Distância para a meta do semestre</div></div></div>
+          <div id="meta-summary"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PÁGINA: ALAVANCAS ========== -->
+    <section class="page" id="page-alavancas">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Alavancas por semana</div>
+            <div class="card-sub">Ações executadas pelo time de experiência a cada semana</div>
+          </div>
+          <select class="chip-select" id="alav-month" aria-label="Mês"></select>
+        </div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+    </section>
+
+    <p class="foot-note">
+      NPS calculado automaticamente a partir do Databricks · Indicadores de Zendesk e alavancas preenchidos pelo time<br>
+      <span id="foot-updated"></span>
+    </p>
+  </div>
+</main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
 <script src="js/config.js"></script>
 <script src="js/app.js"></script>
 </body>

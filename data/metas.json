@@ -1,11 +1,82 @@
 {
-  "fonte": "Planilha 'Metas 2S - Isa Experience' (Google Sheets, time de dados/liderança) — atualizar manualmente sempre que as metas do semestre forem revisadas",
-  "atualizado_em": "2026-09-01",
-  "nps": {
-    "baseline": 39,
-    "2026-07": 45.8,
-    "2026-08": 46.5,
-    "2026-09": 48.6,
-    "2026-10": 54.3
-  }
+  "fonte": "Planilha 'Metas 2S - Isa Experience' (Google Sheets). Atualizar quando a liderança revisar as metas do semestre.",
+  "atualizado_em": "2026-09-02",
+  "observacao": "Metas de nov/dez foram inferidas da projeção que estava no Notion — confira na planilha oficial e ajuste se necessário.",
+  "objetivos": [
+    {
+      "id": "nps",
+      "label": "NPS",
+      "descricao": "Elevar o NPS da Isa para acima de 60 pontos até dezembro de 2026, medido pelas pesquisas de NPS aplicadas aos usuários.",
+      "peso": "40%",
+      "unidade": "pts",
+      "casas": 1,
+      "baseline": 39,
+      "alvo_final": 60,
+      "fonte_realizado": "nps",
+      "metas": {
+        "2026-07": 45.8,
+        "2026-08": 46.5,
+        "2026-09": 48.6,
+        "2026-10": 54.3,
+        "2026-11": 57,
+        "2026-12": 60
+      }
+    },
+    {
+      "id": "csat_humano",
+      "label": "CSAT do SAC",
+      "descricao": "Atingir CSAT (Satisfação do Cliente) do SAC para ISAs igual ou superior a 4 pontos (escala de 1–5) até dezembro de 2026.",
+      "peso": "25%",
+      "unidade": "pts",
+      "casas": 2,
+      "baseline": 3.7,
+      "alvo_final": 4,
+      "fonte_realizado": "zendesk:csat_humano",
+      "metas": {
+        "2026-07": 3.72,
+        "2026-08": 3.8,
+        "2026-09": 3.85,
+        "2026-10": 3.9,
+        "2026-11": 3.95,
+        "2026-12": 4
+      }
+    },
+    {
+      "id": "resolucao_ia_pct",
+      "label": "Resolução com IA",
+      "descricao": "Elevar para 60% o percentual de tickets no Zendesk resolvidos por IA até dezembro de 2026.",
+      "peso": "30%",
+      "unidade": "%",
+      "casas": 0,
+      "baseline": 25,
+      "alvo_final": 60,
+      "fonte_realizado": "zendesk:resolucao_ia_pct",
+      "metas": {
+        "2026-07": 24,
+        "2026-08": 25,
+        "2026-09": 40,
+        "2026-10": 45,
+        "2026-11": 50,
+        "2026-12": 60
+      }
+    },
+    {
+      "id": "fcr_pct",
+      "label": "FCR",
+      "descricao": "Aumentar o FCR (resolução no primeiro contato) de 14% para 50% até dezembro de 2026.",
+      "peso": "—",
+      "unidade": "%",
+      "casas": 1,
+      "baseline": 14,
+      "alvo_final": 50,
+      "fonte_realizado": "zendesk:fcr_pct",
+      "metas": {
+        "2026-08": 16,
+        "2026-09": 21,
+        "2026-10": 36,
+        "2026-11": 48,
+        "2026-12": 50
+      }
+    }
+  ]
 }
