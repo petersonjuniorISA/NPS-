@@ -23,16 +23,15 @@ O painel tem três fontes de dados, com níveis de automação diferentes:
    futuro — aí a automação passa a rodar na nuvem em vez de na máquina
    local.
 
-2. **Zendesk + narrativa semanal — preenchido à mão numa planilha.** Esses
-   números hoje não vêm do Databricks, então continuam sendo preenchidos por
-   alguém, só que agora numa planilha do Google Sheets em vez do Notion. O
-   site busca essa planilha (publicada como CSV) toda vez que a página é
-   aberta, então basta editar a planilha — o site reflete na hora, sem
-   precisar mexer em código.
-
-Enquanto a planilha não estiver configurada, o site usa
-`data/zendesk_semanal_template.csv` como exemplo (já com os dados de
-maio–agosto que estavam no Notion).
+2. **Zendesk + narrativa semanal — preenchido à mão num arquivo do
+   próprio repositório.** Esses números hoje não vêm do Databricks, então
+   continuam sendo preenchidos por alguém, só que agora em
+   `data/zendesk_semanal.csv` (editado direto pelo site do GitHub, que tem
+   um editor de tabela pra CSV) em vez do Notion ou de uma planilha externa
+   — o Workspace da ISA bloqueia publicação externa do Google Sheets, então
+   esse caminho evita esbarrar nisso. O site lê esse arquivo direto (mesma
+   origem do GitHub Pages), então basta editar e comitar — a próxima
+   visita à página já reflete a mudança.
 
 3. **Metas do NPS — preenchido à mão, raramente.** A liderança define a meta
    de NPS por mês na planilha "Metas 2S - Isa Experience" (a mesma que já
@@ -105,22 +104,33 @@ Isso já está feito nesta máquina. Pontos de atenção:
 Sem nenhuma dessas duas automações configuradas, o site continua
 funcionando com os últimos dados gravados em `data/nps.json`.
 
-### 3. Criar a planilha do Zendesk + narrativa semanal
+### 3. Atualizar os indicadores de Zendesk + narrativa semanal
 
-1. Crie uma planilha nova no Google Sheets (dentro da conta/domínio da ISA).
-2. Importe o arquivo `data/zendesk_semanal_template.csv` deste projeto
-   (**Arquivo > Importar > Fazer upload**, opção "Substituir planilha") —
-   ele já vem com as colunas certas e os dados de maio a agosto preenchidos.
-3. Toda semana, adicione uma linha nova com `semana` de 1 a 4 e preencha as
-   colunas de Zendesk e a narrativa. No fim do mês, adicione também uma linha
-   com `semana = 0` (o resumo mensal, que entra no gráfico de histórico).
-4. Publique a planilha como CSV: **Arquivo > Compartilhar > Publicar na
-   Web** > selecione a aba correta > formato **Valores separados por
-   vírgula (.csv)** > **Publicar**. Copie o link gerado.
-5. Cole esse link em `js/config.js`, no campo `ZENDESK_CSV_URL`, e suba a
-   alteração para o GitHub.
+Esses dados ficam em `data/zendesk_semanal.csv`, dentro do próprio
+repositório — **não é uma planilha do Google**. A ideia inicial era usar
+Google Sheets publicado como CSV, mas o Workspace da ISA bloqueia
+publicação externa (a página fica pedindo login mesmo com o link
+"publicado"), então esse arquivo no GitHub é o caminho mais simples que
+não esbarra nessa restrição.
 
-Colunas esperadas no CSV (a primeira linha do template já traz isso):
+Toda semana, pra adicionar os números:
+
+1. Abra [`data/zendesk_semanal.csv`](data/zendesk_semanal.csv) no GitHub.
+2. Clique no ícone de lápis (editar) no canto superior direito do arquivo.
+   O GitHub mostra a tabela num editor tipo planilha — não precisa mexer
+   com vírgulas ou aspas manualmente, é só clicar na célula e digitar.
+3. Adicione uma linha nova com `semana` de 1 a 4 e preencha as colunas de
+   Zendesk e a narrativa daquela semana. No fim do mês, adicione também uma
+   linha com `semana = 0` (o resumo mensal, que entra no gráfico de
+   histórico).
+4. Clique em **Commit changes** (direto na branch `main` é suficiente pra
+   esse projeto).
+
+O site lê esse arquivo direto (mesma origem do GitHub Pages, sem
+CORS/login envolvido) e atualiza sozinho na próxima vez que alguém abrir a
+página — não precisa rodar nada.
+
+Colunas esperadas (a primeira linha do arquivo já traz isso):
 
 | coluna | exemplo | observação |
 |---|---|---|
@@ -199,7 +209,7 @@ js/app.js                       Lógica de carregamento e renderização
 js/config.js                    URL da planilha do Zendesk (preencher)
 data/nps.json                   Dados de NPS (gerado automaticamente)
 data/metas.json                 Metas de NPS por mês (editar à mão, raramente)
-data/zendesk_semanal_template.csv  Modelo/fallback dos dados do Zendesk
+data/zendesk_semanal.csv        Dados de Zendesk + narrativa (editar direto no GitHub)
 scripts/fetch_databricks.py     Script que busca e processa os dados do Databricks
 .github/workflows/update-nps-data.yml  Roda o script acima toda semana
 ```

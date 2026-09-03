@@ -104,17 +104,25 @@
   }
 
   async function loadZendeskRows() {
+    // Fonte principal: data/zendesk_semanal.csv, editado direto no GitHub
+    // (Arquivo > editar > tabela). Um NPS_CONFIG.ZENDESK_CSV_URL opcional
+    // permite trocar por uma fonte externa publicada no futuro, se fizer
+    // sentido (hoje o Workspace da ISA bloqueia publicação externa do
+    // Google Sheets, por isso não é usado por padrão).
     const url = window.NPS_CONFIG && window.NPS_CONFIG.ZENDESK_CSV_URL;
     if (url) {
       try {
         const res = await fetch(url, { cache: "no-store" });
-        if (res.ok) return { rows: parseCSV(await res.text()), fromRemote: true };
+        if (res.ok) return { rows: parseCSV(await res.text()), error: false };
+        console.warn("Planilha externa configurada respondeu com erro, usando data/zendesk_semanal.csv.");
       } catch (e) {
-        console.warn("Falha ao buscar a planilha do Zendesk, usando o modelo local.", e);
+        console.warn("Falha ao buscar a planilha externa configurada, usando data/zendesk_semanal.csv.", e);
       }
+      const res = await fetch("data/zendesk_semanal.csv", { cache: "no-store" });
+      return { rows: parseCSV(await res.text()), error: true };
     }
-    const res = await fetch("data/zendesk_semanal_template.csv", { cache: "no-store" });
-    return { rows: parseCSV(await res.text()), fromRemote: false };
+    const res = await fetch("data/zendesk_semanal.csv", { cache: "no-store" });
+    return { rows: parseCSV(await res.text()), error: false };
   }
 
   function renderUpdatedBadge(data) {
@@ -403,7 +411,7 @@
   async function init() {
     const [data, zendesk, metas] = await Promise.all([loadNpsData(), loadZendeskRows(), loadMetas()]);
 
-    if (!zendesk.fromRemote) {
+    if (zendesk.error) {
       document.getElementById("stale-alert").style.display = "flex";
     }
 

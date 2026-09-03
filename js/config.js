@@ -1,11 +1,13 @@
 // Configuração do painel NPS dos ISAs
 //
-// ZENDESK_CSV_URL: cole aqui o link "Publicar na Web" (formato CSV) da planilha
-// do Google Sheets onde os indicadores de Zendesk e a narrativa semanal são
-// preenchidos manualmente. Veja o passo a passo no README.md.
+// Os indicadores de Zendesk e a narrativa semanal são editados direto em
+// data/zendesk_semanal.csv (pelo editor de tabela do próprio GitHub — veja
+// o passo a passo no README.md). Não precisa configurar nada aqui pra isso
+// funcionar.
 //
-// Enquanto esse link não for configurado, o site usa o arquivo local
-// data/zendesk_semanal_template.csv como exemplo.
+// ZENDESK_CSV_URL é opcional: só use se um dia quiser trocar por uma
+// planilha publicada externamente (o Workspace da ISA bloqueia isso hoje,
+// por padrão fica em branco).
 window.NPS_CONFIG = {
   ZENDESK_CSV_URL: ""
 };
