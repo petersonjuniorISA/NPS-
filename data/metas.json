@@ -20,7 +20,8 @@
         "2026-10": 54.3,
         "2026-11": 57,
         "2026-12": 60
-      }
+      },
+      "contexto": "Mede se o profissional recomendaria a Isa como lugar para trabalhar — proxy direto de retenção."
     },
     {
       "id": "csat_humano",
@@ -39,7 +40,8 @@
         "2026-10": 3.9,
         "2026-11": 3.95,
         "2026-12": 4
-      }
+      },
+      "contexto": "Satisfação de quem passou pelo atendimento humano do SAC."
     },
     {
       "id": "resolucao_ia_pct",
@@ -58,7 +60,8 @@
         "2026-10": 45,
         "2026-11": 50,
         "2026-12": 60
-      }
+      },
+      "contexto": "Quanto do suporte a IA resolve sozinha — é o que destrava escala sem aumentar time."
     },
     {
       "id": "fcr_pct",
@@ -76,7 +79,8 @@
         "2026-10": 36,
         "2026-11": 48,
         "2026-12": 50
-      }
+      },
+      "contexto": "Chamados resolvidos no primeiro contato — menos retrabalho e menos fila."
     }
   ]
 }

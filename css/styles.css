@@ -409,6 +409,83 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .goal-ring { width: 44px; height: 44px; flex-shrink: 0; }
 .goal-ring svg { transform: rotate(-90deg); }
 
+/* Farol de metas (resumo executivo) */
+.farol-row {
+  display: grid;
+  grid-template-columns: 13px 1fr 92px 64px;
+  align-items: center; gap: 13px;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.farol-row:last-child { border-bottom: none; }
+.farol-dot { width: 11px; height: 11px; border-radius: 50%; }
+.farol-dot.ok { background: var(--positive); box-shadow: 0 0 0 3px var(--positive-050); }
+.farol-dot.risco { background: var(--amber); box-shadow: 0 0 0 3px var(--amber-050); }
+.farol-dot.off { background: var(--negative); box-shadow: 0 0 0 3px var(--negative-050); }
+.farol-name { font-size: 14px; font-weight: 600; color: var(--navy); }
+.farol-ctx { font-size: 11.5px; color: var(--muted); font-weight: 300; margin-top: 2px; line-height: 1.4; }
+.farol-vals { text-align: right; }
+.farol-real { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.farol-meta { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
+.farol-att { text-align: right; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.farol-att.ok { color: var(--positive); }
+.farol-att.risco { color: #A97C00; }
+.farol-att.off { color: var(--negative); }
+.farol-att small { display: block; font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+@media (max-width: 620px) { .farol-row { grid-template-columns: 13px 1fr 70px; } .farol-att { grid-column: 2 / -1; text-align: left; } }
+
+/* Ponto de atenção */
+.atencao-hero { text-align: center; padding: 4px 0 14px; }
+.atencao-label { font-size: 11.5px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); }
+.atencao-value { font-size: 44px; font-weight: 700; line-height: 1.05; letter-spacing: -1.5px; margin: 6px 0 2px; }
+.atencao-sub { font-size: 12.5px; color: var(--muted); font-weight: 300; }
+.atencao-txt { font-size: 13.5px; line-height: 1.6; color: var(--ink); font-weight: 300; }
+.atencao-txt b { font-weight: 600; }
+
+/* Leitura executiva */
+.leitura-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.leitura-item:last-child { border-bottom: none; }
+.leitura-mark {
+  width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+}
+.leitura-mark.up { background: var(--positive-050); color: var(--positive); }
+.leitura-mark.down { background: var(--negative-050); color: var(--negative); }
+.leitura-mark.flat { background: #EEF1F7; color: var(--navy); }
+.leitura-txt { font-size: 13.5px; line-height: 1.55; color: var(--ink); font-weight: 300; }
+.leitura-txt b { font-weight: 600; color: var(--navy); }
+
+/* Ações recentes */
+.acao { display: flex; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.acao:last-child { border-bottom: none; }
+.acao-week {
+  flex-shrink: 0; width: 46px;
+  font-size: 10.5px; font-weight: 700; color: var(--teal-600);
+  text-transform: uppercase; letter-spacing: .5px; padding-top: 2px;
+}
+.acao-txt { font-size: 12.5px; line-height: 1.5; color: var(--ink); font-weight: 300; }
+
+/* Botão discreto */
+.seg-btn {
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  color: var(--navy); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; cursor: pointer; white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.seg-btn:hover { background: #EDF0F6; border-color: #D6DBE6; }
+
+/* Amostra insuficiente */
+.small-sample { margin-top: 14px; padding-top: 13px; border-top: 1px dashed var(--line); }
+.small-sample-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted-2); margin-bottom: 9px; }
+.small-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.small-tag {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 7px;
+  padding: 4px 9px; font-size: 11.5px; color: var(--muted); font-weight: 300;
+}
+.small-tag b { color: var(--ink); font-weight: 600; }
+
 /* Timeline */
 .timeline { display: flex; flex-direction: column; }
 .tl-item { display: grid; grid-template-columns: 130px 1fr; gap: 18px; position: relative; padding-bottom: 22px; }

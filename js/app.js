@@ -168,7 +168,8 @@
 
   /* ---------- navegação ---------- */
   const PAGES = {
-    visao:          { t: "Visão geral",     s: "Panorama da experiência dos profissionais" },
+    resumo:         { t: "Resumo executivo", s: "Onde estamos, qual o risco e o que está sendo feito" },
+    visao:          { t: "NPS em detalhe",  s: "Composição e evolução do índice" },
     especialidades: { t: "Especialidades",  s: "Onde a experiência é melhor e pior" },
     sac:            { t: "SAC & Zendesk",   s: "Indicadores de atendimento e suporte" },
     metas:          { t: "Metas SMART",     s: "Atingimento das metas do segundo semestre" },
@@ -194,6 +195,10 @@
 
   /* ---------- topo ---------- */
   function renderTopbar() {
+    const inicial = ($(".nav-item.active") || {}).dataset;
+    const pg = PAGES[(inicial && inicial.page) || "resumo"];
+    if (pg) { $("#page-title").textContent = pg.t; $("#page-sub").textContent = pg.s; }
+
     const d = new Date(S.nps.generated_at);
     const txt = "Atualizado em " + d.toLocaleDateString("pt-BR") + " às " +
                 d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -372,7 +377,7 @@
   function renderInsights() {
     const box = $("#insights"); box.innerHTML = "";
     const perg = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
-    const esp = (S.nps.nps_por_especialidade || []).filter(e => e.pct_amostra >= 3);
+    const esp = comAmostra().relevantes;
     const melhorEsp = [...esp].sort((a,b) => b.nps - a.nps)[0];
     const piorEsp = [...esp].sort((a,b) => a.nps - b.nps)[0];
     const meta = metaDoMes("nps", S.nps.current_month);
@@ -409,19 +414,176 @@
     });
   }
 
-  /* ---------- PÁGINA: ESPECIALIDADES ---------- */
-  function renderEspStats() {
-    const esp = S.nps.nps_por_especialidade || [];
-    const rel = esp.filter(e => e.pct_amostra >= 3);
-    const best = [...rel].sort((a,b) => b.nps - a.nps)[0];
-    const worst = [...rel].sort((a,b) => a.nps - b.nps)[0];
+  /* ---------- PÁGINA: RESUMO EXECUTIVO ---------- */
+  const MIN_AMOSTRA = 5; // abaixo disso o número não sustenta uma decisão
+
+  function statusObjetivo(o, mes) {
+    const meta = metaDoMes(o.id, mes);
+    const real = realizadoDoMes(o, mes);
+    const att = (meta && real !== null) ? Math.round(real / meta * 100) : null;
+    const status = att === null ? "risco" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off";
+    return { meta, real, att, status };
+  }
+
+  function unidade(o) { return o.unidade === "%" ? "%" : ""; }
+
+  function renderFarol() {
+    const mes = S.nps.current_month;
+    const box = $("#farol"); box.innerHTML = "";
+    (S.metas.objetivos || []).forEach(o => {
+      const st = statusObjetivo(o, mes);
+      const rotulo = st.status === "ok" ? "no alvo" : st.status === "risco" ? "atenção" : "atrasado";
+      const row = el("div", "farol-row");
+      row.innerHTML =
+        '<span class="farol-dot ' + st.status + '"></span>' +
+        '<div><div class="farol-name">' + o.label + "</div>" +
+          '<div class="farol-ctx">' + (o.contexto || o.descricao) + "</div></div>" +
+        '<div class="farol-vals"><div class="farol-real">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
+          '<div class="farol-meta">meta ' + fmt(st.meta, o.casas) + unidade(o) + "</div></div>" +
+        '<div class="farol-att ' + st.status + '">' + (st.att === null ? "—" : st.att + "%") +
+          "<small>" + rotulo + "</small></div>";
+      box.appendChild(row);
+    });
+  }
+
+  function piorObjetivo() {
+    const mes = S.nps.current_month;
+    let pior = null;
+    (S.metas.objetivos || []).forEach(o => {
+      const st = statusObjetivo(o, mes);
+      if (st.att === null) return;
+      if (!pior || st.att < pior.st.att) pior = { o: o, st: st };
+    });
+    return pior;
+  }
+
+  function renderAtencao() {
+    const box = $("#atencao"); box.innerHTML = "";
+    const pior = piorObjetivo();
+    const mes = S.nps.current_month;
+    if (!pior) { box.innerHTML = '<div class="detail-empty">Sem metas cadastradas para comparar.</div>'; return; }
+
+    const { o, st } = pior;
+    const noAlvo = st.att >= 100;
+    const cor = noAlvo ? C.green : st.att >= 85 ? C.amber : C.red;
+    const gap = st.meta - st.real;
+
+    let texto;
+    if (noAlvo) {
+      texto = "Nenhum objetivo está abaixo da meta neste mês. O menor atingimento é <b>" + o.label +
+        "</b>, ainda assim em <b>" + st.att + "%</b> da meta de " + mesLabel(mes).toLowerCase() + ".";
+    } else {
+      const alvoDez = o.alvo_final;
+      texto = "<b>" + o.label + "</b> fechou " + mesLabel(mes).toLowerCase() + " em <b>" +
+        fmt(st.real, o.casas) + unidade(o) + "</b> contra meta de <b>" + fmt(st.meta, o.casas) + unidade(o) +
+        "</b> — uma lacuna de " + fmt(gap, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") + ". " +
+        (o.contexto ? o.contexto + " " : "") +
+        "Para chegar em " + fmt(alvoDez, 0) + unidade(o) + " até dezembro, é o indicador que depende de decisão agora.";
+    }
+
+    box.innerHTML =
+      '<div class="atencao-hero">' +
+        '<div class="atencao-label">' + o.label + " · " + mesLabel(mes) + "</div>" +
+        '<div class="atencao-value" style="color:' + cor + '">' + (st.att === null ? "—" : st.att + "%") + "</div>" +
+        '<div class="atencao-sub">do que era esperado no mês</div>' +
+      "</div>" +
+      '<div class="atencao-txt">' + texto + "</div>";
+  }
+
+  function renderLeitura() {
+    const box = $("#leitura"); box.innerHTML = "";
+    const mes = S.nps.current_month, k = S.nps.kpi;
+    const itens = [];
+
+    // 1. NPS vs meta
+    const stNps = statusObjetivo(objetivo("nps") || { id: "nps", casas: 1 }, mes);
+    if (stNps.meta) {
+      const dif = k.nps_geral - stNps.meta;
+      itens.push({ tipo: dif >= 0 ? "up" : "down",
+        txt: "O NPS fechou <b>" + fmt(k.nps_geral,1) + "</b> contra meta de <b>" + fmt(stNps.meta,1) + "</b> — " +
+             (dif >= 0 ? fmt(dif,1) + " pontos acima" : fmt(Math.abs(dif),1) + " pontos abaixo") +
+             ", equivalente a " + stNps.att + "% do esperado para " + mesLabel(mes).toLowerCase() + "." });
+    }
+
+    // 2. quantos objetivos no alvo
+    const objs = S.metas.objetivos || [];
+    const noAlvo = objs.filter(o => (statusObjetivo(o, mes).att || 0) >= 100).length;
+    itens.push({ tipo: noAlvo === objs.length ? "up" : noAlvo === 0 ? "down" : "flat",
+      txt: "<b>" + noAlvo + " de " + objs.length + " objetivos</b> do semestre estão no alvo em " +
+           mesLabel(mes).toLowerCase() + "." });
+
+    // 3. maior alavanca / maior ofensor entre as dimensões
+    const perg = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
+    if (perg.length) {
+      itens.push({ tipo: "flat",
+        txt: "Entre as seis dimensões avaliadas, <b>" + perg[0].pergunta + "</b> sustenta a nota (" +
+             fmt(perg[0].media,2) + ") e <b>" + perg[perg.length-1].pergunta + "</b> é o que mais puxa para baixo (" +
+             fmt(perg[perg.length-1].media,2) + ")." });
+    }
+
+    // 4. concentração da base
+    const esp = comAmostra().relevantes;
     const maior = [...esp].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
+    if (maior) {
+      itens.push({ tipo: "flat",
+        txt: "<b>" + maior.especialidade + "</b> concentra " + fmt(maior.pct_amostra,1) +
+             "% das respostas — o NPS geral se move principalmente com esse grupo." });
+    }
+
+    itens.forEach(i => {
+      const d = el("div", "leitura-item");
+      const marca = i.tipo === "up" ? "▲" : i.tipo === "down" ? "▼" : "•";
+      d.innerHTML = '<div class="leitura-mark ' + i.tipo + '">' + marca + "</div>" +
+                    '<div class="leitura-txt">' + i.txt + "</div>";
+      box.appendChild(d);
+    });
+  }
+
+  function renderAcoes() {
+    const box = $("#acoes"); box.innerHTML = "";
+    const comNarrativa = S.zendesk.filter(r => r.narrativa && (num(r.semana) ?? 0) > 0)
+      .sort((a,b) => (a.mes + String(a.semana)).localeCompare(b.mes + String(b.semana)));
+    const ultimas = comNarrativa.slice(-3).reverse();
+    if (!ultimas.length) { box.innerHTML = '<div class="detail-empty">Nenhuma ação registrada ainda.</div>'; return; }
+
+    ultimas.forEach(r => {
+      const d = el("div", "acao");
+      d.innerHTML = '<div class="acao-week">' + mesCurto(r.mes) + "<br>S" + r.semana + "</div>" +
+                    '<div class="acao-txt">' + r.narrativa + "</div>";
+      box.appendChild(d);
+    });
+    const link = el("div");
+    link.style.cssText = "margin-top:12px";
+    link.innerHTML = '<button class="seg-btn" id="ver-alavancas">Ver todas as alavancas →</button>';
+    box.appendChild(link);
+    link.querySelector("button").addEventListener("click", () =>
+      document.querySelector('.nav-item[data-page="alavancas"]').click());
+  }
+
+  /* ---------- PÁGINA: ESPECIALIDADES ---------- */
+  /** Separa especialidades com amostra suficiente das que não sustentam leitura. */
+  function comAmostra() {
+    const nMap = {};
+    (S.nps.satisfacao_por_especialidade || []).forEach(s => nMap[s.especialidade] = s.n);
+    const todas = (S.nps.nps_por_especialidade || []).map(e => Object.assign({ n: nMap[e.especialidade] ?? null }, e));
+    return {
+      relevantes: todas.filter(e => (e.n ?? 0) >= MIN_AMOSTRA),
+      pequenas: todas.filter(e => (e.n ?? 0) < MIN_AMOSTRA)
+    };
+  }
+
+  function renderEspStats() {
+    const { relevantes, pequenas } = comAmostra();
+    const best = [...relevantes].sort((a,b) => b.nps - a.nps)[0];
+    const worst = [...relevantes].sort((a,b) => a.nps - b.nps)[0];
+    const maior = [...relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
 
     const cards = [
-      { cls: "navy",  label: "Especialidades", value: esp.length, note: "com pelo menos 1 resposta", casas: 0 },
+      { cls: "navy",  label: "Especialidades na leitura", value: relevantes.length, casas: 0,
+        note: pequenas.length ? pequenas.length + " fora por amostra pequena" : "todas com amostra suficiente" },
       { cls: "",      label: "Maior volume", value: maior ? maior.pct_amostra : null, suffix: "%", note: maior ? maior.especialidade : "—", casas: 1 },
-      { cls: "amber", label: "Melhor NPS (amostra ≥3%)", value: best ? best.nps : null, note: best ? best.especialidade : "—", casas: 1 },
-      { cls: "pink",  label: "Pior NPS (amostra ≥3%)", value: worst ? worst.nps : null, note: worst ? worst.especialidade : "—", casas: 1 }
+      { cls: "amber", label: "Melhor NPS", value: best ? best.nps : null, note: best ? best.especialidade : "—", casas: 1 },
+      { cls: "pink",  label: "Pior NPS", value: worst ? worst.nps : null, note: worst ? worst.especialidade : "—", casas: 1 }
     ];
     const box = $("#esp-stats"); box.innerHTML = "";
     cards.forEach(c => {
@@ -434,7 +596,8 @@
   }
 
   function renderEspBarlist() {
-    const list = [...(S.nps.nps_por_especialidade || [])];
+    const { relevantes, pequenas } = comAmostra();
+    const list = [...relevantes];
     list.sort((a,b) => S.espSort === "nps" ? b.nps - a.nps : b.pct_amostra - a.pct_amostra);
     const box = $("#esp-barlist"); box.innerHTML = "";
 
@@ -442,13 +605,24 @@
       const row = el("div", "barrow" + (S.espSel === item.especialidade ? " active" : ""));
       const width = Math.max(0, (item.nps + 100) / 200 * 100); // -100..100 → 0..100
       row.innerHTML =
-        '<div class="barrow-name">' + item.especialidade + '<small>' + fmt(item.pct_amostra,1) + '% da amostra</small></div>' +
+        '<div class="barrow-name">' + item.especialidade +
+          '<small>' + item.n + " respostas · " + fmt(item.pct_amostra,1) + "% da amostra</small></div>" +
         '<div class="barrow-track"><div class="barrow-fill" style="width:0%;background:' + npsColor(item.nps) + '"></div></div>' +
         '<div class="barrow-val" style="color:' + npsColor(item.nps) + '">' + fmt(item.nps,1) + "</div>";
       row.addEventListener("click", () => selectEsp(item.especialidade));
       box.appendChild(row);
       afterPaint(() => { row.querySelector(".barrow-fill").style.width = width + "%"; });
     });
+
+    // Amostras pequenas ficam fora dos gráficos para não distorcer a leitura
+    if (pequenas.length) {
+      const bloco = el("div", "small-sample");
+      bloco.innerHTML = '<div class="small-sample-title">Amostra insuficiente (menos de ' + MIN_AMOSTRA +
+        " respostas) — fora da leitura principal</div>" +
+        '<div class="small-tags">' + pequenas.map(p =>
+          '<span class="small-tag">' + p.especialidade + " <b>" + (p.n ?? "?") + "</b></span>").join("") + "</div>";
+      box.appendChild(bloco);
+    }
   }
 
   function selectEsp(nome) {
@@ -802,6 +976,11 @@
     renderTopbar();
 
     renderHero();
+    renderFarol();
+    renderAtencao();
+    renderLeitura();
+    renderAcoes();
+
     renderHistorico(false);
     renderRadar();
     renderPerguntas();
@@ -826,6 +1005,13 @@
       S.espSort = b.dataset.sort;
       renderEspBarlist();
     }));
+
+    const tSat = $("#toggle-sat"), wSat = $("#sat-wrap");
+    if (tSat && wSat) tSat.addEventListener("click", () => {
+      const aberto = !wSat.hidden;
+      wSat.hidden = aberto;
+      tSat.textContent = aberto ? "Ver tabela completa" : "Ocultar tabela";
+    });
   }
 
   init().catch(err => {
