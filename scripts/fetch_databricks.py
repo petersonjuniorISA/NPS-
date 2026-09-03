@@ -89,25 +89,15 @@ def bucket_counts(frame: pd.DataFrame):
     )
 
 
-def build_payload(df: pd.DataFrame) -> dict:
-    df = df.copy()
-    df["reference_month"] = pd.to_datetime(df["reference_month"]).dt.to_period("M")
-
-    months_sorted = sorted(df["reference_month"].dropna().unique())
-    current_month_period = months_sorted[-1]
-    current_month = str(current_month_period)
-    cur = df[df["reference_month"] == current_month_period]
-
+def resumo_do_mes(cur: pd.DataFrame, nps_mes_anterior=None) -> dict:
+    """Calcula o bloco completo de indicadores de um único mês."""
     promotores, neutros, detratores = bucket_counts(cur)
     total_respostas = len(cur)
     nps_geral = nps_from_bucket_counts(promotores, neutros, detratores)
 
     variacao_pct = None
-    if len(months_sorted) >= 2:
-        prev = df[df["reference_month"] == months_sorted[-2]]
-        prev_nps = nps_from_bucket_counts(*bucket_counts(prev))
-        if prev_nps:
-            variacao_pct = round((nps_geral - prev_nps) / abs(prev_nps) * 100, 1)
+    if nps_mes_anterior:
+        variacao_pct = round((nps_geral - nps_mes_anterior) / abs(nps_mes_anterior) * 100, 1)
 
     media_por_pergunta = sorted(
         (
@@ -137,21 +127,7 @@ def build_payload(df: pd.DataFrame) -> dict:
     nps_por_especialidade.sort(key=lambda x: x["nps"], reverse=True)
     satisfacao_por_especialidade.sort(key=lambda x: x.get("experiencia_geral", 0), reverse=True)
 
-    historico_nps = []
-    for mes, grupo in df.groupby("reference_month"):
-        if pd.isna(mes):
-            continue
-        historico_nps.append({
-            "mes": str(mes),
-            "label": MONTH_LABELS_PT[mes.to_timestamp().month],
-            "nps": nps_from_bucket_counts(*bucket_counts(grupo)),
-        })
-    historico_nps.sort(key=lambda x: x["mes"])
-
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "source": "databricks",
-        "current_month": current_month,
         "kpi": {
             "nps_geral": nps_geral,
             "nps_geral_variacao_pct": variacao_pct,
@@ -163,7 +139,80 @@ def build_payload(df: pd.DataFrame) -> dict:
         "media_por_pergunta": media_por_pergunta,
         "nps_por_especialidade": nps_por_especialidade,
         "satisfacao_por_especialidade": satisfacao_por_especialidade,
+    }
+
+
+def semanas_do_mes(cur: pd.DataFrame) -> list:
+    """Quebra o mês em semanas (segunda a domingo) com o NPS de cada uma."""
+    if "answered_at" not in cur.columns:
+        return []
+    frame = cur.dropna(subset=["answered_at"]).copy()
+    if frame.empty:
+        return []
+
+    momento = pd.to_datetime(frame["answered_at"])
+    if getattr(momento.dt, "tz", None) is not None:
+        momento = momento.dt.tz_localize(None)
+    frame["_semana"] = momento.dt.to_period("W-SUN")
+
+    semanas = []
+    for i, (periodo, grupo) in enumerate(sorted(frame.groupby("_semana"), key=lambda x: x[0]), start=1):
+        p, n, d = bucket_counts(grupo)
+        inicio, fim = periodo.start_time, periodo.end_time
+        semanas.append({
+            "semana": i,
+            "inicio": inicio.strftime("%Y-%m-%d"),
+            "fim": fim.strftime("%Y-%m-%d"),
+            "label": "%d/%m a %d/%m" % (inicio.day, inicio.month, fim.day, fim.month),
+            "respostas": int(len(grupo)),
+            "promotores": p,
+            "neutros": n,
+            "detratores": d,
+            "nps": nps_from_bucket_counts(p, n, d),
+        })
+    return semanas
+
+
+def build_payload(df: pd.DataFrame) -> dict:
+    df = df.copy()
+    df["reference_month"] = pd.to_datetime(df["reference_month"]).dt.to_period("M")
+
+    months_sorted = sorted(df["reference_month"].dropna().unique())
+    current_month = str(months_sorted[-1])
+
+    # NPS de cada mês (usado no histórico e para calcular a variação mês a mês)
+    nps_por_mes = {}
+    for mes in months_sorted:
+        nps_por_mes[str(mes)] = nps_from_bucket_counts(*bucket_counts(df[df["reference_month"] == mes]))
+
+    historico_nps = [
+        {"mes": str(mes), "label": MONTH_LABELS_PT[mes.to_timestamp().month], "nps": nps_por_mes[str(mes)]}
+        for mes in months_sorted
+    ]
+
+    # Detalhamento completo de todos os meses, para o painel poder voltar no tempo
+    meses = {}
+    semanas = {}
+    for i, mes in enumerate(months_sorted):
+        chave = str(mes)
+        anterior = nps_por_mes[str(months_sorted[i - 1])] if i > 0 else None
+        recorte = df[df["reference_month"] == mes]
+        meses[chave] = resumo_do_mes(recorte, anterior)
+        semanas[chave] = semanas_do_mes(recorte)
+
+    atual = meses[current_month]
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": "databricks",
+        "current_month": current_month,
         "historico_nps": historico_nps,
+        "meses": meses,
+        "semanas": semanas,
+        # Campos do mês corrente também no topo, para compatibilidade
+        "kpi": atual["kpi"],
+        "media_por_pergunta": atual["media_por_pergunta"],
+        "nps_por_especialidade": atual["nps_por_especialidade"],
+        "satisfacao_por_especialidade": atual["satisfacao_por_especialidade"],
     }
 
 

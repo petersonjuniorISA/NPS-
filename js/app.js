@@ -115,8 +115,38 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {},
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, histCsat: false,
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
+
+  const SEM_DADOS = {
+    kpi: { nps_geral: null, nps_geral_variacao_pct: null, total_respostas: 0, promotores: 0, neutros: 0, detratores: 0 },
+    media_por_pergunta: [], nps_por_especialidade: [], satisfacao_por_especialidade: []
+  };
+
+  /** Bloco bruto de NPS do mês — null quando o mês ainda não tem respostas. */
+  function blocoDoMes(mes) {
+    const m = mes || S.mes;
+    if (S.nps.meses) return S.nps.meses[m] || null;
+    // compatibilidade com o formato antigo (só o mês corrente no topo do JSON)
+    return m === S.nps.current_month ? {
+      kpi: S.nps.kpi,
+      media_por_pergunta: S.nps.media_por_pergunta,
+      nps_por_especialidade: S.nps.nps_por_especialidade,
+      satisfacao_por_especialidade: S.nps.satisfacao_por_especialidade
+    } : null;
+  }
+  /** Sempre devolve uma estrutura utilizável, mesmo em mês sem respostas. */
+  const dados = mes => blocoDoMes(mes) || SEM_DADOS;
+  const temNps = mes => blocoDoMes(mes) !== null;
+  const semanasNps = mes => (S.nps.semanas || {})[mes || S.mes] || [];
+
+  /** Todos os meses que têm algum dado — de NPS ou de Zendesk. */
+  function mesesDisponiveis() {
+    const doNps = Object.keys(S.nps.meses || {});
+    const doHist = (S.nps.historico_nps || []).map(h => h.mes);
+    const doZen = S.zendesk.map(r => r.mes).filter(Boolean);
+    return Array.from(new Set([...doNps, ...doHist, ...doZen])).sort();
+  }
 
   async function carregar() {
     const [nps, metas, zen] = await Promise.all([
@@ -148,6 +178,7 @@
       const h = (S.nps.historico_nps || []).find(x => x.mes === mes);
       return h ? h.nps : null;
     }
+    if (!o.fonte_realizado) return null;
     const campo = String(o.fonte_realizado || "").split(":")[1];
     const linha = zenMes(mes);
     return linha ? num(linha[campo]) : null;
@@ -162,8 +193,8 @@
   /** Especialidades com amostra suficiente vs. as que não sustentam leitura. */
   function especialidades() {
     const n = {};
-    (S.nps.satisfacao_por_especialidade || []).forEach(s => n[s.especialidade] = s.n);
-    const todas = (S.nps.nps_por_especialidade || []).map(e => Object.assign({ n: n[e.especialidade] ?? null }, e));
+    (dados().satisfacao_por_especialidade || []).forEach(s => n[s.especialidade] = s.n);
+    const todas = (dados().nps_por_especialidade || []).map(e => Object.assign({ n: n[e.especialidade] ?? null }, e));
     return {
       relevantes: todas.filter(e => (e.n ?? 0) >= MIN_AMOSTRA),
       pequenas:   todas.filter(e => (e.n ?? 0) < MIN_AMOSTRA)
@@ -205,20 +236,20 @@
     $("#foot-updated").textContent = txt;
 
     const sel = $("#month-select");
-    const meses = (S.nps.historico_nps || []).map(h => h.mes);
+    const meses = mesesDisponiveis().reverse();   // mais recente primeiro
     sel.innerHTML = "";
     meses.forEach(m => {
-      const o = el("option"); o.value = m; o.textContent = mesLabel(m);
-      if (m === S.nps.current_month) o.selected = true;
+      const o = el("option");
+      o.value = m;
+      o.textContent = mesLabel(m) + " de " + m.slice(0, 4);
+      if (m === S.mes) o.selected = true;
       sel.appendChild(o);
     });
     sel.disabled = meses.length <= 1;
     sel.addEventListener("change", () => {
-      if (sel.value !== S.nps.current_month) {
-        aviso("O detalhamento existe apenas para " + mesLabel(S.nps.current_month).toLowerCase() +
-              ". Os demais meses aparecem nos gráficos de evolução.");
-        sel.value = S.nps.current_month;
-      }
+      S.mes = sel.value;
+      S.espSel = null;
+      desenharMes();
     });
   }
 
@@ -231,12 +262,28 @@
   }
 
   /* ---------- RESUMO EXECUTIVO ---------- */
+  /** Redesenha tudo que depende do mês selecionado. */
+  function desenharMes() {
+    const slot = $("#alert-slot");
+    slot.innerHTML = temNps() ? "" :
+      '<div class="notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+      '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg><span>' +
+      "Ainda não há respostas de NPS em " + mesLabel(S.mes).toLowerCase() +
+      ". Os indicadores de Zendesk e as alavancas do mês continuam disponíveis.</span></div>";
+
+    heroi(); farol(); alerta(); leitura(); acoes();
+    grafHistorico(S.histCsat); composicao(); grafRadar(); grafPerguntas(); grafSemanas(); destaques();
+    espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
+    sac(); metas(); alavancas();
+  }
+
   function heroi() {
-    const k = S.nps.kpi, mes = S.nps.current_month;
+    const k = dados().kpi, mes = S.mes;
     $("#hero-month").textContent = mesLabel(mes) + " de " + mes.slice(0,4);
     conta($("#hero-nps"), k.nps_geral, 1);
-    $("#hero-desc").textContent =
-      "Calculado sobre " + k.total_respostas + " respostas. NPS é a diferença entre o percentual de promotores e o de detratores.";
+    $("#hero-desc").textContent = temNps()
+      ? "Calculado sobre " + k.total_respostas + " respostas. NPS é a diferença entre o percentual de promotores e o de detratores."
+      : "Ainda não há respostas de NPS neste mês.";
 
     const tag = $("#hero-tag");
     if (typeof k.nps_geral_variacao_pct === "number") {
@@ -245,7 +292,7 @@
       tag.textContent = (sobe ? "+" : "−") + fmt(Math.abs(k.nps_geral_variacao_pct),1) + "% vs. mês anterior";
     } else {
       tag.className = "hero-tag";
-      tag.textContent = "primeiro mês da série";
+      tag.textContent = temNps() ? "primeiro mês da série" : "sem respostas ainda";
     }
 
     const total = k.promotores + k.neutros + k.detratores || 1;
@@ -256,11 +303,11 @@
       ["Respostas", k.total_respostas, null]
     ].map(([rot, val, cor]) =>
       '<div><div class="fact-value tabular">' +
-        (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") + val +
+        (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") + (temNps() ? val : "—") +
       '</div><div class="fact-label">' + rot + "</div></div>").join("");
 
     const meta = metaDoMes("nps", mes);
-    if (meta) {
+    if (meta && temNps()) {
       const pct = Math.round(k.nps_geral / meta * 100);
       const CIRC = 2 * Math.PI * 55;
       const fill = $("#meter-fill");
@@ -273,13 +320,16 @@
         "<div><span>Meta do mês</span><b>" + fmt(meta,1) + "</b></div>" +
         "<div><span>Alvo de dezembro</span><b>" + fmt(objNps.alvo_final, 0) + "</b></div>";
     } else {
+      const fill = $("#meter-fill");
+      fill.setAttribute("stroke-dashoffset", 2 * Math.PI * 55);
       $("#meter-pct").textContent = "—";
-      $("#meter-list").innerHTML = "<div><span>Sem meta cadastrada para o mês</span></div>";
+      $("#meter-list").innerHTML = "<div><span>" +
+        (meta ? "Aguardando respostas do mês" : "Sem meta cadastrada para o mês") + "</span></div>";
     }
   }
 
   function farol() {
-    const mes = S.nps.current_month, box = $("#farol");
+    const mes = S.mes, box = $("#farol");
     box.innerHTML = "";
     (S.metas.objetivos || []).forEach(o => {
       const st = status(o, mes);
@@ -297,7 +347,7 @@
   }
 
   function alerta() {
-    const mes = S.nps.current_month;
+    const mes = S.mes;
     let pior = null;
     (S.metas.objetivos || []).forEach(o => {
       const st = status(o, mes);
@@ -322,10 +372,10 @@
 
   function leitura() {
     const box = $("#notes"); box.innerHTML = "";
-    const mes = S.nps.current_month, k = S.nps.kpi, itens = [];
+    const mes = S.mes, k = dados().kpi, itens = [];
 
     const stNps = status(objetivo("nps") || { id: "nps", casas: 1 }, mes);
-    if (stNps.meta) {
+    if (stNps.meta && temNps()) {
       const dif = k.nps_geral - stNps.meta;
       itens.push({ t: dif >= 0 ? "up" : "down",
         txt: "O NPS fechou <b>" + fmt(k.nps_geral,1) + "</b> contra meta de <b>" + fmt(stNps.meta,1) + "</b> — " +
@@ -338,7 +388,7 @@
     itens.push({ t: noAlvo === objs.length ? "up" : noAlvo === 0 ? "down" : "",
       txt: "<b>" + noAlvo + " de " + objs.length + " objetivos</b> do semestre estão no alvo." });
 
-    const perg = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
+    const perg = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
     if (perg.length) itens.push({ t: "",
       txt: "<b>" + perg[0].pergunta + "</b> sustenta a nota (" + fmt(perg[0].media,2) + ") e <b>" +
            perg[perg.length-1].pergunta + "</b> é o que mais puxa para baixo (" + fmt(perg[perg.length-1].media,2) + ")." });
@@ -364,7 +414,7 @@
 
   /* ---------- NPS EM DETALHE ---------- */
   function composicao() {
-    const k = S.nps.kpi, total = k.promotores + k.neutros + k.detratores || 1;
+    const k = dados().kpi, total = k.promotores + k.neutros + k.detratores || 1;
     const barra = $("#stack");
     [["p", k.promotores], ["n", k.neutros], ["d", k.detratores]].forEach(([cls, val], i) => {
       const s = barra.children[i];
@@ -386,8 +436,11 @@
 
     const ds = [
       { label: "Realizado", data: real, borderColor: C.blue, backgroundColor: C.blueFill,
-        fill: true, tension: .3, borderWidth: 2.5, pointRadius: 4.5, pointBackgroundColor: C.blue,
-        pointBorderColor: "#fff", pointBorderWidth: 2, yAxisID: "y" },
+        fill: true, tension: .3, borderWidth: 2.5, yAxisID: "y",
+        // o mês que está sendo lido no painel ganha um ponto maior, em rosa
+        pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
+        pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : C.blue),
+        pointBorderColor: "#fff", pointBorderWidth: 2 },
       { label: "Meta", data: meta, borderColor: C.text, borderDash: [5,4], borderWidth: 1.6,
         backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true }
     ];
@@ -403,7 +456,7 @@
   }
 
   function grafRadar() {
-    const map = {}; (S.nps.media_por_pergunta || []).forEach(p => map[p.pergunta] = p.media);
+    const map = {}; (dados().media_por_pergunta || []).forEach(p => map[p.pergunta] = p.media);
     const rotulos = DIMENSOES.map(d => d.label);
     grafico("chart-radar", {
       type: "radar",
@@ -417,7 +470,7 @@
   }
 
   function grafPerguntas() {
-    const itens = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
+    const itens = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
     grafico("chart-perguntas", {
       type: "bar",
       data: { labels: itens.map(i => i.pergunta), datasets: [{
@@ -429,10 +482,46 @@
         scales: { x: { min: 0, max: 5, grid: { color: C.grid } }, y: { grid: { display: false } } } }) });
   }
 
+  function grafSemanas() {
+    const box = $("#semanas-wrap");
+    const sem = semanasNps();
+    if (!sem.length) {
+      box.innerHTML = '<div class="empty">Sem quebra semanal para ' + mesLabel(S.mes).toLowerCase() +
+        ". As semanas aparecem assim que houver respostas no mês.</div>";
+      return;
+    }
+    box.innerHTML = '<div class="chart h240"><canvas id="chart-semanas"></canvas></div>' +
+      '<div class="week-cards" id="week-cards"></div>';
+
+    grafico("chart-semanas", {
+      data: { labels: sem.map(s => s.label), datasets: [
+        { type: "bar", label: "Respostas", data: sem.map(s => s.respostas), backgroundColor: "rgba(0,68,116,.16)",
+          borderColor: "transparent", borderRadius: 4, maxBarThickness: 44, yAxisID: "y1", order: 2 },
+        { type: "line", label: "NPS da semana", data: sem.map(s => s.nps), borderColor: C.teal,
+          backgroundColor: "transparent", tension: .3, borderWidth: 2.6, pointRadius: 4.5,
+          pointBackgroundColor: C.teal, pointBorderColor: "#fff", pointBorderWidth: 2, yAxisID: "y", order: 1 } ] },
+      options: opcoes({ plugins: { legend: legenda() },
+        // sem semana negativa, a escala começa em zero — senão metade do gráfico ficaria vazia
+        scales: { y: { min: sem.some(s => s.nps < 0) ? -100 : 0, max: 100, grid: { color: C.grid } },
+                  y1: { position: "right", grid: { display: false }, beginAtZero: true,
+                        title: { display: true, text: "respostas", font: { size: 10 } } },
+                  x: { grid: { display: false } } } }) });
+
+    $("#week-cards").innerHTML = sem.map(s =>
+      '<div class="week"><div class="week-n">Semana ' + s.semana + "</div>" +
+      '<div class="week-date">' + s.label + "</div>" +
+      '<div class="week-nps tabular" style="color:' + corNps(s.nps) + '">' + fmt(s.nps, 1) + "</div>" +
+      '<div class="week-meta">' + s.respostas + " respostas · " + s.promotores + "P " + s.neutros + "N " + s.detratores + "D</div></div>").join("");
+  }
+
   function destaques() {
     const box = $("#insights"); box.innerHTML = "";
-    const mes = S.nps.current_month, k = S.nps.kpi;
-    const perg = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
+    if (!temNps()) {
+      box.appendChild(el("li", "", "Sem respostas de NPS em " + mesLabel(S.mes).toLowerCase() + " — nada a destacar ainda."));
+      return;
+    }
+    const mes = S.mes, k = dados().kpi;
+    const perg = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
     const esp = especialidades().relevantes;
     const melhor = [...esp].sort((a,b) => b.nps - a.nps)[0];
     const pior = [...esp].sort((a,b) => a.nps - b.nps)[0];
@@ -519,8 +608,8 @@
       box.innerHTML = '<div class="empty">Selecione uma especialidade para ver as notas por dimensão.</div>';
       return;
     }
-    const sat = (S.nps.satisfacao_por_especialidade || []).find(s => s.especialidade === S.espSel);
-    const nps = (S.nps.nps_por_especialidade || []).find(s => s.especialidade === S.espSel);
+    const sat = (dados().satisfacao_por_especialidade || []).find(s => s.especialidade === S.espSel);
+    const nps = (dados().nps_por_especialidade || []).find(s => s.especialidade === S.espSel);
     if (!sat) { box.innerHTML = '<div class="empty">Sem detalhamento para esta especialidade.</div>'; return; }
 
     box.innerHTML =
@@ -553,7 +642,7 @@
       tabelaSatisfacao();
     }));
 
-    const linhas = [...(S.nps.satisfacao_por_especialidade || [])].sort((a,b) => {
+    const linhas = [...(dados().satisfacao_por_especialidade || [])].sort((a,b) => {
       const va = a[S.satOrdem.col], vb = b[S.satOrdem.col];
       if (typeof va === "string") return S.satOrdem.dir * va.localeCompare(vb);
       return S.satOrdem.dir * ((va ?? -Infinity) - (vb ?? -Infinity));
@@ -578,8 +667,11 @@
     const preenchidos = mensal.filter(r =>
       ["csat_ia","csat_humano","fcr_pct","resolucao_ia_pct"].some(c => num(r[c]) !== null) ||
       (r.tma_primeira_resposta || "").trim() || (r.tmr || "").trim());
-    const atual = preenchidos[preenchidos.length - 1];
-    const anterior = preenchidos[preenchidos.length - 2];
+    // segue o mês escolhido no topo; se ele ainda não foi preenchido, mostra o último que foi
+    const escolhido = preenchidos.findIndex(r => r.mes === S.mes);
+    const pos = escolhido >= 0 ? escolhido : preenchidos.length - 1;
+    const atual = preenchidos[pos];
+    const anterior = pos > 0 ? preenchidos[pos - 1] : null;
 
     function variacao(campo, inverso) {
       if (!atual || !anterior) return "";
@@ -592,7 +684,8 @@
 
     $("#sac-ref").innerHTML = atual
       ? "Números de " + (atual.mes_label || mesLabel(atual.mes)) +
-        (anterior ? " · variação contra " + (anterior.mes_label || mesLabel(anterior.mes)).toLowerCase() : "")
+        (anterior ? " · variação contra " + (anterior.mes_label || mesLabel(anterior.mes)).toLowerCase() : "") +
+        (escolhido < 0 ? " · " + mesLabel(S.mes).toLowerCase() + " ainda não foi preenchido" : "")
       : "Nenhum mês preenchido ainda";
 
     const cards = [
@@ -632,7 +725,7 @@
       options: opcoes({ plugins: { legend: legenda(), tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y,1) + "%" } } },
         scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
 
-    const sem = zenSemanal(S.nps.current_month);
+    const sem = zenSemanal(S.mes);
     grafico("chart-wow", { data: { labels: sem.map(r => "Semana " + r.semana), datasets: [
         { type: "bar", label: "FCR", data: sem.map(r => num(r.fcr_pct)), backgroundColor: C.tealFill,
           borderColor: C.teal, borderWidth: 1.5, borderRadius: 4, maxBarThickness: 38, yAxisID: "y" },
@@ -655,7 +748,7 @@
 
     const ts = $("#tbl-semanal tbody"); ts.innerHTML = "";
     if (!sem.length) ts.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma semana preenchida para ' +
-      mesLabel(S.nps.current_month).toLowerCase() + ".</td></tr>";
+      mesLabel(S.mes).toLowerCase() + ".</td></tr>";
     sem.forEach(r => ts.appendChild(el("tr", "",
       '<td class="strong">Semana ' + r.semana + "</td><td>" + (r.periodo || "—") + "</td>" +
       '<td class="num">' + fmt(num(r.csat_ia), 2) + "</td>" +
@@ -667,7 +760,7 @@
 
   /* ---------- METAS ---------- */
   function metas() {
-    const mes = S.nps.current_month;
+    const mes = S.mes;
     const box = $("#goal-cards"); box.innerHTML = "";
 
     (S.metas.objetivos || []).forEach(o => {
@@ -715,15 +808,7 @@
   }
 
   /* ---------- ALAVANCAS ---------- */
-  function alavancas() {
-    const sel = $("#alav-month");
-    const meses = Array.from(new Set(S.zendesk.filter(r => r.narrativa).map(r => r.mes))).sort().reverse();
-    if (!sel.options.length) {
-      meses.forEach(m => { const o = el("option"); o.value = m; o.textContent = mesLabel(m); sel.appendChild(o); });
-      sel.addEventListener("change", () => timeline(sel.value));
-    }
-    timeline(sel.value || meses[0]);
-  }
+  const alavancas = () => timeline(S.mes);
 
   function timeline(mes) {
     const box = $("#timeline"); box.innerHTML = "";
@@ -779,17 +864,16 @@
     Chart.defaults.color = C.text;
 
     await carregar();
+    S.mes = S.nps.current_month;
     navegacao();
     topo();
 
-    heroi(); farol(); alerta(); leitura(); acoes();
-    composicao(); grafHistorico(false); grafRadar(); grafPerguntas(); destaques();
-    espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
-    sac(); metas(); alavancas();
+    desenharMes();
 
     $$("#seg-hist button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-hist button").forEach(x => x.classList.toggle("active", x === b));
-      grafHistorico(b.dataset.series === "csat");
+      S.histCsat = b.dataset.series === "csat";
+      grafHistorico(S.histCsat);
     }));
     $$("#seg-esp button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-esp button").forEach(x => x.classList.toggle("active", x === b));

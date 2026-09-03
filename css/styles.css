@@ -401,6 +401,17 @@ table.tbl tbody tr.on { background: var(--teal-soft); }
 .gap-pct { font-family: var(--serif); font-size: 15px; font-weight: 700; }
 .gap-note { font-size: 12px; color: var(--gray-body); margin-top: 3px; }
 
+/* ---------------- Semanas ---------------- */
+.week-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sm); margin-top: var(--lg);
+}
+.week { border: 1px solid var(--gray-inactive); border-radius: 12px; padding: var(--md); }
+.week-n { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--chumbo); }
+.week-date { font-size: 11.5px; color: var(--gray-body); margin-top: 2px; }
+.week-nps { font-family: var(--serif); font-size: 26px; font-weight: 700; line-height: 1.1; margin-top: 10px; }
+.week-meta { font-size: 11px; color: var(--gray-body); margin-top: 4px; }
+
 /* ---------------- Timeline ---------------- */
 .timeline { list-style: none; }
 .tl { display: grid; grid-template-columns: 132px 1fr; gap: var(--lg); padding-bottom: var(--lg); }

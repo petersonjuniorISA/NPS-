@@ -40,6 +40,24 @@ O painel tem três fontes de dados, com níveis de automação diferentes:
    atingimento de cada objetivo (NPS, CSAT do SAC, Resolução com IA e FCR)
    na página **Metas SMART**, além da linha de meta no histórico do NPS.
 
+## Navegar entre meses e semanas
+
+O seletor no topo do painel troca o mês de referência de **tudo**: resumo
+executivo, farol das metas, NPS por especialidade, indicadores de Zendesk e
+alavancas. O mês mais recente vem selecionado por padrão, e o ponto rosa no
+gráfico de evolução marca qual mês está sendo lido.
+
+O `data/nps.json` guarda o detalhamento de **todos** os meses da série
+(campo `meses`) e a quebra semanal de cada um (campo `semanas`) — então
+nenhum mês perde o detalhe quando um novo entra. Dentro de "NPS em detalhe",
+o bloco **Semana a semana** mostra o NPS de cada semana do mês escolhido
+(segunda a domingo, pela data em que a pessoa respondeu), com volume de
+respostas e a divisão promotor / neutro / detrator.
+
+Meses sem respostas ainda (o mês corrente no começo, por exemplo) aparecem
+normalmente: os cartões de NPS ficam com "—" e um aviso no topo explica, mas
+Zendesk e alavancas continuam disponíveis.
+
 ## Configuração — passo a passo
 
 ### 1. Publicar o site (GitHub Pages)
