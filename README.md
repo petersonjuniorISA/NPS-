@@ -54,9 +54,25 @@ o bloco **Semana a semana** mostra o NPS de cada semana do mês escolhido
 (segunda a domingo, pela data em que a pessoa respondeu), com volume de
 respostas e a divisão promotor / neutro / detrator.
 
+Ao lado do mês há o **seletor de semana** (Mês inteiro / S1 / S2 / S3…).
+Escolher uma semana recalcula o painel inteiro para aquele recorte: NPS
+geral, composição promotor/neutro/detrator, nota por dimensão, NPS por
+especialidade e a tabela de satisfação. Clicar num cartão de semana faz o
+mesmo — e clicar de novo volta pro mês inteiro.
+
+Duas coisas continuam **mensais** de propósito, e o aviso no topo diz isso:
+
+- **O medidor de meta e o farol.** As metas do semestre são mensais;
+  comparar uma semana solta com a meta do mês daria um atingimento que não
+  quer dizer nada. Com uma semana selecionada, o medidor mostra "Realizado
+  no mês".
+- **Zendesk e alavancas.** Vêm do CSV preenchido à mão, cuja numeração de
+  semana é própria e não bate necessariamente com as semanas do NPS.
+
 Semanas com menos de 20 respostas aparecem marcadas como **parcial** (cartão
 pontilhado, ponto vazado no gráfico) — o número existe, mas não sustenta
-leitura de tendência.
+leitura de tendência. Ao filtrar por uma dessas semanas, a leitura do
+recorte avisa explicitamente.
 
 Meses sem respostas ainda (o mês corrente no começo, por exemplo) aparecem
 normalmente: os cartões de NPS ficam com "—" e um aviso no topo explica, mas

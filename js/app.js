@@ -116,7 +116,7 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, histCsat: false,
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, semana: null, histCsat: false,
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -136,10 +136,29 @@
       satisfacao_por_especialidade: S.nps.satisfacao_por_especialidade
     } : null;
   }
-  /** Sempre devolve uma estrutura utilizável, mesmo em mês sem respostas. */
-  const dados = mes => blocoDoMes(mes) || SEM_DADOS;
-  const temNps = mes => blocoDoMes(mes) !== null;
   const semanasNps = mes => (S.nps.semanas || {})[mes || S.mes] || [];
+  /** A semana selecionada no topo, ou null quando o recorte é o mês inteiro. */
+  const semanaAtual = () =>
+    S.semana === null ? null : semanasNps().find(s => s.semana === S.semana) || null;
+
+  /** Recorte em vigor: a semana escolhida, senão o mês. */
+  function bloco(mes) {
+    if (!mes && S.semana !== null) {
+      const s = semanaAtual();
+      // uma semana que sumiu (troca de mês) cai de volta pro mês inteiro
+      if (s && s.kpi) return s;
+    }
+    return blocoDoMes(mes);
+  }
+  /** Sempre devolve uma estrutura utilizável, mesmo em recorte sem respostas. */
+  const dados = mes => bloco(mes) || SEM_DADOS;
+  const temNps = mes => bloco(mes) !== null;
+  /** Como chamar o recorte atual em texto: "agosto de 2026" ou "semana 2". */
+  function recorteLabel() {
+    const s = semanaAtual();
+    return s ? "semana " + s.semana + " (" + s.label + ")"
+             : mesLabel(S.mes).toLowerCase() + " de " + S.mes.slice(0, 4);
+  }
 
   /** Todos os meses que têm algum dado — de NPS ou de Zendesk. */
   function mesesDisponiveis() {
@@ -249,9 +268,28 @@
     sel.disabled = meses.length <= 1;
     sel.addEventListener("change", () => {
       S.mes = sel.value;
+      S.semana = null;      // semana 2 de agosto não é semana 2 de setembro
+      S.espSel = null;
+      seletorSemanas();
+      desenharMes();
+    });
+
+    seletorSemanas();
+    $("#week-select").addEventListener("change", e => {
+      S.semana = e.target.value === "" ? null : Number(e.target.value);
       S.espSel = null;
       desenharMes();
     });
+  }
+
+  /** Preenche o seletor de semanas com as semanas do mês selecionado. */
+  function seletorSemanas() {
+    const sel = $("#week-select"), sem = semanasNps();
+    sel.innerHTML = '<option value="">Mês inteiro</option>' +
+      sem.map(s => '<option value="' + s.semana + '">S' + s.semana + " · " + s.label +
+        (s.respostas < MIN_SEMANA ? " (parcial)" : "") + "</option>").join("");
+    sel.value = S.semana === null ? "" : String(S.semana);
+    sel.hidden = sem.length === 0;
   }
 
   function aviso(msg) {
@@ -265,12 +303,16 @@
   /* ---------- RESUMO EXECUTIVO ---------- */
   /** Redesenha tudo que depende do mês selecionado. */
   function desenharMes() {
-    const slot = $("#alert-slot");
-    slot.innerHTML = temNps() ? "" :
-      '<div class="notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-      '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg><span>' +
-      "Ainda não há respostas de NPS em " + mesLabel(S.mes).toLowerCase() +
-      ". Os indicadores de Zendesk e as alavancas do mês continuam disponíveis.</span></div>";
+    const slot = $("#alert-slot"), sem = semanaAtual();
+    const cerca = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                  '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>';
+    slot.innerHTML =
+      !temNps() ? '<div class="notice">' + cerca + "<span>Ainda não há respostas de NPS em " +
+                  recorteLabel() + ". Os indicadores de Zendesk e as alavancas do mês continuam disponíveis.</span></div>"
+      : sem ? '<div class="notice">' + cerca + "<span>Recorte da <b>semana " + sem.semana + "</b> (" +
+              sem.label + ", " + sem.respostas + " respostas). As metas do semestre e os números de Zendesk " +
+              "continuam mensais.</span></div>"
+      : "";
 
     heroi(); farol(); alerta(); leitura(); acoes();
     grafHistorico(S.histCsat); composicao(); grafRadar(); grafPerguntas(); grafSemanas(); destaques();
@@ -279,21 +321,25 @@
   }
 
   function heroi() {
-    const k = dados().kpi, mes = S.mes;
-    $("#hero-month").textContent = mesLabel(mes) + " de " + mes.slice(0,4);
+    const k = dados().kpi, mes = S.mes, sem = semanaAtual();
+    $("#hero-month").textContent = sem
+      ? "Semana " + sem.semana + " · " + sem.label
+      : mesLabel(mes) + " de " + mes.slice(0,4);
     conta($("#hero-nps"), k.nps_geral, 1);
     $("#hero-desc").textContent = temNps()
       ? "Calculado sobre " + k.total_respostas + " respostas. NPS é a diferença entre o percentual de promotores e o de detratores."
-      : "Ainda não há respostas de NPS neste mês.";
+      : "Ainda não há respostas de NPS em " + recorteLabel() + ".";
 
     const tag = $("#hero-tag");
     if (typeof k.nps_geral_variacao_pct === "number") {
       const sobe = k.nps_geral_variacao_pct >= 0;
       tag.className = "hero-tag " + (sobe ? "up" : "down");
-      tag.textContent = (sobe ? "+" : "−") + fmt(Math.abs(k.nps_geral_variacao_pct),1) + "% vs. mês anterior";
+      tag.textContent = (sobe ? "+" : "−") + fmt(Math.abs(k.nps_geral_variacao_pct),1) +
+                        "% vs. " + (sem ? "semana anterior" : "mês anterior");
     } else {
       tag.className = "hero-tag";
-      tag.textContent = temNps() ? "primeiro mês da série" : "sem respostas ainda";
+      tag.textContent = !temNps() ? "sem respostas ainda"
+                      : sem ? "primeira semana do mês" : "primeiro mês da série";
     }
 
     const total = k.promotores + k.neutros + k.detratores || 1;
@@ -307,9 +353,12 @@
         (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") + (temNps() ? val : "—") +
       '</div><div class="fact-label">' + rot + "</div></div>").join("");
 
+    // O medidor fica sempre no mês: a meta é mensal, comparar com uma semana
+    // solta daria um atingimento que não quer dizer nada.
+    const kMes = (blocoDoMes() || SEM_DADOS).kpi;
     const meta = metaDoMes("nps", mes);
-    if (meta && temNps()) {
-      const pct = Math.round(k.nps_geral / meta * 100);
+    if (meta && blocoDoMes()) {
+      const pct = Math.round(kMes.nps_geral / meta * 100);
       const CIRC = 2 * Math.PI * 55;
       const fill = $("#meter-fill");
       fill.style.stroke = pct >= 100 ? C.positive : pct >= 85 ? C.teal : C.negative;
@@ -317,7 +366,7 @@
       conta($("#meter-pct"), pct, 0, "%");
       const objNps = objetivo("nps") || {};
       $("#meter-list").innerHTML =
-        "<div><span>Realizado</span><b>" + fmt(k.nps_geral,1) + "</b></div>" +
+        "<div><span>Realizado" + (sem ? " no mês" : "") + "</span><b>" + fmt(kMes.nps_geral,1) + "</b></div>" +
         "<div><span>Meta do mês</span><b>" + fmt(meta,1) + "</b></div>" +
         "<div><span>Alvo de dezembro</span><b>" + fmt(objNps.alvo_final, 0) + "</b></div>";
     } else {
@@ -373,15 +422,31 @@
 
   function leitura() {
     const box = $("#notes"); box.innerHTML = "";
+    $("#notes-label").textContent = S.semana === null ? "Leitura do mês" : "Leitura da semana";
     const mes = S.mes, k = dados().kpi, itens = [];
 
     const stNps = status(objetivo("nps") || { id: "nps", casas: 1 }, mes);
-    if (stNps.meta && temNps()) {
+    if (stNps.meta && temNps() && S.semana === null) {   // a meta é mensal
       const dif = k.nps_geral - stNps.meta;
       itens.push({ t: dif >= 0 ? "up" : "down",
         txt: "O NPS fechou <b>" + fmt(k.nps_geral,1) + "</b> contra meta de <b>" + fmt(stNps.meta,1) + "</b> — " +
              (dif >= 0 ? fmt(dif,1) + " pontos acima" : fmt(Math.abs(dif),1) + " pontos abaixo") +
              ", ou " + stNps.att + "% do esperado para " + mesLabel(mes).toLowerCase() + "." });
+    }
+
+    const sem = semanaAtual();
+    if (sem) {
+      const anteriores = semanasNps().filter(s => s.semana < sem.semana);
+      const antes = anteriores[anteriores.length - 1];
+      if (antes) {
+        const dif = sem.nps - antes.nps;
+        itens.push({ t: dif >= 0 ? "up" : "down",
+          txt: "Da semana " + antes.semana + " para a " + sem.semana + " o NPS " +
+               (dif >= 0 ? "subiu <b>" : "caiu <b>") + fmt(Math.abs(dif),1) + " pontos</b> (" +
+               fmt(antes.nps,1) + " → " + fmt(sem.nps,1) + ")." });
+      }
+      if (sem.respostas < MIN_SEMANA) itens.push({ t: "down",
+        txt: "São só <b>" + sem.respostas + " respostas</b> nesta semana — o número serve de sinal, não de conclusão." });
     }
 
     const objs = S.metas.objetivos || [];
@@ -501,10 +566,10 @@
         { type: "line", label: "NPS da semana", data: sem.map(s => s.nps), borderColor: C.teal,
           backgroundColor: "transparent", tension: .3, borderWidth: 2.6, yAxisID: "y", order: 1,
           // semana com poucas respostas fica com o ponto vazado, pra não passar por tendência
-          pointRadius: sem.map(s => s.respostas < MIN_SEMANA ? 4 : 4.5),
-          pointStyle: sem.map(s => s.respostas < MIN_SEMANA ? "circle" : "circle"),
-          pointBackgroundColor: sem.map(s => s.respostas < MIN_SEMANA ? "#fff" : C.teal),
-          pointBorderColor: sem.map(s => s.respostas < MIN_SEMANA ? C.teal : "#fff"),
+          pointRadius: sem.map(s => s.semana === S.semana ? 7 : s.respostas < MIN_SEMANA ? 4 : 4.5),
+          pointBackgroundColor: sem.map(s => s.semana === S.semana ? C.pink
+                                           : s.respostas < MIN_SEMANA ? "#fff" : C.teal),
+          pointBorderColor: sem.map(s => s.respostas < MIN_SEMANA && s.semana !== S.semana ? C.teal : "#fff"),
           pointBorderWidth: 2, borderDash: [], segment: {
             borderDash: ctx => sem[ctx.p1DataIndex].respostas < MIN_SEMANA ? [5, 4] : undefined
           } } ] },
@@ -517,7 +582,9 @@
 
     $("#week-cards").innerHTML = sem.map(s => {
       const parcial = s.respostas < MIN_SEMANA;
-      return '<div class="week' + (parcial ? " parcial" : "") + '">' +
+      return '<button type="button" class="week' + (parcial ? " parcial" : "") +
+        (s.semana === S.semana ? " ativa" : "") + '" data-semana="' + s.semana +
+        '" title="Filtrar o painel por esta semana">' +
         '<div class="week-n">Semana ' + s.semana + (parcial ? ' <span class="week-tag">parcial</span>' : "") + "</div>" +
         '<div class="week-date">' + s.label + "</div>" +
         '<div class="week-nps tabular" style="color:' + (parcial ? "var(--gray-disabled)" : corNps(s.nps)) + '">' +
@@ -525,14 +592,23 @@
         '<div class="week-meta">' + s.respostas + " respostas · " +
           s.promotores + "P " + s.neutros + "N " + s.detratores + "D</div>" +
         (parcial ? '<div class="week-meta">Amostra pequena demais para virar tendência.</div>' : "") +
-      "</div>";
+      "</button>";
     }).join("");
+
+    // clicar no cartão liga/desliga o filtro daquela semana
+    $$("#week-cards .week").forEach(b => b.addEventListener("click", () => {
+      const n = Number(b.dataset.semana);
+      S.semana = S.semana === n ? null : n;
+      S.espSel = null;
+      $("#week-select").value = S.semana === null ? "" : String(S.semana);
+      desenharMes();
+    }));
   }
 
   function destaques() {
     const box = $("#insights"); box.innerHTML = "";
     if (!temNps()) {
-      box.appendChild(el("li", "", "Sem respostas de NPS em " + mesLabel(S.mes).toLowerCase() + " — nada a destacar ainda."));
+      box.appendChild(el("li", "", "Sem respostas de NPS em " + recorteLabel() + " — nada a destacar ainda."));
       return;
     }
     const mes = S.mes, k = dados().kpi;
@@ -543,7 +619,7 @@
     const meta = metaDoMes("nps", mes);
     const itens = [];
 
-    if (meta) {
+    if (meta && S.semana === null) {   // a meta é do mês, não da semana
       const dif = k.nps_geral - meta;
       itens.push({ t: dif >= 0 ? "up" : "down",
         txt: dif >= 0

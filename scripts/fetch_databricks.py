@@ -124,6 +124,18 @@ def bucket_counts(frame: pd.DataFrame):
     )
 
 
+def media_ou_none(frame: pd.DataFrame, coluna: str):
+    """Média da coluna, ou None quando ninguém respondeu aquela pergunta.
+
+    Sem isso, uma semana curta sem respostas numa dimensão viraria NaN — que
+    o json.dump escreve como `NaN`, e aí o JSON.parse do navegador quebra.
+    """
+    valores = frame[coluna].dropna()
+    if valores.empty:
+        return None
+    return round(float(valores.mean()), 2)
+
+
 def resumo_do_mes(cur: pd.DataFrame, nps_mes_anterior=None) -> dict:
     """Calcula o bloco completo de indicadores de um único mês."""
     promotores, neutros, detratores = bucket_counts(cur)
@@ -136,8 +148,10 @@ def resumo_do_mes(cur: pd.DataFrame, nps_mes_anterior=None) -> dict:
 
     media_por_pergunta = sorted(
         (
-            {"pergunta": label, "media": round(float(cur[col].dropna().mean()), 2)}
-            for col, label in QUESTION_LABELS.items() if col in cur.columns
+            item for item in (
+                {"pergunta": label, "media": media_ou_none(cur, col)}
+                for col, label in QUESTION_LABELS.items() if col in cur.columns
+            ) if item["media"] is not None
         ),
         key=lambda x: x["media"], reverse=True,
     )
@@ -156,11 +170,11 @@ def resumo_do_mes(cur: pd.DataFrame, nps_mes_anterior=None) -> dict:
         row = {"especialidade": especialidade, "n": int(len(grupo))}
         for key, col in SCORE_COLUMNS.items():
             if col in grupo.columns:
-                row[key] = round(float(grupo[col].dropna().mean()), 2)
+                row[key] = media_ou_none(grupo, col)
         satisfacao_por_especialidade.append(row)
 
     nps_por_especialidade.sort(key=lambda x: x["nps"], reverse=True)
-    satisfacao_por_especialidade.sort(key=lambda x: x.get("experiencia_geral", 0), reverse=True)
+    satisfacao_por_especialidade.sort(key=lambda x: x.get("experiencia_geral") or 0, reverse=True)
 
     return {
         "kpi": {
@@ -191,9 +205,14 @@ def semanas_do_mes(cur: pd.DataFrame) -> list:
     frame["_semana"] = momento.dt.to_period("W-SUN")
 
     semanas = []
+    anterior = None
     for i, (periodo, grupo) in enumerate(sorted(frame.groupby("_semana"), key=lambda x: x[0]), start=1):
         p, n, d = bucket_counts(grupo)
         inicio, fim = periodo.start_time, periodo.end_time
+        nps = nps_from_bucket_counts(p, n, d)
+        # O detalhe completo (dimensões, especialidades) permite filtrar o
+        # painel inteiro por semana, não só ver o NPS da semana.
+        detalhe = resumo_do_mes(grupo, anterior)
         semanas.append({
             "semana": i,
             "inicio": inicio.strftime("%Y-%m-%d"),
@@ -203,8 +222,10 @@ def semanas_do_mes(cur: pd.DataFrame) -> list:
             "promotores": p,
             "neutros": n,
             "detratores": d,
-            "nps": nps_from_bucket_counts(p, n, d),
+            "nps": nps,
+            **detalhe,
         })
+        anterior = nps
     return semanas
 
 

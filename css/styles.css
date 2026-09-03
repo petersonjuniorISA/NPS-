@@ -406,7 +406,13 @@ table.tbl tbody tr.on { background: var(--teal-soft); }
   display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--sm); margin-top: var(--lg);
 }
-.week { border: 1px solid var(--gray-inactive); border-radius: 12px; padding: var(--md); }
+.week {
+  display: block; width: 100%; text-align: left; font: inherit; color: inherit;
+  background: #fff; border: 1px solid var(--gray-inactive); border-radius: 12px;
+  padding: var(--md); cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.week:hover { border-color: var(--gray-outline); box-shadow: 0 2px 12px rgba(0,68,116,.06); }
+.week.ativa { border-color: var(--pink); box-shadow: 0 0 0 1px var(--pink); }
 .week.parcial { border-style: dashed; background: var(--gray-bg); }
 .week-tag {
   display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
