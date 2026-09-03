@@ -38,6 +38,7 @@
 
   const MIN_AMOSTRA = 5;  // abaixo disso o número não sustenta uma decisão
   const MIN_SEMANA = 20;  // semana com menos que isso é amostra parcial, não tendência
+  const MIN_DESTAQUE = 20; // piso para "melhor/pior especialidade" virar afirmação
 
   /* ---------- utilidades ---------- */
   const $  = s => document.querySelector(s);
@@ -203,10 +204,23 @@
     const linha = zenMes(mes);
     return linha ? num(linha[campo]) : null;
   }
+  /* Acima disso o atingimento deixa de informar: 458% não diz que o indicador
+     vai bem, diz que a meta do mês está defasada. */
+  const ATT_DEFASADA = 150;
+
   function status(o, mes) {
     const meta = metaDoMes(o.id, mes), real = realizado(o, mes);
     const att = (meta && real !== null) ? Math.round(real / meta * 100) : null;
-    return { meta, real, att, cls: att === null ? "risco" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off" };
+    const defasada = att !== null && att >= ATT_DEFASADA;
+    return {
+      meta, real, att, defasada,
+      cls: att === null ? "risco" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off",
+      // o que mostrar no lugar do número quando ele perde o sentido
+      texto: att === null ? "—" : defasada ? (real / meta).toFixed(1).replace(".", ",") + "×" : att + "%",
+      palavra: att === null ? "sem dado"
+             : defasada ? "meta defasada"
+             : att >= 100 ? "no alvo" : att >= 85 ? "atenção" : "atrasado"
+    };
   }
   const unidade = o => (o.unidade === "%" ? "%" : "");
 
@@ -383,16 +397,17 @@
     box.innerHTML = "";
     (S.metas.objetivos || []).forEach(o => {
       const st = status(o, mes);
-      const palavra = st.cls === "ok" ? "no alvo" : st.cls === "risco" ? "atenção" : "atrasado";
       box.appendChild(el("div", "farol-row",
-        '<span class="dot ' + st.cls + '"></span>' +
+        '<span class="dot ' + (st.defasada ? "stale" : st.cls) + '"></span>' +
         '<div><div class="farol-name">' + o.label + "</div>" +
-          '<div class="farol-ctx">' + (o.contexto || "") + "</div></div>" +
+          '<div class="farol-ctx">' + (st.defasada
+            ? "Já passou o alvo de dezembro (" + fmt(o.alvo_final, 0) + unidade(o) + "). A meta precisa ser revista."
+            : (o.contexto || "")) + "</div></div>" +
         '<div class="farol-nums"><div class="farol-real tabular">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
           '<div class="farol-meta">meta ' + fmt(st.meta, o.casas) + unidade(o) + "</div></div>" +
-        '<div class="farol-status"><div class="farol-att tabular ' + st.cls + '">' +
-          (st.att === null ? "—" : st.att + "%") + "</div>" +
-          '<div class="farol-word">' + palavra + "</div></div>"));
+        '<div class="farol-status"><div class="farol-att tabular ' + (st.defasada ? "stale" : st.cls) + '">' +
+          st.texto + "</div>" +
+          '<div class="farol-word">' + st.palavra + "</div></div>"));
     });
   }
 
@@ -401,9 +416,14 @@
     let pior = null;
     (S.metas.objetivos || []).forEach(o => {
       const st = status(o, mes);
-      if (st.att !== null && (!pior || st.att < pior.st.att)) pior = { o, st };
+      // meta defasada não disputa o pior atingimento: o problema ali é a meta
+      if (st.att !== null && !st.defasada && (!pior || st.att < pior.st.att)) pior = { o, st };
     });
-    if (!pior) { $("#alerta-text").textContent = "Sem metas cadastradas para comparar."; return; }
+    if (!pior) {
+      $("#alerta-text").textContent = "Sem metas cadastradas para comparar.";
+      $("#alerta-trajeto").innerHTML = "";
+      return;
+    }
 
     const { o, st } = pior;
     $("#alerta-kicker").textContent = o.label + " · " + mesLabel(mes);
@@ -418,6 +438,17 @@
         fmt(st.meta - st.real, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") + ". " +
         (o.contexto ? o.contexto + " " : "") +
         "Para chegar a " + fmt(o.alvo_final, 0) + unidade(o) + " até dezembro, é o indicador que depende de decisão agora.";
+
+    // A escada que ainda falta subir — é o que a diretoria precisa aprovar.
+    const futuros = Object.keys(o.metas || {}).filter(m => m > mes).sort();
+    $("#alerta-trajeto").innerHTML = !futuros.length ? "" :
+      '<div class="trajeto-label">O que falta subir</div>' +
+      '<div class="trajeto">' + futuros.map(m => {
+        const salto = o.metas[m] - (o.metas[futuros[futuros.indexOf(m) - 1]] ?? st.real);
+        return '<div class="trajeto-passo"><div class="trajeto-mes">' + mesCurto(m) + "</div>" +
+          '<div class="trajeto-meta tabular">' + fmt(o.metas[m], o.casas) + unidade(o) + "</div>" +
+          '<div class="trajeto-delta">' + (salto > 0 ? "+" : "") + fmt(salto, o.casas) + "</div></div>";
+      }).join("") + "</div>";
   }
 
   function leitura() {
@@ -450,9 +481,16 @@
     }
 
     const objs = S.metas.objetivos || [];
-    const noAlvo = objs.filter(o => (status(o, mes).att || 0) >= 100).length;
-    itens.push({ t: noAlvo === objs.length ? "up" : noAlvo === 0 ? "down" : "",
-      txt: "<b>" + noAlvo + " de " + objs.length + " objetivos</b> do semestre estão no alvo." });
+    const sts = objs.map(o => ({ o, st: status(o, mes) }));
+    const validos = sts.filter(x => !x.st.defasada);
+    const noAlvo = validos.filter(x => (x.st.att || 0) >= 100).length;
+    const defasados = sts.filter(x => x.st.defasada);
+    itens.push({ t: noAlvo === validos.length ? "up" : noAlvo === 0 ? "down" : "",
+      txt: "<b>" + noAlvo + " de " + validos.length + " objetivos</b> com meta vigente estão no alvo" +
+           (defasados.length
+             ? ". <b>" + defasados.map(x => x.o.label).join(" e ") + "</b> já " +
+               (defasados.length > 1 ? "passaram" : "passou") + " o alvo de dezembro — a meta precisa ser revista."
+             : ".") });
 
     const perg = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
     if (perg.length) itens.push({ t: "",
@@ -614,8 +652,9 @@
     const mes = S.mes, k = dados().kpi;
     const perg = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
     const esp = especialidades().relevantes;
-    const melhor = [...esp].sort((a,b) => b.nps - a.nps)[0];
-    const pior = [...esp].sort((a,b) => a.nps - b.nps)[0];
+    const firmes = esp.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
+    const melhor = [...firmes].sort((a,b) => b.nps - a.nps)[0];
+    const pior = [...firmes].sort((a,b) => a.nps - b.nps)[0];
     const meta = metaDoMes("nps", mes);
     const itens = [];
 
@@ -642,16 +681,22 @@
   /* ---------- ESPECIALIDADES ---------- */
   function espIndicadores() {
     const { relevantes, pequenas } = especialidades();
-    const melhor = [...relevantes].sort((a,b) => b.nps - a.nps)[0];
-    const pior   = [...relevantes].sort((a,b) => a.nps - b.nps)[0];
+    // "Melhor" e "pior" viram frase de diretoria — 100,0 tirado de 7 respostas
+    // não sustenta isso. Os destaques exigem uma amostra bem maior que a lista.
+    const firmes = relevantes.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
+    const melhor = [...firmes].sort((a,b) => b.nps - a.nps)[0];
+    const pior   = [...firmes].sort((a,b) => a.nps - b.nps)[0];
     const maior  = [...relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
+    const comN = e => e.especialidade + " · " + e.n + " respostas";
 
     const cards = [
       { rot: "Na leitura", val: relevantes.length, casas: 0,
         nota: pequenas.length ? pequenas.length + " fora por amostra pequena" : "todas com amostra suficiente" },
-      { rot: "Maior volume", val: maior ? maior.pct_amostra : null, casas: 1, suf: "%", nota: maior ? maior.especialidade : "—" },
-      { rot: "Melhor NPS", val: melhor ? melhor.nps : null, casas: 1, nota: melhor ? melhor.especialidade : "—" },
-      { rot: "Pior NPS", val: pior ? pior.nps : null, casas: 1, nota: pior ? pior.especialidade : "—" }
+      { rot: "Maior volume", val: maior ? maior.pct_amostra : null, casas: 1, suf: "%", nota: maior ? comN(maior) : "—" },
+      { rot: "Melhor NPS", val: melhor ? melhor.nps : null, casas: 1,
+        nota: melhor ? comN(melhor) : "sem amostra suficiente" },
+      { rot: "Pior NPS", val: pior ? pior.nps : null, casas: 1,
+        nota: pior ? comN(pior) : "sem amostra suficiente" }
     ];
     const box = $("#esp-stats"); box.innerHTML = "";
     cards.forEach(c => {
@@ -695,6 +740,11 @@
 
   function espDetalhe() {
     const box = $("#esp-detail");
+    if (!S.espSel) {
+      // abre na especialidade que mais pesa no indice — card vazio nao informa nada
+      const maior = [...especialidades().relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
+      if (maior) S.espSel = maior.especialidade;
+    }
     if (!S.espSel) {
       box.innerHTML = '<div class="empty">Selecione uma especialidade para ver as notas por dimensão.</div>';
       return;
@@ -817,6 +867,8 @@
         scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
 
     const sem = zenSemanal(S.mes);
+    const subSem = $("#sac-sem-sub");
+    if (subSem) subSem.textContent = "Semanas de " + mesLabel(S.mes).toLowerCase() + ", preenchidas à mão";
     grafico("chart-wow", { data: { labels: sem.map(r => "Semana " + r.semana), datasets: [
         { type: "bar", label: "FCR", data: sem.map(r => num(r.fcr_pct)), backgroundColor: C.tealFill,
           borderColor: C.teal, borderWidth: 1.5, borderRadius: 4, maxBarThickness: 38, yAxisID: "y" },
@@ -861,8 +913,9 @@
         '<div class="goal-tag">Meta ' + mesCurto(mes).toLowerCase() + ": " + fmt(st.meta, o.casas) + unidade(o) + "</div>" +
         '<div class="goal-desc">' + o.descricao + "</div>" +
         '<div class="goal-num tabular">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
+        (st.defasada ? '<div class="goal-warn">Acima do alvo de dezembro — meta a revisar</div>' : "") +
         '<div class="goal-foot"><span>Real vs. meta</span>' +
-          '<div class="goal-att tabular ' + (ok ? "ok" : "off") + '">' + (st.att === null ? "—" : st.att + "%") + "</div></div>"));
+          '<div class="goal-att tabular ' + (st.defasada ? "stale" : ok ? "ok" : "off") + '">' + st.texto + "</div></div>"));
     });
 
     const objs = S.metas.objetivos || [];
@@ -878,7 +931,7 @@
         tension: .3, pointRadius: 0, spanGaps: true });
     });
     grafico("chart-meta", { type: "line", data: { labels: meses.map(mesCurto), datasets: ds },
-      options: opcoes({ plugins: { legend: legenda(9), tooltip: { callbacks: { label: c => c.dataset.label + ": " + c.parsed.y + "% do alvo" } } },
+      options: opcoes({ plugins: { legend: legenda(10, true), tooltip: { callbacks: { label: c => c.dataset.label + ": " + c.parsed.y + "% do alvo" } } },
         scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
 
     const gaps = $("#meta-gaps"); gaps.innerHTML = "";
@@ -936,10 +989,11 @@
       } }
     }, extra);
   }
-  function legenda(size) {
+  function legenda(size, semMetas) {
     return { display: true, position: "bottom",
       labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true, pointStyle: "circle",
-                padding: 14, font: { size: size || 11 } } };
+                padding: 14, font: { size: size || 11 },
+                filter: semMetas ? item => !item.text.endsWith("(meta)") : undefined } };
   }
   function grafico(id, cfg) {
     const canvas = document.getElementById(id);

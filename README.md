@@ -7,7 +7,7 @@ Notion. Site estático, publicado no GitHub Pages.
 
 O painel tem três fontes de dados, com níveis de automação diferentes:
 
-1. **NPS (Databricks) — 100% automático.** Toda segunda-feira às 8h, o
+1. **NPS (Databricks) — 100% automático.** Toda sexta-feira às 18h, o
    Agendador de Tarefas do Windows roda `scripts/weekly_update.ps1` na
    máquina do Peterson, que chama `scripts/fetch_databricks.py` — esse
    script consulta a tabela de respostas do NPS no Databricks (usando login
@@ -117,12 +117,13 @@ feito*, então a automação só roda **nessa máquina, com o usuário logado**
    — abre o navegador, faz login normal com a conta `@isasaude.com`.
 3. Testar: `python scripts/fetch_databricks.py` — se funcionar, escreve
    `data/nps.json` com dados reais.
-4. Registrar a tarefa agendada (Windows), toda segunda às 8h:
+4. Registrar a tarefa agendada (Windows), toda sexta às 18h — fecha a
+   semana e deixa o painel pronto para a segunda:
 
    ```powershell
    $scriptPath = "C:\Users\Peterson.Junior\Programação\NPS-\scripts\weekly_update.ps1"
    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -NoProfile -File `"$scriptPath`""
-   $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8:00AM
+   $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At 6:00PM
    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd
    Register-ScheduledTask -TaskName "NPS-ISAs-AtualizacaoSemanal" -Action $action -Trigger $trigger -Settings $settings -Description "Atualiza o painel de NPS dos ISAs com dados do Databricks e publica no GitHub"
    ```
@@ -130,7 +131,7 @@ feito*, então a automação só roda **nessa máquina, com o usuário logado**
 Isso já está feito nesta máquina. Pontos de atenção:
 
 - **A automação só roda com o PC ligado e você logado** no horário
-  agendado (segunda 8h). Se o PC estiver desligado, aquela semana não
+  agendado (sexta 18h). Se o PC estiver desligado, aquela semana não
   atualiza sozinha — `StartWhenAvailable` faz a tarefa rodar assim que o PC
   ligar de novo, mas não recupera retroativamente.
 - **A CLI do Databricks precisa estar instalada.** É ela que guarda o token

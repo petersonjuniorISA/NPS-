@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=9">
 </head>
 <body>
 
@@ -21,30 +21,30 @@
 
   <nav class="nav">
     <button class="nav-item active" data-page="resumo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
       Resumo executivo
     </button>
 
     <div class="nav-sep"></div>
 
     <button class="nav-item" data-page="visao">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
       NPS em detalhe
     </button>
     <button class="nav-item" data-page="especialidades">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3v6a6 6 0 0 0 12 0V3"/><circle cx="18" cy="16" r="3"/><path d="M12 15v-2"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/></svg>
       Especialidades
     </button>
     <button class="nav-item" data-page="sac">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>
       SAC &amp; Zendesk
     </button>
     <button class="nav-item" data-page="metas">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
       Metas do semestre
     </button>
     <button class="nav-item" data-page="alavancas">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20V10M18 20V4M6 20v-6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
       Alavancas
     </button>
   </nav>
@@ -53,7 +53,7 @@
 <main class="main">
   <div class="mobile-bar">
     <button id="menu-toggle" aria-label="Menu">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
     </button>
     <strong>NPS dos ISAs</strong>
   </div>
@@ -67,7 +67,7 @@
       <select class="select" id="month-select" aria-label="Mês de referência"></select>
       <select class="select" id="week-select" aria-label="Semana do mês"></select>
       <span class="updated">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
         <span id="updated-text">—</span>
       </span>
     </div>
@@ -116,6 +116,7 @@
           <div class="alerta-number tabular" id="alerta-number">—</div>
           <div class="alerta-caption">do que era esperado no mês</div>
           <div class="alerta-text" id="alerta-text"></div>
+          <div id="alerta-trajeto"></div>
         </div>
       </div>
 
@@ -243,7 +244,7 @@
 
       <div class="grid grid-2" style="margin-top:16px;">
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Semana a semana</div><div class="card-sub">Mês corrente</div></div></div>
+          <div class="card-head"><div><div class="card-title">Semana a semana</div><div class="card-sub" id="sac-sem-sub">Mês selecionado</div></div></div>
           <div class="chart h240"><canvas id="chart-wow"></canvas></div>
         </div>
         <div class="card">
@@ -316,7 +317,7 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js"></script>
-<script src="js/app.js"></script>
+<script src="js/config.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>
