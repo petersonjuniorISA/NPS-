@@ -8,27 +8,25 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Blinker:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-<!-- ===== SIDEBAR ===== -->
 <aside class="sidebar" id="sidebar">
   <div class="brand">
-    <img src="assets/logo.svg" alt="ISA Experience" class="brand-logo" id="brand-logo"
+    <img src="assets/logo.svg" alt="ISA Experience" class="brand-logo"
          onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'brand-fallback',textContent:'ISA EXP'}))">
-    <div class="brand-sub">Painel de NPS dos ISAs</div>
   </div>
 
   <nav class="nav">
-    <div class="nav-label">Diretoria</div>
     <button class="nav-item active" data-page="resumo">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
       Resumo executivo
     </button>
 
-    <div class="nav-label" style="margin-top:14px;">Detalhamento</div>
+    <div class="nav-sep"></div>
+
     <button class="nav-item" data-page="visao">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
       NPS em detalhe
@@ -43,237 +41,169 @@
     </button>
     <button class="nav-item" data-page="metas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
-      Metas SMART
+      Metas do semestre
     </button>
     <button class="nav-item" data-page="alavancas">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20V10M18 20V4M6 20v-6"/></svg>
       Alavancas
     </button>
   </nav>
-
-  <div class="sidebar-foot">
-    <div class="pulse-row">
-      <span class="pulse"></span>
-      <span class="pulse-text">Dados vivos do <b>Databricks</b><br><span id="side-updated">carregando…</span></span>
-    </div>
-  </div>
 </aside>
 
-<!-- ===== MAIN ===== -->
 <main class="main">
   <div class="mobile-bar">
     <button id="menu-toggle" aria-label="Menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
-    <strong style="font-size:15px;">NPS dos ISAs</strong>
+    <strong>NPS dos ISAs</strong>
   </div>
 
-  <div class="topbar">
+  <header class="topbar">
     <div>
-      <div class="topbar-title" id="page-title">Visão geral</div>
-      <div class="topbar-sub" id="page-sub">Panorama da experiência dos profissionais</div>
+      <h1 id="page-title">Resumo executivo</h1>
+      <div class="topbar-sub" id="page-sub">Onde estamos, qual o risco e o que está sendo feito</div>
     </div>
     <div class="topbar-actions">
-      <select class="chip-select" id="month-select" aria-label="Mês de referência"></select>
-      <span class="chip">
+      <select class="select" id="month-select" aria-label="Mês de referência"></select>
+      <span class="updated">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
         <span id="updated-text">—</span>
       </span>
     </div>
-  </div>
+  </header>
 
   <div class="page-wrap">
     <div id="alert-slot"></div>
 
-    <!-- ========== PÁGINA: RESUMO EXECUTIVO ========== -->
+    <!-- ============ RESUMO EXECUTIVO ============ -->
     <section class="page active" id="page-resumo">
       <div class="hero">
-        <div class="hero-inner">
-          <div>
-            <div class="hero-eyebrow">NPS geral · <span id="hero-month">—</span></div>
-            <div class="hero-score">
-              <div class="hero-value" id="hero-nps">—</div>
-              <div class="hero-delta up" id="hero-delta"></div>
-            </div>
-            <div class="hero-desc" id="hero-desc">Índice de recomendação calculado sobre as respostas do mês.</div>
-            <div class="hero-stats" style="margin-top:20px;">
-              <div class="hero-stat">
-                <div class="hero-stat-top" style="background:#35D07F"></div>
-                <div class="hero-stat-value" id="hs-prom">—</div>
-                <div class="hero-stat-label">Promotores</div>
-              </div>
-              <div class="hero-stat">
-                <div class="hero-stat-top" style="background:#F2B705"></div>
-                <div class="hero-stat-value" id="hs-neut">—</div>
-                <div class="hero-stat-label">Neutros</div>
-              </div>
-              <div class="hero-stat">
-                <div class="hero-stat-top" style="background:#F06767"></div>
-                <div class="hero-stat-value" id="hs-detr">—</div>
-                <div class="hero-stat-label">Detratores</div>
-              </div>
-              <div class="hero-stat">
-                <div class="hero-stat-top" style="background:#00B9BB"></div>
-                <div class="hero-stat-value" id="hs-total">—</div>
-                <div class="hero-stat-label">Respostas</div>
-              </div>
-            </div>
+        <div>
+          <div class="hero-label">NPS geral · <span id="hero-month">—</span></div>
+          <div class="hero-number tabular">
+            <span id="hero-nps">—</span>
+            <span class="hero-tag" id="hero-tag"></span>
           </div>
+          <p class="hero-desc" id="hero-desc"></p>
+          <div class="hero-facts" id="hero-facts"></div>
+        </div>
 
-          <div class="gauge-box">
-            <div class="gauge">
-              <svg width="152" height="152" viewBox="0 0 152 152">
-                <circle class="gauge-track" cx="76" cy="76" r="64" fill="none" stroke-width="13"/>
-                <circle class="gauge-fill" id="gauge-fill" cx="76" cy="76" r="64" fill="none" stroke-width="13"
-                        stroke-dasharray="402" stroke-dashoffset="402"/>
-              </svg>
-              <div class="gauge-center">
-                <div class="gauge-pct" id="gauge-pct">—</div>
-                <div class="gauge-cap">da meta</div>
-              </div>
+        <div class="meter">
+          <div class="meter-ring">
+            <svg width="128" height="128" viewBox="0 0 128 128">
+              <circle class="meter-track" cx="64" cy="64" r="55" fill="none" stroke-width="10"/>
+              <circle class="meter-fill" id="meter-fill" cx="64" cy="64" r="55" fill="none" stroke-width="10"
+                      stroke-dasharray="345" stroke-dashoffset="345"/>
+            </svg>
+            <div class="meter-center">
+              <div class="meter-pct tabular" id="meter-pct">—</div>
+              <div class="meter-cap">da meta</div>
             </div>
-            <div class="gauge-legend" id="gauge-legend"></div>
           </div>
+          <div class="meter-list" id="meter-list"></div>
         </div>
       </div>
 
-      <div class="grid grid-2-1">
+      <div class="grid grid-wide">
         <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Farol das metas do semestre</div>
-              <div class="card-sub">Onde cada objetivo está em relação à meta do mês</div>
-            </div>
-          </div>
-          <div id="farol"></div>
+          <div class="card-head"><div class="card-title">Farol das metas do semestre</div></div>
+          <div class="farol" id="farol"></div>
         </div>
 
-        <div class="card" id="atencao-card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Ponto de atenção</div>
-              <div class="card-sub">O indicador que exige decisão</div>
-            </div>
-          </div>
-          <div id="atencao"></div>
+        <div class="card alerta">
+          <div class="alerta-kicker" id="alerta-kicker">—</div>
+          <div class="alerta-number tabular" id="alerta-number">—</div>
+          <div class="alerta-caption">do que era esperado no mês</div>
+          <div class="alerta-text" id="alerta-text"></div>
         </div>
       </div>
 
-      <div class="grid grid-2-1">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Leitura do mês</div>
-              <div class="card-sub">Síntese gerada a partir dos dados</div>
-            </div>
-          </div>
-          <div id="leitura"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">O que estamos fazendo</div>
-              <div class="card-sub">Últimas frentes executadas pelo time</div>
-            </div>
-          </div>
-          <div id="acoes"></div>
+      <div class="section-label">Leitura do mês</div>
+      <div class="reading">
+        <ul class="notes" id="notes"></ul>
+        <div>
+          <h3>O que estamos fazendo</h3>
+          <ul class="actions" id="actions"></ul>
+          <button class="btn-text" id="ver-alavancas" style="margin-top:16px;">Ver todas as alavancas</button>
         </div>
       </div>
     </section>
 
-    <!-- ========== PÁGINA: NPS EM DETALHE ========== -->
+    <!-- ============ NPS EM DETALHE ============ -->
     <section class="page" id="page-visao">
-      <div class="grid grid-2-1">
+      <div class="grid grid-wide">
         <div class="card">
           <div class="card-head">
             <div>
               <div class="card-title">Evolução do NPS</div>
-              <div class="card-sub">Realizado vs. meta mensal</div>
+              <div class="card-sub">Realizado contra a meta de cada mês</div>
             </div>
             <div class="seg" id="seg-hist">
               <button class="active" data-series="nps">NPS</button>
-              <button data-series="csat">+ CSAT</button>
+              <button data-series="csat">Com CSAT</button>
             </div>
           </div>
-          <div class="chart-wrap h-280"><canvas id="chart-historico"></canvas></div>
+          <div class="chart h280"><canvas id="chart-historico"></canvas></div>
         </div>
 
         <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Distribuição</div>
-              <div class="card-sub">Promotores, neutros e detratores</div>
-            </div>
-          </div>
-          <div class="dist-bar" id="dist-bar"><span class="dist-prom"></span><span class="dist-neut"></span><span class="dist-detr"></span></div>
-          <div class="dist-legend" id="dist-legend"></div>
-          <div style="margin-top:20px;">
-            <div class="card-title" style="font-size:14px;margin-bottom:12px;">Nota média por dimensão</div>
-            <div class="chart-wrap h-200"><canvas id="chart-radar"></canvas></div>
-          </div>
+          <div class="card-head"><div class="card-title">Composição</div></div>
+          <div class="stack" id="stack"><span class="p"></span><span class="n"></span><span class="d"></span></div>
+          <div class="stack-legend" id="stack-legend"></div>
+          <div class="section-label" style="margin:24px 0 8px;">Nota média por dimensão</div>
+          <div class="chart h200"><canvas id="chart-radar"></canvas></div>
         </div>
       </div>
 
-      <div class="grid grid-2">
+      <div class="grid grid-wide">
         <div class="card">
           <div class="card-head">
             <div>
-              <div class="card-title">Média por pergunta do NPS</div>
-              <div class="card-sub">Escala de 0 a 5 · passe o mouse para detalhes</div>
+              <div class="card-title">Nota por dimensão</div>
+              <div class="card-sub">Escala de 0 a 5</div>
             </div>
           </div>
-          <div class="chart-wrap h-280"><canvas id="chart-perguntas"></canvas></div>
+          <div class="chart h280"><canvas id="chart-perguntas"></canvas></div>
         </div>
         <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Leitura rápida</div>
-              <div class="card-sub">Destaques calculados automaticamente</div>
-            </div>
-          </div>
-          <div id="insights"></div>
+          <div class="card-head"><div class="card-title">Destaques</div></div>
+          <ul class="notes" id="insights"></ul>
         </div>
       </div>
     </section>
 
-    <!-- ========== PÁGINA: ESPECIALIDADES ========== -->
+    <!-- ============ ESPECIALIDADES ============ -->
     <section class="page" id="page-especialidades">
       <div class="grid grid-4" id="esp-stats"></div>
 
-      <div class="grid grid-2-1">
+      <div class="grid grid-wide" style="margin-top:16px;">
         <div class="card">
           <div class="card-head">
             <div>
               <div class="card-title">NPS por especialidade</div>
-              <div class="card-sub">Clique numa especialidade para ver o detalhamento</div>
+              <div class="card-sub">Clique para ver o detalhamento</div>
             </div>
             <div class="seg" id="seg-esp">
-              <button class="active" data-sort="nps">Por NPS</button>
-              <button data-sort="amostra">Por volume</button>
+              <button class="active" data-sort="nps">NPS</button>
+              <button data-sort="amostra">Volume</button>
             </div>
           </div>
-          <div class="barlist" id="esp-barlist"></div>
+          <div class="ranks" id="esp-ranks"></div>
         </div>
 
-        <div class="card" id="esp-detail-card">
-          <div class="card-head"><div><div class="card-title">Detalhamento</div><div class="card-sub">Notas por dimensão</div></div></div>
-          <div id="esp-detail">
-            <div class="detail-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3h6M12 3v5"/><circle cx="12" cy="14" r="7"/></svg>
-              <div>Selecione uma especialidade ao lado para ver as notas detalhadas.</div>
-            </div>
-          </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Detalhamento</div></div>
+          <div id="esp-detail"></div>
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-top:16px;">
         <div class="card-head">
           <div>
             <div class="card-title">Satisfação por especialidade</div>
-            <div class="card-sub">Tabela completa de apoio — nota média (0–5) em cada dimensão</div>
+            <div class="card-sub">Tabela de apoio com todas as dimensões</div>
           </div>
-          <button class="seg-btn" id="toggle-sat">Ver tabela completa</button>
+          <button class="btn-text" id="toggle-sat">Ver tabela</button>
         </div>
         <div class="table-scroll" id="sat-wrap" hidden>
           <table class="tbl" id="tbl-satisfacao">
@@ -284,33 +214,33 @@
       </div>
     </section>
 
-    <!-- ========== PÁGINA: SAC & ZENDESK ========== -->
+    <!-- ============ SAC & ZENDESK ============ -->
     <section class="page" id="page-sac">
-      <div class="card-sub" id="sac-ref" style="margin:-6px 0 14px 2px;"></div>
+      <div class="section-label" id="sac-ref" style="margin-top:0;"></div>
       <div class="grid grid-3" id="sac-stats"></div>
 
-      <div class="grid grid-2">
+      <div class="grid grid-2" style="margin-top:16px;">
         <div class="card">
-          <div class="card-head"><div><div class="card-title">CSAT — IA e humano</div><div class="card-sub">Evolução mensal (escala 0–5)</div></div></div>
-          <div class="chart-wrap h-240"><canvas id="chart-csat"></canvas></div>
+          <div class="card-head"><div><div class="card-title">CSAT</div><div class="card-sub">Atendimento humano e IA, escala 0–5</div></div></div>
+          <div class="chart h240"><canvas id="chart-csat"></canvas></div>
         </div>
         <div class="card">
           <div class="card-head"><div><div class="card-title">FCR e resolução com IA</div><div class="card-sub">Percentual por mês</div></div></div>
-          <div class="chart-wrap h-240"><canvas id="chart-fcr"></canvas></div>
+          <div class="chart h240"><canvas id="chart-fcr"></canvas></div>
         </div>
       </div>
 
-      <div class="grid grid-2">
+      <div class="grid grid-2" style="margin-top:16px;">
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Week over week</div><div class="card-sub">Evolução semanal do mês corrente</div></div></div>
-          <div class="chart-wrap h-240"><canvas id="chart-wow"></canvas></div>
+          <div class="card-head"><div><div class="card-title">Semana a semana</div><div class="card-sub">Mês corrente</div></div></div>
+          <div class="chart h240"><canvas id="chart-wow"></canvas></div>
         </div>
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Histórico mensal</div><div class="card-sub">Todos os indicadores de atendimento</div></div></div>
+          <div class="card-head"><div class="card-title">Histórico mensal</div></div>
           <div class="table-scroll">
             <table class="tbl" id="tbl-zendesk">
               <thead><tr>
-                <th>Mês</th><th class="num">CSAT IA</th><th class="num">CSAT Humano</th>
+                <th>Mês</th><th class="num">CSAT IA</th><th class="num">CSAT humano</th>
                 <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th><th class="num">Res. IA</th>
               </tr></thead>
               <tbody></tbody>
@@ -319,12 +249,12 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-head"><div><div class="card-title">Detalhamento semanal</div><div class="card-sub">Semanas do mês corrente</div></div></div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head"><div class="card-title">Detalhamento semanal</div></div>
         <div class="table-scroll">
           <table class="tbl" id="tbl-semanal">
             <thead><tr>
-              <th>Semana</th><th>Período</th><th class="num">CSAT IA</th><th class="num">CSAT Humano</th>
+              <th>Semana</th><th>Período</th><th class="num">CSAT IA</th><th class="num">CSAT humano</th>
               <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th>
             </tr></thead>
             <tbody></tbody>
@@ -333,38 +263,43 @@
       </div>
     </section>
 
-    <!-- ========== PÁGINA: METAS ========== -->
+    <!-- ============ METAS ============ -->
     <section class="page" id="page-metas">
       <div class="grid grid-4" id="goal-cards"></div>
 
-      <div class="grid grid-2-1">
+      <div class="grid grid-wide" style="margin-top:16px;">
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Trajetória até dezembro</div><div class="card-sub">Realizado (linha cheia) vs. meta (tracejada)</div></div></div>
-          <div class="chart-wrap h-320"><canvas id="chart-meta"></canvas></div>
+          <div class="card-head">
+            <div>
+              <div class="card-title">Trajetória até dezembro</div>
+              <div class="card-sub">Realizado em linha cheia, meta tracejada — tudo em % do alvo final</div>
+            </div>
+          </div>
+          <div class="chart h320"><canvas id="chart-meta"></canvas></div>
         </div>
         <div class="card">
-          <div class="card-head"><div><div class="card-title">Onde estamos</div><div class="card-sub">Distância para a meta do semestre</div></div></div>
-          <div id="meta-summary"></div>
+          <div class="card-head"><div class="card-title">Distância para dezembro</div></div>
+          <div id="meta-gaps"></div>
         </div>
       </div>
     </section>
 
-    <!-- ========== PÁGINA: ALAVANCAS ========== -->
+    <!-- ============ ALAVANCAS ============ -->
     <section class="page" id="page-alavancas">
       <div class="card">
         <div class="card-head">
           <div>
             <div class="card-title">Alavancas por semana</div>
-            <div class="card-sub">Ações executadas pelo time de experiência a cada semana</div>
+            <div class="card-sub">Frentes executadas pelo time de experiência</div>
           </div>
-          <select class="chip-select" id="alav-month" aria-label="Mês"></select>
+          <select class="select" id="alav-month" aria-label="Mês"></select>
         </div>
-        <div class="timeline" id="timeline"></div>
+        <ul class="timeline" id="timeline"></ul>
       </div>
     </section>
 
-    <p class="foot-note">
-      NPS calculado automaticamente a partir do Databricks · Indicadores de Zendesk e alavancas preenchidos pelo time<br>
+    <p class="footnote">
+      NPS calculado a partir do Databricks · Indicadores de Zendesk e alavancas preenchidos pelo time<br>
       <span id="foot-updated"></span>
     </p>
   </div>

@@ -8,25 +8,24 @@
 (function () {
   "use strict";
 
-  /* ---------- paleta ---------- */
+  /* Paleta — Design System ISA */
   const C = {
-    navy: "#233E72",
-    navySoft: "rgba(35,62,114,.10)",
-    teal: "#00B9BB",
-    tealSoft: "rgba(0,185,187,.14)",
+    blue: "#004474",
+    blueFill: "rgba(0,68,116,.08)",
+    teal: "#00C3C5",
+    tealFill: "rgba(0,195,197,.12)",
     pink: "#ED1E79",
-    pinkSoft: "rgba(237,30,121,.10)",
-    amber: "#F2B705",
-    grid: "#EDEFF5",
-    muted: "#6B7690",
-    green: "#12946A",
-    red: "#D64545"
+    amber: "#EDBB3B",
+    positive: "#00C643",
+    negative: "#E93B5A",
+    grid: "#E8EAED",
+    text: "#666E80"
   };
 
   const MESES = { "01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho",
                   "07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro" };
-  const mesLabel = m => (MESES[String(m).slice(5,7)] || m);
-  const mesCurto = m => (mesLabel(m) || "").slice(0,3);
+  const mesLabel = m => MESES[String(m).slice(5,7)] || m;
+  const mesCurto = m => mesLabel(m).slice(0,3);
 
   const DIMENSOES = [
     { key: "pontualidade_pagamento", label: "Pontualidade Pagamento" },
@@ -37,8 +36,10 @@
     { key: "suporte_chat",           label: "Suporte Chat" }
   ];
 
-  /* ---------- helpers ---------- */
-  const $ = s => document.querySelector(s);
+  const MIN_AMOSTRA = 5; // abaixo disso o número não sustenta uma decisão
+
+  /* ---------- utilidades ---------- */
+  const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
 
   function num(v) {
@@ -57,105 +58,91 @@
     if (html !== undefined) e.innerHTML = html;
     return e;
   }
-  function scorePill(v) {
-    if (v === null || v === undefined) return "pill-neutral";
-    if (v >= 4.2) return "pill-good";
-    if (v >= 3.5) return "pill-teal";
-    if (v >= 3) return "pill-mid";
-    return "pill-bad";
+  function classeNota(v) {
+    if (v === null || v === undefined) return "";
+    if (v >= 4.2) return "hi";
+    if (v >= 3.5) return "mid";
+    if (v >= 3) return "lo";
+    return "bad";
   }
-  function npsColor(v) {
-    if (v >= 75) return C.green;
+  function corNps(v) {
+    if (v >= 75) return C.positive;
     if (v >= 50) return C.teal;
-    if (v >= 0) return C.amber;
-    return C.red;
+    if (v >= 0)  return C.amber;
+    return C.negative;
   }
-  function animateNumber(node, target, casas, suffix) {
-    if (target === null || target === undefined || Number.isNaN(target)) { node.textContent = "—"; return; }
-    const finalTxt = fmt(target, casas) + (suffix || "");
-    // Em aba oculta o requestAnimationFrame fica congelado — nesse caso (e quando o
-    // usuário pede menos movimento) mostramos o valor final direto, nunca um zero preso.
-    const semAnimacao = document.hidden ||
+  /** Anima o número, mas nunca deixa um zero preso se a aba estiver oculta. */
+  function conta(node, alvo, casas, sufixo) {
+    if (alvo === null || alvo === undefined || Number.isNaN(alvo)) { node.textContent = "—"; return; }
+    const fim = fmt(alvo, casas) + (sufixo || "");
+    const parado = document.hidden ||
       (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    if (semAnimacao) { node.textContent = finalTxt; return; }
+    if (parado) { node.textContent = fim; return; }
 
-    const dur = 850, t0 = performance.now();
-    let done = false;
-    const finish = () => { if (!done) { done = true; node.textContent = finalTxt; } };
-    setTimeout(finish, dur + 500); // rede de segurança: setTimeout roda mesmo em background
-    (function step(now) {
-      if (done) return;
-      const p = Math.min(1, (now - t0) / dur);
-      const eased = 1 - Math.pow(1 - p, 3);
-      node.textContent = fmt(target * eased, casas) + (suffix || "");
-      if (p < 1) requestAnimationFrame(step); else finish();
+    const dur = 800, t0 = performance.now();
+    let pronto = false;
+    const encerra = () => { if (!pronto) { pronto = true; node.textContent = fim; } };
+    setTimeout(encerra, dur + 500);
+    (function passo(agora) {
+      if (pronto) return;
+      const p = Math.min(1, (agora - t0) / dur);
+      node.textContent = fmt(alvo * (1 - Math.pow(1 - p, 3)), casas) + (sufixo || "");
+      p < 1 ? requestAnimationFrame(passo) : encerra();
     })(t0);
   }
-
-  /* Dispara transições CSS de forma segura mesmo com a aba em segundo plano. */
-  function afterPaint(fn) { setTimeout(fn, 40); }
+  const aoPintar = fn => setTimeout(fn, 40);
 
   /* ---------- CSV ---------- */
   function parseCSV(text) {
-    const rows = []; let row = [], field = "", q = false;
+    const linhas = []; let linha = [], campo = "", aspas = false;
     for (let i = 0; i < text.length; i++) {
       const c = text[i];
-      if (q) {
-        if (c === '"') { if (text[i+1] === '"') { field += '"'; i++; } else q = false; }
-        else field += c;
-      } else if (c === '"') q = true;
-      else if (c === ",") { row.push(field); field = ""; }
+      if (aspas) {
+        if (c === '"') { if (text[i+1] === '"') { campo += '"'; i++; } else aspas = false; }
+        else campo += c;
+      } else if (c === '"') aspas = true;
+      else if (c === ",") { linha.push(campo); campo = ""; }
       else if (c === "\n" || c === "\r") {
         if (c === "\r" && text[i+1] === "\n") i++;
-        row.push(field); field = ""; rows.push(row); row = [];
-      } else field += c;
+        linha.push(campo); campo = ""; linhas.push(linha); linha = [];
+      } else campo += c;
     }
-    if (field.length || row.length) { row.push(field); rows.push(row); }
-    const clean = rows.filter(r => r.some(v => v !== ""));
-    if (!clean.length) return [];
-    const head = clean.shift().map(h => h.trim());
-    return clean.map(r => {
-      const o = {}; head.forEach((h, i) => o[h] = (r[i] ?? "").trim()); return o;
-    });
+    if (campo.length || linha.length) { linha.push(campo); linhas.push(linha); }
+    const limpas = linhas.filter(l => l.some(v => v !== ""));
+    if (!limpas.length) return [];
+    const cab = limpas.shift().map(h => h.trim());
+    return limpas.map(l => { const o = {}; cab.forEach((h, i) => o[h] = (l[i] ?? "").trim()); return o; });
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, espSort: "nps", espSel: null, satSort: { col: "experiencia_geral", dir: -1 } };
+  const S = { nps: null, metas: null, zendesk: [], charts: {},
+              espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
-  /* ---------- carregamento ---------- */
-  async function loadAll() {
+  async function carregar() {
     const [nps, metas, zen] = await Promise.all([
       fetch("data/nps.json", { cache: "no-store" }).then(r => r.json()),
       fetch("data/metas.json", { cache: "no-store" }).then(r => r.ok ? r.json() : { objetivos: [] }).catch(() => ({ objetivos: [] })),
-      loadZendesk()
+      carregarZendesk()
     ]);
     S.nps = nps; S.metas = metas; S.zendesk = zen;
   }
-
-  async function loadZendesk() {
+  async function carregarZendesk() {
     const url = window.NPS_CONFIG && window.NPS_CONFIG.ZENDESK_CSV_URL;
     if (url) {
-      try {
-        const r = await fetch(url, { cache: "no-store" });
-        if (r.ok) return parseCSV(await r.text());
-      } catch (e) { console.warn("Fonte externa do Zendesk indisponível, usando o arquivo do repositório.", e); }
+      try { const r = await fetch(url, { cache: "no-store" }); if (r.ok) return parseCSV(await r.text()); }
+      catch (e) { console.warn("Fonte externa indisponível, usando o arquivo do repositório.", e); }
     }
     const r = await fetch("data/zendesk_semanal.csv", { cache: "no-store" });
-    if (!r.ok) return [];
-    return parseCSV(await r.text());
+    return r.ok ? parseCSV(await r.text()) : [];
   }
 
-  /* ---------- acesso a dados ---------- */
-  const zenMensal = () => S.zendesk.filter(r => (num(r.semana) ?? 0) === 0).sort((a,b) => a.mes.localeCompare(b.mes));
+  const zenMensal  = () => S.zendesk.filter(r => (num(r.semana) ?? 0) === 0).sort((a,b) => a.mes.localeCompare(b.mes));
   const zenSemanal = mes => S.zendesk.filter(r => r.mes === mes && (num(r.semana) ?? 0) > 0).sort((a,b) => num(a.semana) - num(b.semana));
-  const zenMes = mes => zenMensal().find(r => r.mes === mes) || null;
+  const zenMes     = mes => zenMensal().find(r => r.mes === mes) || null;
 
-  function objetivo(id) { return (S.metas.objetivos || []).find(o => o.id === id) || null; }
-  function metaDoMes(id, mes) {
-    const o = objetivo(id);
-    return o && o.metas ? (o.metas[mes] ?? null) : null;
-  }
-  function realizadoDoMes(o, mes) {
+  const objetivo = id => (S.metas.objetivos || []).find(o => o.id === id) || null;
+  function metaDoMes(id, mes) { const o = objetivo(id); return o && o.metas ? (o.metas[mes] ?? null) : null; }
+  function realizado(o, mes) {
     if (!o) return null;
     if (o.fonte_realizado === "nps") {
       const h = (S.nps.historico_nps || []).find(x => x.mes === mes);
@@ -165,46 +152,57 @@
     const linha = zenMes(mes);
     return linha ? num(linha[campo]) : null;
   }
+  function status(o, mes) {
+    const meta = metaDoMes(o.id, mes), real = realizado(o, mes);
+    const att = (meta && real !== null) ? Math.round(real / meta * 100) : null;
+    return { meta, real, att, cls: att === null ? "risco" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off" };
+  }
+  const unidade = o => (o.unidade === "%" ? "%" : "");
+
+  /** Especialidades com amostra suficiente vs. as que não sustentam leitura. */
+  function especialidades() {
+    const n = {};
+    (S.nps.satisfacao_por_especialidade || []).forEach(s => n[s.especialidade] = s.n);
+    const todas = (S.nps.nps_por_especialidade || []).map(e => Object.assign({ n: n[e.especialidade] ?? null }, e));
+    return {
+      relevantes: todas.filter(e => (e.n ?? 0) >= MIN_AMOSTRA),
+      pequenas:   todas.filter(e => (e.n ?? 0) < MIN_AMOSTRA)
+    };
+  }
 
   /* ---------- navegação ---------- */
   const PAGES = {
-    resumo:         { t: "Resumo executivo", s: "Onde estamos, qual o risco e o que está sendo feito" },
-    visao:          { t: "NPS em detalhe",  s: "Composição e evolução do índice" },
-    especialidades: { t: "Especialidades",  s: "Onde a experiência é melhor e pior" },
-    sac:            { t: "SAC & Zendesk",   s: "Indicadores de atendimento e suporte" },
-    metas:          { t: "Metas SMART",     s: "Atingimento das metas do segundo semestre" },
-    alavancas:      { t: "Alavancas",       s: "O que o time executou a cada semana" }
+    resumo:         { t: "Resumo executivo",  s: "Onde estamos, qual o risco e o que está sendo feito" },
+    visao:          { t: "NPS em detalhe",    s: "Composição e evolução do índice" },
+    especialidades: { t: "Especialidades",    s: "Onde a experiência é melhor e pior" },
+    sac:            { t: "SAC & Zendesk",     s: "Indicadores de atendimento e suporte" },
+    metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" },
+    alavancas:      { t: "Alavancas",         s: "O que o time executou a cada semana" }
   };
 
-  function setupNav() {
-    $$(".nav-item").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const page = btn.dataset.page;
-        $$(".nav-item").forEach(b => b.classList.toggle("active", b === btn));
-        $$(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + page));
-        $("#page-title").textContent = PAGES[page].t;
-        $("#page-sub").textContent = PAGES[page].s;
-        $("#sidebar").classList.remove("open");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        Object.values(S.charts).forEach(c => c && c.resize());
-      });
-    });
+  function navegacao() {
+    $$(".nav-item").forEach(btn => btn.addEventListener("click", () => {
+      const p = btn.dataset.page;
+      $$(".nav-item").forEach(b => b.classList.toggle("active", b === btn));
+      $$(".page").forEach(s => s.classList.toggle("active", s.id === "page-" + p));
+      $("#page-title").textContent = PAGES[p].t;
+      $("#page-sub").textContent = PAGES[p].s;
+      $("#sidebar").classList.remove("open");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      Object.values(S.charts).forEach(c => c && c.resize());
+    }));
     const mt = $("#menu-toggle");
     if (mt) mt.addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+    const va = $("#ver-alavancas");
+    if (va) va.addEventListener("click", () => $('.nav-item[data-page="alavancas"]').click());
   }
 
-  /* ---------- topo ---------- */
-  function renderTopbar() {
-    const inicial = ($(".nav-item.active") || {}).dataset;
-    const pg = PAGES[(inicial && inicial.page) || "resumo"];
-    if (pg) { $("#page-title").textContent = pg.t; $("#page-sub").textContent = pg.s; }
-
+  function topo() {
     const d = new Date(S.nps.generated_at);
     const txt = "Atualizado em " + d.toLocaleDateString("pt-BR") + " às " +
                 d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     $("#updated-text").textContent = txt;
     $("#foot-updated").textContent = txt;
-    $("#side-updated").textContent = d.toLocaleDateString("pt-BR");
 
     const sel = $("#month-select");
     const meses = (S.nps.historico_nps || []).map(h => h.mes);
@@ -217,747 +215,557 @@
     sel.disabled = meses.length <= 1;
     sel.addEventListener("change", () => {
       if (sel.value !== S.nps.current_month) {
-        pushAlert("O detalhamento por especialidade existe apenas para o mês vigente (" +
-                  mesLabel(S.nps.current_month) + "). O histórico de todos os meses aparece nos gráficos de evolução.");
+        aviso("O detalhamento existe apenas para " + mesLabel(S.nps.current_month).toLowerCase() +
+              ". Os demais meses aparecem nos gráficos de evolução.");
         sel.value = S.nps.current_month;
       }
     });
   }
 
-  function pushAlert(msg) {
-    const slot = $("#alert-slot");
-    slot.innerHTML = "";
-    const a = el("div", "alert-bar",
+  function aviso(msg) {
+    const slot = $("#alert-slot"); slot.innerHTML = "";
+    const a = el("div", "notice",
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg><span>' + msg + "</span>");
     slot.appendChild(a);
     setTimeout(() => a.remove(), 6000);
   }
 
-  /* ---------- PÁGINA: VISÃO GERAL ---------- */
-  function renderHero() {
+  /* ---------- RESUMO EXECUTIVO ---------- */
+  function heroi() {
     const k = S.nps.kpi, mes = S.nps.current_month;
     $("#hero-month").textContent = mesLabel(mes) + " de " + mes.slice(0,4);
-    animateNumber($("#hero-nps"), k.nps_geral, 1);
+    conta($("#hero-nps"), k.nps_geral, 1);
     $("#hero-desc").textContent =
-      "Calculado sobre " + k.total_respostas + " respostas de " + mesLabel(mes).toLowerCase() +
-      ". NPS = % promotores − % detratores.";
+      "Calculado sobre " + k.total_respostas + " respostas. NPS é a diferença entre o percentual de promotores e o de detratores.";
 
-    const delta = $("#hero-delta");
+    const tag = $("#hero-tag");
     if (typeof k.nps_geral_variacao_pct === "number") {
-      const up = k.nps_geral_variacao_pct >= 0;
-      delta.className = "hero-delta " + (up ? "up" : "down");
-      delta.innerHTML = (up ? "▲ " : "▼ ") + fmt(Math.abs(k.nps_geral_variacao_pct), 1) + "% vs. mês anterior";
+      const sobe = k.nps_geral_variacao_pct >= 0;
+      tag.className = "hero-tag " + (sobe ? "up" : "down");
+      tag.textContent = (sobe ? "+" : "−") + fmt(Math.abs(k.nps_geral_variacao_pct),1) + "% vs. mês anterior";
     } else {
-      delta.className = "hero-delta";
-      delta.innerHTML = "primeiro mês da série";
+      tag.className = "hero-tag";
+      tag.textContent = "primeiro mês da série";
     }
 
-    animateNumber($("#hs-prom"), k.promotores, 0);
-    animateNumber($("#hs-neut"), k.neutros, 0);
-    animateNumber($("#hs-detr"), k.detratores, 0);
-    animateNumber($("#hs-total"), k.total_respostas, 0);
-
-    // gauge de atingimento da meta
-    const meta = metaDoMes("nps", mes);
-    const legend = $("#gauge-legend");
-    if (meta) {
-      const pct = Math.round((k.nps_geral / meta) * 100);
-      const R = 64, CIRC = 2 * Math.PI * R;
-      const frac = Math.max(0, Math.min(1.35, pct / 100)) / 1.35;
-      const fill = $("#gauge-fill");
-      fill.setAttribute("stroke-dasharray", CIRC);
-      fill.setAttribute("stroke-dashoffset", CIRC);
-      fill.style.stroke = pct >= 100 ? "#35D07F" : (pct >= 85 ? C.teal : "#FCA5A5");
-      afterPaint(() => { fill.setAttribute("stroke-dashoffset", CIRC * (1 - frac)); });
-      animateNumber($("#gauge-pct"), pct, 0, "%");
-      legend.innerHTML =
-        "Meta de " + mesLabel(mes).toLowerCase() + ": <b>" + fmt(meta, 1) + "</b><br>" +
-        "Realizado: <b>" + fmt(k.nps_geral, 1) + "</b><br>" +
-        "Meta de dezembro: <b>" + fmt((objetivo("nps") || {}).alvo_final, 0) + "</b>";
-    } else {
-      $("#gauge-pct").textContent = "—";
-      legend.innerHTML = "Sem meta cadastrada<br>para este mês.";
-    }
-
-    // distribuição
-    const tot = k.promotores + k.neutros + k.detratores || 1;
-    const bar = $("#dist-bar");
-    const parts = [["dist-prom", k.promotores], ["dist-neut", k.neutros], ["dist-detr", k.detratores]];
-    bar.innerHTML = "";
-    parts.forEach(([cls, val]) => {
-      const s = el("span", cls); s.style.width = "0%";
-      bar.appendChild(s);
-      afterPaint(() => { s.style.width = (val / tot * 100) + "%"; });
-    });
-    const legendItems = [
-      ["Promotores", k.promotores, "#35D07F"],
+    const total = k.promotores + k.neutros + k.detratores || 1;
+    $("#hero-facts").innerHTML = [
+      ["Promotores", k.promotores, C.positive],
       ["Neutros", k.neutros, C.amber],
-      ["Detratores", k.detratores, "#F06767"]
-    ];
-    $("#dist-legend").innerHTML = legendItems.map(([nome, val, cor]) =>
-      '<div class="dist-item"><span class="dist-dot" style="background:' + cor + '"></span>' +
-      nome + ' <b>' + val + '</b> <small>(' + fmt(val / tot * 100, 1) + '%)</small></div>').join("");
-  }
+      ["Detratores", k.detratores, C.negative],
+      ["Respostas", k.total_respostas, null]
+    ].map(([rot, val, cor]) =>
+      '<div><div class="fact-value tabular">' +
+        (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") + val +
+      '</div><div class="fact-label">' + rot + "</div></div>").join("");
 
-  function renderHistorico(withCsat) {
-    const hist = S.nps.historico_nps || [];
-    const objNps = objetivo("nps") || { metas: {} };
-    const meses = Array.from(new Set([...hist.map(h => h.mes), ...Object.keys(objNps.metas || {})])).sort();
-
-    const realizado = meses.map(m => { const h = hist.find(x => x.mes === m); return h ? h.nps : null; });
-    const metas = meses.map(m => objNps.metas ? (objNps.metas[m] ?? null) : null);
-    const csatMap = {}; zenMensal().forEach(r => csatMap[r.mes] = num(r.csat_humano));
-    const csat = meses.map(m => csatMap[m] ?? null);
-
-    const ds = [
-      { label: "NPS realizado", data: realizado, borderColor: C.navy, backgroundColor: C.navySoft,
-        fill: true, tension: .34, borderWidth: 2.6, pointRadius: 4.5, pointBackgroundColor: C.navy,
-        pointBorderColor: "#fff", pointBorderWidth: 2, yAxisID: "y", spanGaps: false },
-      { label: "Meta", data: metas, borderColor: C.muted, borderDash: [5,5], borderWidth: 1.8,
-        backgroundColor: "transparent", tension: .34, pointRadius: 2.5, pointBackgroundColor: C.muted, yAxisID: "y", spanGaps: true }
-    ];
-    if (withCsat) ds.push({
-      label: "CSAT humano", data: csat, borderColor: C.pink, backgroundColor: "transparent",
-      borderWidth: 2, tension: .34, pointRadius: 3.5, pointBackgroundColor: C.pink, yAxisID: "y1", spanGaps: true
-    });
-
-    mkChart("chart-historico", {
-      type: "line",
-      data: { labels: meses.map(mesCurto), datasets: ds },
-      options: baseOpts({
-        plugins: { legend: legendBottom() },
-        scales: {
-          y: { min: 0, max: 100, grid: { color: C.grid }, ticks: { padding: 6 }, title: axisTitle("NPS") },
-          y1: withCsat ? { min: 0, max: 5, position: "right", grid: { display: false }, title: axisTitle("CSAT") } : { display: false },
-          x: { grid: { display: false } }
-        }
-      })
-    });
-  }
-
-  function renderRadar() {
-    const map = {};
-    (S.nps.media_por_pergunta || []).forEach(p => map[p.pergunta] = p.media);
-    const labels = DIMENSOES.map(d => d.label);
-    const vals = labels.map(l => map[l] ?? null);
-    mkChart("chart-radar", {
-      type: "radar",
-      data: { labels: labels.map(l => l.split(" ")[0]), datasets: [{
-        data: vals, borderColor: C.teal, backgroundColor: "rgba(0,185,187,.18)",
-        borderWidth: 2, pointRadius: 3, pointBackgroundColor: C.teal
-      }]},
-      options: baseOpts({
-        plugins: { legend: { display: false }, tooltip: { callbacks: {
-          title: it => labels[it[0].dataIndex],
-          label: c => "Nota " + fmt(c.parsed.r, 2)
-        }}},
-        scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, backdropColor: "transparent", font: { size: 9 } },
-                        grid: { color: C.grid }, angleLines: { color: C.grid }, pointLabels: { font: { size: 10 } } } }
-      })
-    });
-  }
-
-  function renderPerguntas() {
-    const items = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
-    const cores = items.map((it, i) => i === 0 ? C.teal : (i === items.length - 1 ? C.pink : C.navy));
-    mkChart("chart-perguntas", {
-      type: "bar",
-      data: { labels: items.map(i => i.pergunta), datasets: [{
-        data: items.map(i => i.media), backgroundColor: cores,
-        borderRadius: 6, maxBarThickness: 26
-      }]},
-      options: baseOpts({
-        indexAxis: "y",
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => "Nota média: " + fmt(c.parsed.x, 2) } } },
-        scales: { x: { min: 0, max: 5, grid: { color: C.grid } }, y: { grid: { display: false }, ticks: { font: { size: 11.5 } } } }
-      })
-    });
-  }
-
-  function renderInsights() {
-    const box = $("#insights"); box.innerHTML = "";
-    const perg = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
-    const esp = comAmostra().relevantes;
-    const melhorEsp = [...esp].sort((a,b) => b.nps - a.nps)[0];
-    const piorEsp = [...esp].sort((a,b) => a.nps - b.nps)[0];
-    const meta = metaDoMes("nps", S.nps.current_month);
-    const k = S.nps.kpi;
-
-    const cards = [];
+    const meta = metaDoMes("nps", mes);
     if (meta) {
-      const dif = k.nps_geral - meta;
-      cards.push({
-        cls: dif >= 0 ? "" : "warn",
-        html: dif >= 0
-          ? "O NPS está <b>" + fmt(dif,1) + " pontos acima</b> da meta de " + mesLabel(S.nps.current_month).toLowerCase() +
-            " (" + fmt(meta,1) + "), o equivalente a <b>" + Math.round(k.nps_geral/meta*100) + "%</b> de atingimento."
-          : "O NPS está <b>" + fmt(Math.abs(dif),1) + " pontos abaixo</b> da meta de " + mesLabel(S.nps.current_month).toLowerCase() + " (" + fmt(meta,1) + ")."
-      });
+      const pct = Math.round(k.nps_geral / meta * 100);
+      const CIRC = 2 * Math.PI * 55;
+      const fill = $("#meter-fill");
+      fill.style.stroke = pct >= 100 ? C.positive : pct >= 85 ? C.teal : C.negative;
+      aoPintar(() => fill.setAttribute("stroke-dashoffset", CIRC * (1 - Math.min(1, pct / 100))));
+      conta($("#meter-pct"), pct, 0, "%");
+      const objNps = objetivo("nps") || {};
+      $("#meter-list").innerHTML =
+        "<div><span>Realizado</span><b>" + fmt(k.nps_geral,1) + "</b></div>" +
+        "<div><span>Meta do mês</span><b>" + fmt(meta,1) + "</b></div>" +
+        "<div><span>Alvo de dezembro</span><b>" + fmt(objNps.alvo_final, 0) + "</b></div>";
+    } else {
+      $("#meter-pct").textContent = "—";
+      $("#meter-list").innerHTML = "<div><span>Sem meta cadastrada para o mês</span></div>";
     }
-    if (perg.length) {
-      cards.push({ cls: "", html: "<b>" + perg[0].pergunta + "</b> é a dimensão mais bem avaliada (" + fmt(perg[0].media,2) + "), e <b>" +
-        perg[perg.length-1].pergunta + "</b> a mais crítica (" + fmt(perg[perg.length-1].media,2) + ") — a diferença entre elas é de " +
-        fmt(perg[0].media - perg[perg.length-1].media, 2) + " ponto." });
-    }
-    if (melhorEsp && piorEsp && melhorEsp !== piorEsp) {
-      cards.push({ cls: "alert", html: "Entre as especialidades com amostra relevante, <b>" + melhorEsp.especialidade +
-        "</b> lidera com NPS " + fmt(melhorEsp.nps,1) + ", enquanto <b>" + piorEsp.especialidade + "</b> fica em " + fmt(piorEsp.nps,1) + "." });
-    }
-    const detrPct = k.detratores / (k.promotores + k.neutros + k.detratores) * 100;
-    cards.push({ cls: detrPct > 15 ? "warn" : "", html: "Detratores representam <b>" + fmt(detrPct,1) +
-      "%</b> da base respondente — cada ponto percentual reduzido aqui vale ~1 ponto de NPS." });
-
-    cards.forEach((c, i) => {
-      const d = el("div", "callout " + c.cls, c.html);
-      d.style.marginBottom = i < cards.length - 1 ? "10px" : "0";
-      box.appendChild(d);
-    });
   }
 
-  /* ---------- PÁGINA: RESUMO EXECUTIVO ---------- */
-  const MIN_AMOSTRA = 5; // abaixo disso o número não sustenta uma decisão
-
-  function statusObjetivo(o, mes) {
-    const meta = metaDoMes(o.id, mes);
-    const real = realizadoDoMes(o, mes);
-    const att = (meta && real !== null) ? Math.round(real / meta * 100) : null;
-    const status = att === null ? "risco" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off";
-    return { meta, real, att, status };
-  }
-
-  function unidade(o) { return o.unidade === "%" ? "%" : ""; }
-
-  function renderFarol() {
-    const mes = S.nps.current_month;
-    const box = $("#farol"); box.innerHTML = "";
+  function farol() {
+    const mes = S.nps.current_month, box = $("#farol");
+    box.innerHTML = "";
     (S.metas.objetivos || []).forEach(o => {
-      const st = statusObjetivo(o, mes);
-      const rotulo = st.status === "ok" ? "no alvo" : st.status === "risco" ? "atenção" : "atrasado";
-      const row = el("div", "farol-row");
-      row.innerHTML =
-        '<span class="farol-dot ' + st.status + '"></span>' +
+      const st = status(o, mes);
+      const palavra = st.cls === "ok" ? "no alvo" : st.cls === "risco" ? "atenção" : "atrasado";
+      box.appendChild(el("div", "farol-row",
+        '<span class="dot ' + st.cls + '"></span>' +
         '<div><div class="farol-name">' + o.label + "</div>" +
-          '<div class="farol-ctx">' + (o.contexto || o.descricao) + "</div></div>" +
-        '<div class="farol-vals"><div class="farol-real">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
+          '<div class="farol-ctx">' + (o.contexto || "") + "</div></div>" +
+        '<div class="farol-nums"><div class="farol-real tabular">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
           '<div class="farol-meta">meta ' + fmt(st.meta, o.casas) + unidade(o) + "</div></div>" +
-        '<div class="farol-att ' + st.status + '">' + (st.att === null ? "—" : st.att + "%") +
-          "<small>" + rotulo + "</small></div>";
-      box.appendChild(row);
+        '<div class="farol-status"><div class="farol-att tabular ' + st.cls + '">' +
+          (st.att === null ? "—" : st.att + "%") + "</div>" +
+          '<div class="farol-word">' + palavra + "</div></div>"));
     });
   }
 
-  function piorObjetivo() {
+  function alerta() {
     const mes = S.nps.current_month;
     let pior = null;
     (S.metas.objetivos || []).forEach(o => {
-      const st = statusObjetivo(o, mes);
-      if (st.att === null) return;
-      if (!pior || st.att < pior.st.att) pior = { o: o, st: st };
+      const st = status(o, mes);
+      if (st.att !== null && (!pior || st.att < pior.st.att)) pior = { o, st };
     });
-    return pior;
-  }
-
-  function renderAtencao() {
-    const box = $("#atencao"); box.innerHTML = "";
-    const pior = piorObjetivo();
-    const mes = S.nps.current_month;
-    if (!pior) { box.innerHTML = '<div class="detail-empty">Sem metas cadastradas para comparar.</div>'; return; }
+    if (!pior) { $("#alerta-text").textContent = "Sem metas cadastradas para comparar."; return; }
 
     const { o, st } = pior;
-    const noAlvo = st.att >= 100;
-    const cor = noAlvo ? C.green : st.att >= 85 ? C.amber : C.red;
-    const gap = st.meta - st.real;
+    $("#alerta-kicker").textContent = o.label + " · " + mesLabel(mes);
+    conta($("#alerta-number"), st.att, 0, "%");
+    $("#alerta-number").style.color = st.att >= 100 ? "#009131" : st.att >= 85 ? "#96700B" : C.negative;
 
-    let texto;
-    if (noAlvo) {
-      texto = "Nenhum objetivo está abaixo da meta neste mês. O menor atingimento é <b>" + o.label +
-        "</b>, ainda assim em <b>" + st.att + "%</b> da meta de " + mesLabel(mes).toLowerCase() + ".";
-    } else {
-      const alvoDez = o.alvo_final;
-      texto = "<b>" + o.label + "</b> fechou " + mesLabel(mes).toLowerCase() + " em <b>" +
-        fmt(st.real, o.casas) + unidade(o) + "</b> contra meta de <b>" + fmt(st.meta, o.casas) + unidade(o) +
-        "</b> — uma lacuna de " + fmt(gap, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") + ". " +
+    $("#alerta-text").innerHTML = st.att >= 100
+      ? "Nenhum objetivo ficou abaixo da meta neste mês. O menor atingimento é <b>" + o.label +
+        "</b>, ainda assim em " + st.att + "% do esperado."
+      : "<b>" + o.label + "</b> fechou " + mesLabel(mes).toLowerCase() + " em <b>" + fmt(st.real, o.casas) + unidade(o) +
+        "</b> contra meta de <b>" + fmt(st.meta, o.casas) + unidade(o) + "</b> — lacuna de " +
+        fmt(st.meta - st.real, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") + ". " +
         (o.contexto ? o.contexto + " " : "") +
-        "Para chegar em " + fmt(alvoDez, 0) + unidade(o) + " até dezembro, é o indicador que depende de decisão agora.";
-    }
-
-    box.innerHTML =
-      '<div class="atencao-hero">' +
-        '<div class="atencao-label">' + o.label + " · " + mesLabel(mes) + "</div>" +
-        '<div class="atencao-value" style="color:' + cor + '">' + (st.att === null ? "—" : st.att + "%") + "</div>" +
-        '<div class="atencao-sub">do que era esperado no mês</div>' +
-      "</div>" +
-      '<div class="atencao-txt">' + texto + "</div>";
+        "Para chegar a " + fmt(o.alvo_final, 0) + unidade(o) + " até dezembro, é o indicador que depende de decisão agora.";
   }
 
-  function renderLeitura() {
-    const box = $("#leitura"); box.innerHTML = "";
-    const mes = S.nps.current_month, k = S.nps.kpi;
-    const itens = [];
+  function leitura() {
+    const box = $("#notes"); box.innerHTML = "";
+    const mes = S.nps.current_month, k = S.nps.kpi, itens = [];
 
-    // 1. NPS vs meta
-    const stNps = statusObjetivo(objetivo("nps") || { id: "nps", casas: 1 }, mes);
+    const stNps = status(objetivo("nps") || { id: "nps", casas: 1 }, mes);
     if (stNps.meta) {
       const dif = k.nps_geral - stNps.meta;
-      itens.push({ tipo: dif >= 0 ? "up" : "down",
+      itens.push({ t: dif >= 0 ? "up" : "down",
         txt: "O NPS fechou <b>" + fmt(k.nps_geral,1) + "</b> contra meta de <b>" + fmt(stNps.meta,1) + "</b> — " +
              (dif >= 0 ? fmt(dif,1) + " pontos acima" : fmt(Math.abs(dif),1) + " pontos abaixo") +
-             ", equivalente a " + stNps.att + "% do esperado para " + mesLabel(mes).toLowerCase() + "." });
+             ", ou " + stNps.att + "% do esperado para " + mesLabel(mes).toLowerCase() + "." });
     }
 
-    // 2. quantos objetivos no alvo
     const objs = S.metas.objetivos || [];
-    const noAlvo = objs.filter(o => (statusObjetivo(o, mes).att || 0) >= 100).length;
-    itens.push({ tipo: noAlvo === objs.length ? "up" : noAlvo === 0 ? "down" : "flat",
-      txt: "<b>" + noAlvo + " de " + objs.length + " objetivos</b> do semestre estão no alvo em " +
-           mesLabel(mes).toLowerCase() + "." });
+    const noAlvo = objs.filter(o => (status(o, mes).att || 0) >= 100).length;
+    itens.push({ t: noAlvo === objs.length ? "up" : noAlvo === 0 ? "down" : "",
+      txt: "<b>" + noAlvo + " de " + objs.length + " objetivos</b> do semestre estão no alvo." });
 
-    // 3. maior alavanca / maior ofensor entre as dimensões
     const perg = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
-    if (perg.length) {
-      itens.push({ tipo: "flat",
-        txt: "Entre as seis dimensões avaliadas, <b>" + perg[0].pergunta + "</b> sustenta a nota (" +
-             fmt(perg[0].media,2) + ") e <b>" + perg[perg.length-1].pergunta + "</b> é o que mais puxa para baixo (" +
-             fmt(perg[perg.length-1].media,2) + ")." });
-    }
+    if (perg.length) itens.push({ t: "",
+      txt: "<b>" + perg[0].pergunta + "</b> sustenta a nota (" + fmt(perg[0].media,2) + ") e <b>" +
+           perg[perg.length-1].pergunta + "</b> é o que mais puxa para baixo (" + fmt(perg[perg.length-1].media,2) + ")." });
 
-    // 4. concentração da base
-    const esp = comAmostra().relevantes;
-    const maior = [...esp].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
-    if (maior) {
-      itens.push({ tipo: "flat",
-        txt: "<b>" + maior.especialidade + "</b> concentra " + fmt(maior.pct_amostra,1) +
-             "% das respostas — o NPS geral se move principalmente com esse grupo." });
-    }
+    const maior = [...especialidades().relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
+    if (maior) itens.push({ t: "",
+      txt: "<b>" + maior.especialidade + "</b> concentra " + fmt(maior.pct_amostra,1) +
+           "% das respostas — o índice geral se move principalmente com esse grupo." });
 
-    itens.forEach(i => {
-      const d = el("div", "leitura-item");
-      const marca = i.tipo === "up" ? "▲" : i.tipo === "down" ? "▼" : "•";
-      d.innerHTML = '<div class="leitura-mark ' + i.tipo + '">' + marca + "</div>" +
-                    '<div class="leitura-txt">' + i.txt + "</div>";
-      box.appendChild(d);
+    itens.forEach(i => box.appendChild(el("li", i.t, i.txt)));
+  }
+
+  function acoes() {
+    const box = $("#actions"); box.innerHTML = "";
+    const ultimas = S.zendesk
+      .filter(r => r.narrativa && (num(r.semana) ?? 0) > 0)
+      .sort((a,b) => (a.mes + String(a.semana)).localeCompare(b.mes + String(b.semana)))
+      .slice(-3).reverse();
+    if (!ultimas.length) { box.appendChild(el("li", "", "Nenhuma ação registrada ainda.")); return; }
+    ultimas.forEach(r => box.appendChild(el("li", "",
+      '<span class="when">' + mesCurto(r.mes) + " · semana " + r.semana + "</span>" + r.narrativa)));
+  }
+
+  /* ---------- NPS EM DETALHE ---------- */
+  function composicao() {
+    const k = S.nps.kpi, total = k.promotores + k.neutros + k.detratores || 1;
+    const barra = $("#stack");
+    [["p", k.promotores], ["n", k.neutros], ["d", k.detratores]].forEach(([cls, val], i) => {
+      const s = barra.children[i];
+      s.style.width = "0%";
+      aoPintar(() => s.style.width = (val / total * 100) + "%");
     });
+    $("#stack-legend").innerHTML = [
+      ["Promotores", k.promotores], ["Neutros", k.neutros], ["Detratores", k.detratores]
+    ].map(([rot, v]) => "<div>" + rot + " <b>" + v + "</b> (" + fmt(v / total * 100, 1) + "%)</div>").join("");
   }
 
-  function renderAcoes() {
-    const box = $("#acoes"); box.innerHTML = "";
-    const comNarrativa = S.zendesk.filter(r => r.narrativa && (num(r.semana) ?? 0) > 0)
-      .sort((a,b) => (a.mes + String(a.semana)).localeCompare(b.mes + String(b.semana)));
-    const ultimas = comNarrativa.slice(-3).reverse();
-    if (!ultimas.length) { box.innerHTML = '<div class="detail-empty">Nenhuma ação registrada ainda.</div>'; return; }
+  function grafHistorico(comCsat) {
+    const hist = S.nps.historico_nps || [];
+    const objNps = objetivo("nps") || { metas: {} };
+    const meses = Array.from(new Set([...hist.map(h => h.mes), ...Object.keys(objNps.metas || {})])).sort();
+    const real = meses.map(m => { const h = hist.find(x => x.mes === m); return h ? h.nps : null; });
+    const meta = meses.map(m => objNps.metas[m] ?? null);
+    const csatMap = {}; zenMensal().forEach(r => csatMap[r.mes] = num(r.csat_humano));
 
-    ultimas.forEach(r => {
-      const d = el("div", "acao");
-      d.innerHTML = '<div class="acao-week">' + mesCurto(r.mes) + "<br>S" + r.semana + "</div>" +
-                    '<div class="acao-txt">' + r.narrativa + "</div>";
-      box.appendChild(d);
-    });
-    const link = el("div");
-    link.style.cssText = "margin-top:12px";
-    link.innerHTML = '<button class="seg-btn" id="ver-alavancas">Ver todas as alavancas →</button>';
-    box.appendChild(link);
-    link.querySelector("button").addEventListener("click", () =>
-      document.querySelector('.nav-item[data-page="alavancas"]').click());
+    const ds = [
+      { label: "Realizado", data: real, borderColor: C.blue, backgroundColor: C.blueFill,
+        fill: true, tension: .3, borderWidth: 2.5, pointRadius: 4.5, pointBackgroundColor: C.blue,
+        pointBorderColor: "#fff", pointBorderWidth: 2, yAxisID: "y" },
+      { label: "Meta", data: meta, borderColor: C.text, borderDash: [5,4], borderWidth: 1.6,
+        backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true }
+    ];
+    if (comCsat) ds.push({ label: "CSAT humano", data: meses.map(m => csatMap[m] ?? null),
+      borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
+      pointRadius: 3.5, pointBackgroundColor: C.pink, yAxisID: "y1", spanGaps: true });
+
+    grafico("chart-historico", { type: "line", data: { labels: meses.map(mesCurto), datasets: ds },
+      options: opcoes({ plugins: { legend: legenda() },
+        scales: { y: { min: 0, max: 100, grid: { color: C.grid } },
+                  y1: comCsat ? { min: 0, max: 5, position: "right", grid: { display: false } } : { display: false },
+                  x: { grid: { display: false } } } }) });
   }
 
-  /* ---------- PÁGINA: ESPECIALIDADES ---------- */
-  /** Separa especialidades com amostra suficiente das que não sustentam leitura. */
-  function comAmostra() {
-    const nMap = {};
-    (S.nps.satisfacao_por_especialidade || []).forEach(s => nMap[s.especialidade] = s.n);
-    const todas = (S.nps.nps_por_especialidade || []).map(e => Object.assign({ n: nMap[e.especialidade] ?? null }, e));
-    return {
-      relevantes: todas.filter(e => (e.n ?? 0) >= MIN_AMOSTRA),
-      pequenas: todas.filter(e => (e.n ?? 0) < MIN_AMOSTRA)
-    };
+  function grafRadar() {
+    const map = {}; (S.nps.media_por_pergunta || []).forEach(p => map[p.pergunta] = p.media);
+    const rotulos = DIMENSOES.map(d => d.label);
+    grafico("chart-radar", {
+      type: "radar",
+      data: { labels: rotulos.map(l => l.split(" ")[0]), datasets: [{
+        data: rotulos.map(l => map[l] ?? null), borderColor: C.teal,
+        backgroundColor: "rgba(0,195,197,.15)", borderWidth: 2, pointRadius: 3, pointBackgroundColor: C.teal }] },
+      options: opcoes({ plugins: { legend: { display: false },
+        tooltip: { callbacks: { title: i => rotulos[i[0].dataIndex], label: c => "Nota " + fmt(c.parsed.r, 2) } } },
+        scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, backdropColor: "transparent", font: { size: 9 } },
+                       grid: { color: C.grid }, angleLines: { color: C.grid }, pointLabels: { font: { size: 10 } } } } }) });
   }
 
-  function renderEspStats() {
-    const { relevantes, pequenas } = comAmostra();
-    const best = [...relevantes].sort((a,b) => b.nps - a.nps)[0];
-    const worst = [...relevantes].sort((a,b) => a.nps - b.nps)[0];
-    const maior = [...relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
+  function grafPerguntas() {
+    const itens = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
+    grafico("chart-perguntas", {
+      type: "bar",
+      data: { labels: itens.map(i => i.pergunta), datasets: [{
+        data: itens.map(i => i.media),
+        backgroundColor: itens.map((_, i) => i === 0 ? C.teal : i === itens.length - 1 ? C.pink : C.blue),
+        borderRadius: 4, maxBarThickness: 22 }] },
+      options: opcoes({ indexAxis: "y",
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => "Nota " + fmt(c.parsed.x, 2) } } },
+        scales: { x: { min: 0, max: 5, grid: { color: C.grid } }, y: { grid: { display: false } } } }) });
+  }
+
+  function destaques() {
+    const box = $("#insights"); box.innerHTML = "";
+    const mes = S.nps.current_month, k = S.nps.kpi;
+    const perg = [...(S.nps.media_por_pergunta || [])].sort((a,b) => b.media - a.media);
+    const esp = especialidades().relevantes;
+    const melhor = [...esp].sort((a,b) => b.nps - a.nps)[0];
+    const pior = [...esp].sort((a,b) => a.nps - b.nps)[0];
+    const meta = metaDoMes("nps", mes);
+    const itens = [];
+
+    if (meta) {
+      const dif = k.nps_geral - meta;
+      itens.push({ t: dif >= 0 ? "up" : "down",
+        txt: dif >= 0
+          ? "O índice está <b>" + fmt(dif,1) + " pontos acima</b> da meta do mês."
+          : "O índice está <b>" + fmt(Math.abs(dif),1) + " pontos abaixo</b> da meta do mês." });
+    }
+    if (perg.length) itens.push({ t: "",
+      txt: "A diferença entre a melhor e a pior dimensão é de <b>" +
+           fmt(perg[0].media - perg[perg.length-1].media, 2) + " ponto</b>." });
+    if (melhor && pior && melhor !== pior) itens.push({ t: "",
+      txt: "<b>" + melhor.especialidade + "</b> lidera com NPS " + fmt(melhor.nps,1) +
+           "; <b>" + pior.especialidade + "</b> fica em " + fmt(pior.nps,1) + "." });
+    const pctDetr = k.detratores / (k.promotores + k.neutros + k.detratores) * 100;
+    itens.push({ t: pctDetr > 15 ? "down" : "",
+      txt: "Detratores são <b>" + fmt(pctDetr,1) + "%</b> da base — cada ponto percentual reduzido aqui vale cerca de um ponto de NPS." });
+
+    itens.forEach(i => box.appendChild(el("li", i.t, i.txt)));
+  }
+
+  /* ---------- ESPECIALIDADES ---------- */
+  function espIndicadores() {
+    const { relevantes, pequenas } = especialidades();
+    const melhor = [...relevantes].sort((a,b) => b.nps - a.nps)[0];
+    const pior   = [...relevantes].sort((a,b) => a.nps - b.nps)[0];
+    const maior  = [...relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
 
     const cards = [
-      { cls: "navy",  label: "Especialidades na leitura", value: relevantes.length, casas: 0,
-        note: pequenas.length ? pequenas.length + " fora por amostra pequena" : "todas com amostra suficiente" },
-      { cls: "",      label: "Maior volume", value: maior ? maior.pct_amostra : null, suffix: "%", note: maior ? maior.especialidade : "—", casas: 1 },
-      { cls: "amber", label: "Melhor NPS", value: best ? best.nps : null, note: best ? best.especialidade : "—", casas: 1 },
-      { cls: "pink",  label: "Pior NPS", value: worst ? worst.nps : null, note: worst ? worst.especialidade : "—", casas: 1 }
+      { rot: "Na leitura", val: relevantes.length, casas: 0,
+        nota: pequenas.length ? pequenas.length + " fora por amostra pequena" : "todas com amostra suficiente" },
+      { rot: "Maior volume", val: maior ? maior.pct_amostra : null, casas: 1, suf: "%", nota: maior ? maior.especialidade : "—" },
+      { rot: "Melhor NPS", val: melhor ? melhor.nps : null, casas: 1, nota: melhor ? melhor.especialidade : "—" },
+      { rot: "Pior NPS", val: pior ? pior.nps : null, casas: 1, nota: pior ? pior.especialidade : "—" }
     ];
     const box = $("#esp-stats"); box.innerHTML = "";
     cards.forEach(c => {
-      const d = el("div", "stat " + c.cls);
-      d.innerHTML = '<div class="stat-label">' + c.label + '</div><div class="stat-value">—</div>' +
-                    '<div class="stat-note">' + c.note + "</div>";
+      const d = el("div", "metric",
+        '<div class="metric-label">' + c.rot + '</div><div class="metric-value tabular">—</div>' +
+        '<div class="metric-note">' + c.nota + "</div>");
       box.appendChild(d);
-      animateNumber(d.querySelector(".stat-value"), c.value, c.casas, c.suffix);
+      conta(d.querySelector(".metric-value"), c.val, c.casas, c.suf);
     });
   }
 
-  function renderEspBarlist() {
-    const { relevantes, pequenas } = comAmostra();
-    const list = [...relevantes];
-    list.sort((a,b) => S.espSort === "nps" ? b.nps - a.nps : b.pct_amostra - a.pct_amostra);
-    const box = $("#esp-barlist"); box.innerHTML = "";
+  function espLista() {
+    const { relevantes, pequenas } = especialidades();
+    const lista = [...relevantes].sort((a,b) =>
+      S.espOrdem === "nps" ? b.nps - a.nps : b.pct_amostra - a.pct_amostra);
+    const box = $("#esp-ranks"); box.innerHTML = "";
 
-    list.forEach(item => {
-      const row = el("div", "barrow" + (S.espSel === item.especialidade ? " active" : ""));
-      const width = Math.max(0, (item.nps + 100) / 200 * 100); // -100..100 → 0..100
-      row.innerHTML =
-        '<div class="barrow-name">' + item.especialidade +
-          '<small>' + item.n + " respostas · " + fmt(item.pct_amostra,1) + "% da amostra</small></div>" +
-        '<div class="barrow-track"><div class="barrow-fill" style="width:0%;background:' + npsColor(item.nps) + '"></div></div>' +
-        '<div class="barrow-val" style="color:' + npsColor(item.nps) + '">' + fmt(item.nps,1) + "</div>";
-      row.addEventListener("click", () => selectEsp(item.especialidade));
+    lista.forEach(item => {
+      const row = el("div", "rank" + (S.espSel === item.especialidade ? " on" : ""),
+        '<div class="rank-name">' + item.especialidade +
+          "<span>" + item.n + " respostas · " + fmt(item.pct_amostra,1) + "% da amostra</span></div>" +
+        '<div class="rank-track"><i class="rank-fill" style="display:block;width:0;background:' + corNps(item.nps) + '"></i></div>' +
+        '<div class="rank-val" style="color:' + corNps(item.nps) + '">' + fmt(item.nps,1) + "</div>");
+      row.addEventListener("click", () => selecionar(item.especialidade));
       box.appendChild(row);
-      afterPaint(() => { row.querySelector(".barrow-fill").style.width = width + "%"; });
+      aoPintar(() => row.querySelector(".rank-fill").style.width = Math.max(0, (item.nps + 100) / 2) + "%");
     });
 
-    // Amostras pequenas ficam fora dos gráficos para não distorcer a leitura
     if (pequenas.length) {
-      const bloco = el("div", "small-sample");
-      bloco.innerHTML = '<div class="small-sample-title">Amostra insuficiente (menos de ' + MIN_AMOSTRA +
-        " respostas) — fora da leitura principal</div>" +
-        '<div class="small-tags">' + pequenas.map(p =>
-          '<span class="small-tag">' + p.especialidade + " <b>" + (p.n ?? "?") + "</b></span>").join("") + "</div>";
-      box.appendChild(bloco);
+      box.appendChild(el("div", "excluded",
+        '<div class="excluded-title">Amostra insuficiente (menos de ' + MIN_AMOSTRA + " respostas)</div>" +
+        '<div class="excluded-list">' + pequenas.map(p =>
+          "<span>" + p.especialidade + " <b>" + (p.n ?? "?") + "</b></span>").join("") + "</div>"));
     }
   }
 
-  function selectEsp(nome) {
+  function selecionar(nome) {
     S.espSel = S.espSel === nome ? null : nome;
-    renderEspBarlist();
-    renderEspDetail();
-    renderSatTable();
+    espLista(); espDetalhe(); tabelaSatisfacao();
   }
 
-  function renderEspDetail() {
+  function espDetalhe() {
     const box = $("#esp-detail");
     if (!S.espSel) {
-      box.innerHTML = '<div class="detail-empty">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3h6M12 3v5"/><circle cx="12" cy="14" r="7"/></svg>' +
-        "<div>Selecione uma especialidade ao lado para ver as notas detalhadas.</div></div>";
+      box.innerHTML = '<div class="empty">Selecione uma especialidade para ver as notas por dimensão.</div>';
       return;
     }
     const sat = (S.nps.satisfacao_por_especialidade || []).find(s => s.especialidade === S.espSel);
     const nps = (S.nps.nps_por_especialidade || []).find(s => s.especialidade === S.espSel);
-    if (!sat) { box.innerHTML = '<div class="detail-empty">Sem detalhamento para esta especialidade.</div>'; return; }
+    if (!sat) { box.innerHTML = '<div class="empty">Sem detalhamento para esta especialidade.</div>'; return; }
 
-    let html = '<div class="detail-name">' + sat.especialidade + "</div>" +
+    box.innerHTML =
+      '<div class="detail-name">' + sat.especialidade + "</div>" +
       '<div class="detail-meta">' + sat.n + " respostas · NPS " +
-      '<b style="color:' + npsColor(nps ? nps.nps : 0) + '">' + fmt(nps ? nps.nps : null, 1) + "</b>" +
-      (nps ? " · " + fmt(nps.pct_amostra,1) + "% da amostra" : "") + "</div>" +
-      '<div class="detail-scores">';
-    DIMENSOES.forEach(d => {
-      const v = sat[d.key];
-      html += '<div class="dscore"><div><div class="dscore-label">' + d.label + "</div>" +
-        '<div class="dscore-bar"><div class="dscore-fill" style="width:' + ((v||0)/5*100) + '%;background:' +
-        (v >= 4.2 ? C.green : v >= 3.5 ? C.teal : v >= 3 ? C.amber : C.red) + '"></div></div></div>' +
-        '<div class="dscore-val">' + fmt(v, 2) + "</div></div>";
-    });
-    html += "</div>";
-    box.innerHTML = html;
+        '<b style="color:' + corNps(nps ? nps.nps : 0) + '">' + fmt(nps ? nps.nps : null, 1) + "</b></div>" +
+      '<div class="detail-list">' + DIMENSOES.map(d => {
+        const v = sat[d.key];
+        const cor = v >= 4.2 ? C.positive : v >= 3.5 ? C.teal : v >= 3 ? C.amber : C.negative;
+        return '<div class="detail-row"><div class="detail-top"><span>' + d.label + "</span>" +
+          "<b>" + fmt(v, 2) + "</b></div>" +
+          '<div class="detail-bar"><i style="width:' + ((v || 0) / 5 * 100) + '%;background:' + cor + '"></i></div></div>';
+      }).join("") + "</div>";
   }
 
-  function renderSatTable() {
+  function tabelaSatisfacao() {
     const head = $("#sat-head"), body = $("#tbl-satisfacao tbody");
-    const cols = [{ key: "especialidade", label: "Especialidade", txt: true }, { key: "n", label: "Respostas", casas: 0 }]
-      .concat(DIMENSOES.map(d => ({ key: d.key, label: d.label, casas: 2 })));
+    const cols = [{ k: "especialidade", l: "Especialidade", txt: true }, { k: "n", l: "Respostas", casas: 0 }]
+      .concat(DIMENSOES.map(d => ({ k: d.key, l: d.label, casas: 2 })));
 
     head.innerHTML = cols.map(c => {
-      const sorted = S.satSort.col === c.key;
-      return '<th class="sortable ' + (c.txt ? "" : "num ") + (sorted ? "sorted" : "") + '" data-col="' + c.key + '">' +
-        c.label + '<span class="arrow">' + (sorted ? (S.satSort.dir === 1 ? "▲" : "▼") : "▲") + "</span></th>";
+      const ord = S.satOrdem.col === c.k;
+      return '<th class="sortable ' + (c.txt ? "" : "num ") + (ord ? "sorted" : "") + '" data-col="' + c.k + '">' +
+        c.l + '<span class="arr">' + (ord ? (S.satOrdem.dir === 1 ? "▲" : "▼") : "▲") + "</span></th>";
     }).join("");
     head.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
       const col = th.dataset.col;
-      if (S.satSort.col === col) S.satSort.dir *= -1;
-      else { S.satSort.col = col; S.satSort.dir = col === "especialidade" ? 1 : -1; }
-      renderSatTable();
+      if (S.satOrdem.col === col) S.satOrdem.dir *= -1;
+      else { S.satOrdem.col = col; S.satOrdem.dir = col === "especialidade" ? 1 : -1; }
+      tabelaSatisfacao();
     }));
 
-    const rows = [...(S.nps.satisfacao_por_especialidade || [])].sort((a,b) => {
-      const va = a[S.satSort.col], vb = b[S.satSort.col];
-      if (typeof va === "string") return S.satSort.dir * va.localeCompare(vb);
-      return S.satSort.dir * ((va ?? -Infinity) - (vb ?? -Infinity));
+    const linhas = [...(S.nps.satisfacao_por_especialidade || [])].sort((a,b) => {
+      const va = a[S.satOrdem.col], vb = b[S.satOrdem.col];
+      if (typeof va === "string") return S.satOrdem.dir * va.localeCompare(vb);
+      return S.satOrdem.dir * ((va ?? -Infinity) - (vb ?? -Infinity));
     });
 
     body.innerHTML = "";
-    rows.forEach(r => {
-      const tr = el("tr", S.espSel === r.especialidade ? "selected" : "");
-      let html = '<td class="strong">' + r.especialidade + "</td>" +
-                 '<td class="num" style="color:var(--muted)">' + r.n + "</td>";
-      DIMENSOES.forEach(d => {
-        html += '<td class="num"><span class="pill ' + scorePill(r[d.key]) + '">' + fmt(r[d.key], 2) + "</span></td>";
-      });
-      tr.innerHTML = html;
+    linhas.forEach(r => {
+      const tr = el("tr", S.espSel === r.especialidade ? "on" : "",
+        '<td class="strong">' + r.especialidade + "</td>" +
+        '<td class="num" style="color:var(--gray-body)">' + r.n + "</td>" +
+        DIMENSOES.map(d => '<td class="num"><span class="score ' + classeNota(r[d.key]) + '">' +
+          fmt(r[d.key], 2) + "</span></td>").join(""));
       tr.style.cursor = "pointer";
-      tr.addEventListener("click", () => selectEsp(r.especialidade));
+      tr.addEventListener("click", () => selecionar(r.especialidade));
       body.appendChild(tr);
     });
   }
 
-  /* ---------- PÁGINA: SAC ---------- */
-  function renderSac() {
+  /* ---------- SAC ---------- */
+  function sac() {
     const mensal = zenMensal();
-    // último mês que efetivamente tem indicador preenchido (ignora meses ainda em branco)
     const preenchidos = mensal.filter(r =>
       ["csat_ia","csat_humano","fcr_pct","resolucao_ia_pct"].some(c => num(r[c]) !== null) ||
       (r.tma_primeira_resposta || "").trim() || (r.tmr || "").trim());
     const atual = preenchidos[preenchidos.length - 1];
     const anterior = preenchidos[preenchidos.length - 2];
 
-    function delta(campo, inverso) {
+    function variacao(campo, inverso) {
       if (!atual || !anterior) return "";
       const a = num(atual[campo]), b = num(anterior[campo]);
       if (a === null || b === null || b === 0) return "";
       const p = (a - b) / Math.abs(b) * 100;
       const bom = inverso ? p < 0 : p > 0;
-      return '<span class="trend ' + (bom ? "up" : "down") + '">' + (p >= 0 ? "▲" : "▼") + " " + fmt(Math.abs(p), 1) + "%</span>";
+      return '<span class="delta ' + (bom ? "up" : "down") + '">' + (p >= 0 ? "+" : "−") + fmt(Math.abs(p),1) + "%</span>";
     }
 
-    const cards = [
-      { cls: "",      label: "CSAT humano",      val: atual ? num(atual.csat_humano) : null, casas: 2, note: "Escala 0–5" + delta("csat_humano") },
-      { cls: "navy",  label: "CSAT IA",          val: atual ? num(atual.csat_ia) : null,     casas: 2, note: "Escala 0–5" + delta("csat_ia") },
-      { cls: "amber", label: "Resolução com IA", val: atual ? num(atual.resolucao_ia_pct) : null, casas: 0, suffix: "%", note: "Sem intervenção humana" + delta("resolucao_ia_pct") },
-      { cls: "pink",  label: "FCR",              val: atual ? num(atual.fcr_pct) : null,     casas: 1, suffix: "%", note: "Resolução no 1º contato" + delta("fcr_pct") },
-      { cls: "",      label: "TMA 1ª resposta",  txt: (atual && atual.tma_primeira_resposta) || "—", note: "Tempo médio de atendimento" },
-      { cls: "navy",  label: "TMR",              txt: (atual && atual.tmr) || "—", note: "Tempo médio de resolução" }
-    ];
-    const ref = $("#sac-ref");
-    if (ref) ref.innerHTML = atual
-      ? "Números de <b>" + (atual.mes_label || mesLabel(atual.mes)) + "</b>" +
-        (anterior ? " · variação vs. " + (anterior.mes_label || mesLabel(anterior.mes)).toLowerCase() : "")
-      : "Nenhum mês preenchido ainda em data/zendesk_semanal.csv.";
+    $("#sac-ref").innerHTML = atual
+      ? "Números de " + (atual.mes_label || mesLabel(atual.mes)) +
+        (anterior ? " · variação contra " + (anterior.mes_label || mesLabel(anterior.mes)).toLowerCase() : "")
+      : "Nenhum mês preenchido ainda";
 
+    const cards = [
+      { rot: "CSAT humano", val: atual ? num(atual.csat_humano) : null, casas: 2, nota: "Escala 0 a 5" + variacao("csat_humano") },
+      { rot: "CSAT IA", val: atual ? num(atual.csat_ia) : null, casas: 2, nota: "Escala 0 a 5" + variacao("csat_ia") },
+      { rot: "Resolução com IA", val: atual ? num(atual.resolucao_ia_pct) : null, casas: 0, suf: "%", nota: "Sem intervenção humana" + variacao("resolucao_ia_pct") },
+      { rot: "FCR", val: atual ? num(atual.fcr_pct) : null, casas: 1, suf: "%", nota: "Resolvido no primeiro contato" + variacao("fcr_pct") },
+      { rot: "TMA 1ª resposta", txt: (atual && atual.tma_primeira_resposta) || "—", nota: "Tempo médio de atendimento" },
+      { rot: "TMR", txt: (atual && atual.tmr) || "—", nota: "Tempo médio de resolução" }
+    ];
     const box = $("#sac-stats"); box.innerHTML = "";
     cards.forEach(c => {
-      const d = el("div", "stat " + c.cls);
-      d.innerHTML = '<div class="stat-label">' + c.label + "</div>" +
-        '<div class="stat-value">' + (c.txt !== undefined ? c.txt : "—") + "</div>" +
-        '<div class="stat-note">' + c.note + "</div>";
+      const d = el("div", "metric",
+        '<div class="metric-label">' + c.rot + "</div>" +
+        '<div class="metric-value tabular">' + (c.txt !== undefined ? c.txt : "—") + "</div>" +
+        '<div class="metric-note">' + c.nota + "</div>");
       box.appendChild(d);
-      if (c.txt === undefined) animateNumber(d.querySelector(".stat-value"), c.val, c.casas, c.suffix);
+      if (c.txt === undefined) conta(d.querySelector(".metric-value"), c.val, c.casas, c.suf);
     });
 
     const meses = mensal.map(r => r.mes);
-    // CSAT
-    mkChart("chart-csat", {
-      type: "line",
+    grafico("chart-csat", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
-        { label: "CSAT humano", data: mensal.map(r => num(r.csat_humano)), borderColor: C.pink, backgroundColor: C.pinkSoft,
-          fill: true, tension: .34, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.pink, pointBorderColor: "#fff", pointBorderWidth: 2 },
-        { label: "CSAT IA", data: mensal.map(r => num(r.csat_ia)), borderColor: C.navy, backgroundColor: "transparent",
-          tension: .34, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.navy, borderDash: [4,3] }
-      ]},
-      options: baseOpts({ plugins: { legend: legendBottom() },
-        scales: { y: { min: 0, max: 5, grid: { color: C.grid } }, x: { grid: { display: false } } } })
-    });
-    // FCR
-    mkChart("chart-fcr", {
-      type: "line",
-      data: { labels: meses.map(mesCurto), datasets: [
-        { label: "FCR", data: mensal.map(r => num(r.fcr_pct)), borderColor: C.teal, backgroundColor: C.tealSoft,
-          fill: true, tension: .34, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.teal, pointBorderColor: "#fff", pointBorderWidth: 2 },
-        { label: "Resolução com IA", data: mensal.map(r => num(r.resolucao_ia_pct)), borderColor: C.amber, backgroundColor: "transparent",
-          tension: .34, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.amber }
-      ]},
-      options: baseOpts({ plugins: { legend: legendBottom(), tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y,1) + "%" } } },
-        scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } })
-    });
+        { label: "Humano", data: mensal.map(r => num(r.csat_humano)), borderColor: C.blue, backgroundColor: C.blueFill,
+          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue, pointBorderColor: "#fff", pointBorderWidth: 2 },
+        { label: "IA", data: mensal.map(r => num(r.csat_ia)), borderColor: C.teal, backgroundColor: "transparent",
+          borderDash: [4,3], tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.teal } ] },
+      options: opcoes({ plugins: { legend: legenda() },
+        scales: { y: { min: 0, max: 5, grid: { color: C.grid } }, x: { grid: { display: false } } } }) });
 
-    // week over week
+    grafico("chart-fcr", { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: [
+        { label: "FCR", data: mensal.map(r => num(r.fcr_pct)), borderColor: C.teal, backgroundColor: C.tealFill,
+          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.teal, pointBorderColor: "#fff", pointBorderWidth: 2 },
+        { label: "Resolução com IA", data: mensal.map(r => num(r.resolucao_ia_pct)), borderColor: C.pink,
+          backgroundColor: "transparent", tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.pink } ] },
+      options: opcoes({ plugins: { legend: legenda(), tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y,1) + "%" } } },
+        scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
+
     const sem = zenSemanal(S.nps.current_month);
-    mkChart("chart-wow", {
-      type: "bar",
-      data: { labels: sem.map(r => "S" + r.semana), datasets: [
-        { type: "bar", label: "FCR (%)", data: sem.map(r => num(r.fcr_pct)), backgroundColor: C.tealSoft,
-          borderColor: C.teal, borderWidth: 1.5, borderRadius: 6, maxBarThickness: 40, yAxisID: "y" },
-        { type: "line", label: "CSAT humano", data: sem.map(r => num(r.csat_humano)), borderColor: C.pink,
-          backgroundColor: "transparent", tension: .34, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.pink, yAxisID: "y1" }
-      ]},
-      options: baseOpts({ plugins: { legend: legendBottom() },
-        scales: {
-          y: { min: 0, max: 100, grid: { color: C.grid }, ticks: { callback: v => v + "%" }, title: axisTitle("FCR") },
-          y1: { min: 0, max: 5, position: "right", grid: { display: false }, title: axisTitle("CSAT") },
-          x: { grid: { display: false } }
-        } })
-    });
+    grafico("chart-wow", { data: { labels: sem.map(r => "Semana " + r.semana), datasets: [
+        { type: "bar", label: "FCR", data: sem.map(r => num(r.fcr_pct)), backgroundColor: C.tealFill,
+          borderColor: C.teal, borderWidth: 1.5, borderRadius: 4, maxBarThickness: 38, yAxisID: "y" },
+        { type: "line", label: "CSAT humano", data: sem.map(r => num(r.csat_humano)), borderColor: C.blue,
+          backgroundColor: "transparent", tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue, yAxisID: "y1" } ] },
+      options: opcoes({ plugins: { legend: legenda() },
+        scales: { y: { min: 0, max: 100, grid: { color: C.grid }, ticks: { callback: v => v + "%" } },
+                  y1: { min: 0, max: 5, position: "right", grid: { display: false } },
+                  x: { grid: { display: false } } } }) });
 
-    // tabelas
     const tb = $("#tbl-zendesk tbody"); tb.innerHTML = "";
-    mensal.forEach(r => {
-      const tr = el("tr");
-      tr.innerHTML = '<td class="strong">' + (r.mes_label || mesLabel(r.mes)) + "</td>" +
-        '<td class="num">' + fmt(num(r.csat_ia), 2) + "</td>" +
-        '<td class="num">' + fmt(num(r.csat_humano), 2) + "</td>" +
-        '<td class="num">' + (r.tma_primeira_resposta || "—") + "</td>" +
-        '<td class="num">' + (r.tmr || "—") + "</td>" +
-        '<td class="num">' + (r.fcr_pct ? fmt(num(r.fcr_pct),1) + "%" : "—") + "</td>" +
-        '<td class="num">' + (r.resolucao_ia_pct ? fmt(num(r.resolucao_ia_pct),0) + "%" : "—") + "</td>";
-      tb.appendChild(tr);
-    });
+    mensal.forEach(r => tb.appendChild(el("tr", "",
+      '<td class="strong">' + (r.mes_label || mesLabel(r.mes)) + "</td>" +
+      '<td class="num">' + fmt(num(r.csat_ia), 2) + "</td>" +
+      '<td class="num">' + fmt(num(r.csat_humano), 2) + "</td>" +
+      '<td class="num">' + (r.tma_primeira_resposta || "—") + "</td>" +
+      '<td class="num">' + (r.tmr || "—") + "</td>" +
+      '<td class="num">' + (r.fcr_pct ? fmt(num(r.fcr_pct),1) + "%" : "—") + "</td>" +
+      '<td class="num">' + (r.resolucao_ia_pct ? fmt(num(r.resolucao_ia_pct),0) + "%" : "—") + "</td>")));
 
     const ts = $("#tbl-semanal tbody"); ts.innerHTML = "";
-    if (!sem.length) {
-      ts.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted-2);padding:22px;">Nenhuma semana preenchida para ' + mesLabel(S.nps.current_month) + ".</td></tr>";
-    }
-    sem.forEach(r => {
-      const tr = el("tr");
-      tr.innerHTML = '<td class="strong">Semana ' + r.semana + "</td><td>" + (r.periodo || "—") + "</td>" +
-        '<td class="num">' + fmt(num(r.csat_ia), 2) + "</td>" +
-        '<td class="num">' + fmt(num(r.csat_humano), 2) + "</td>" +
-        '<td class="num">' + (r.tma_primeira_resposta || "—") + "</td>" +
-        '<td class="num">' + (r.tmr || "—") + "</td>" +
-        '<td class="num">' + (r.fcr_pct ? fmt(num(r.fcr_pct),1) + "%" : "—") + "</td>";
-      ts.appendChild(tr);
-    });
+    if (!sem.length) ts.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma semana preenchida para ' +
+      mesLabel(S.nps.current_month).toLowerCase() + ".</td></tr>";
+    sem.forEach(r => ts.appendChild(el("tr", "",
+      '<td class="strong">Semana ' + r.semana + "</td><td>" + (r.periodo || "—") + "</td>" +
+      '<td class="num">' + fmt(num(r.csat_ia), 2) + "</td>" +
+      '<td class="num">' + fmt(num(r.csat_humano), 2) + "</td>" +
+      '<td class="num">' + (r.tma_primeira_resposta || "—") + "</td>" +
+      '<td class="num">' + (r.tmr || "—") + "</td>" +
+      '<td class="num">' + (r.fcr_pct ? fmt(num(r.fcr_pct),1) + "%" : "—") + "</td>")));
   }
 
-  /* ---------- PÁGINA: METAS ---------- */
-  function renderMetas() {
+  /* ---------- METAS ---------- */
+  function metas() {
     const mes = S.nps.current_month;
     const box = $("#goal-cards"); box.innerHTML = "";
 
     (S.metas.objetivos || []).forEach(o => {
-      const meta = metaDoMes(o.id, mes);
-      const real = realizadoDoMes(o, mes);
-      const att = (meta && real !== null) ? Math.round(real / meta * 100) : null;
-      const good = att !== null && att >= 100;
-      const R = 18, CIRC = 2 * Math.PI * R;
-      const frac = att === null ? 0 : Math.max(0, Math.min(1, att / 100));
-
-      const card = el("div", "goal");
-      card.innerHTML =
-        '<div class="goal-badge">Meta ' + mesCurto(mes).toLowerCase() + ": " + fmt(meta, o.casas) + (o.unidade === "%" ? "%" : "") + "</div>" +
+      const st = status(o, mes);
+      const ok = st.att !== null && st.att >= 100;
+      box.appendChild(el("div", "card goal",
+        '<div class="goal-tag">Meta ' + mesCurto(mes).toLowerCase() + ": " + fmt(st.meta, o.casas) + unidade(o) + "</div>" +
         '<div class="goal-desc">' + o.descricao + "</div>" +
-        '<div class="goal-real"><div class="goal-real-label">Realizado</div>' +
-        '<div class="goal-real-value">' + fmt(real, o.casas) + (o.unidade === "%" ? "%" : "") + "</div></div>" +
-        '<div class="goal-foot">' +
-          '<div><div class="goal-real-label">Real vs. meta</div>' +
-          '<div class="goal-att ' + (good ? "good" : "bad") + '">' + (att === null ? "—" : att + "%") + "</div></div>" +
-          '<div class="goal-ring"><svg width="44" height="44" viewBox="0 0 44 44">' +
-            '<circle cx="22" cy="22" r="18" fill="none" stroke="#EDEFF5" stroke-width="4"/>' +
-            '<circle cx="22" cy="22" r="18" fill="none" stroke="' + (good ? C.green : C.red) + '" stroke-width="4" stroke-linecap="round" ' +
-            'stroke-dasharray="' + CIRC + '" stroke-dashoffset="' + CIRC + '" class="ring-fill"/>' +
-          "</svg></div>" +
-        "</div>";
-      box.appendChild(card);
-      const ring = card.querySelector(".ring-fill");
-      afterPaint(() => { ring.style.transition = "stroke-dashoffset 1s cubic-bezier(.2,.8,.3,1)"; ring.setAttribute("stroke-dashoffset", CIRC * (1 - frac)); });
+        '<div class="goal-num tabular">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
+        '<div class="goal-foot"><span>Real vs. meta</span>' +
+          '<div class="goal-att tabular ' + (ok ? "ok" : "off") + '">' + (st.att === null ? "—" : st.att + "%") + "</div></div>"));
     });
 
-    // trajetória: normaliza cada objetivo como % da meta de dezembro
     const objs = S.metas.objetivos || [];
     const meses = Array.from(new Set(objs.flatMap(o => Object.keys(o.metas || {})))).sort();
-    const cores = [C.navy, C.pink, C.amber, C.teal];
+    const cores = [C.blue, C.teal, C.pink, C.amber];
     const ds = [];
     objs.forEach((o, i) => {
-      ds.push({
-        label: o.label + " (real)",
-        data: meses.map(m => { const r = realizadoDoMes(o, m); return r === null ? null : Math.round(r / o.alvo_final * 100); }),
-        borderColor: cores[i % cores.length], backgroundColor: "transparent",
-        borderWidth: 2.4, tension: .34, pointRadius: 4, pointBackgroundColor: cores[i % cores.length], spanGaps: false
-      });
-      ds.push({
-        label: o.label + " (meta)",
-        data: meses.map(m => { const v = o.metas[m]; return v === undefined ? null : Math.round(v / o.alvo_final * 100); }),
-        borderColor: cores[i % cores.length], backgroundColor: "transparent",
-        borderWidth: 1.4, borderDash: [4,4], tension: .34, pointRadius: 0, spanGaps: true
-      });
+      ds.push({ label: o.label, data: meses.map(m => { const r = realizado(o, m); return r === null ? null : Math.round(r / o.alvo_final * 100); }),
+        borderColor: cores[i % 4], backgroundColor: "transparent", borderWidth: 2.4, tension: .3,
+        pointRadius: 4, pointBackgroundColor: cores[i % 4] });
+      ds.push({ label: o.label + " (meta)", data: meses.map(m => { const v = o.metas[m]; return v === undefined ? null : Math.round(v / o.alvo_final * 100); }),
+        borderColor: cores[i % 4], backgroundColor: "transparent", borderWidth: 1.3, borderDash: [4,4],
+        tension: .3, pointRadius: 0, spanGaps: true });
     });
-    mkChart("chart-meta", {
-      type: "line",
-      data: { labels: meses.map(mesCurto), datasets: ds },
-      options: baseOpts({
-        plugins: { legend: legendBottom(9), tooltip: { callbacks: { label: c => c.dataset.label + ": " + c.parsed.y + "% do alvo de dezembro" } } },
-        scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" }, title: axisTitle("% do alvo final") }, x: { grid: { display: false } } }
-      })
-    });
+    grafico("chart-meta", { type: "line", data: { labels: meses.map(mesCurto), datasets: ds },
+      options: opcoes({ plugins: { legend: legenda(9), tooltip: { callbacks: { label: c => c.dataset.label + ": " + c.parsed.y + "% do alvo" } } },
+        scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
 
-    // resumo
-    const sum = $("#meta-summary"); sum.innerHTML = "";
+    const gaps = $("#meta-gaps"); gaps.innerHTML = "";
     objs.forEach(o => {
-      const real = realizadoDoMes(o, mes);
-      const falta = real === null ? null : o.alvo_final - real;
+      const real = realizado(o, mes);
       const pct = real === null ? null : Math.round(real / o.alvo_final * 100);
-      const d = el("div");
-      d.style.cssText = "padding:13px 0;border-bottom:1px solid var(--line)";
-      d.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">' +
-          '<span style="font-size:13.5px;font-weight:600;color:var(--navy)">' + o.label + "</span>" +
-          '<span class="pill ' + (pct !== null && pct >= 100 ? "pill-good" : pct !== null && pct >= 80 ? "pill-teal" : "pill-mid") + '">' +
-            (pct === null ? "—" : pct + "% do alvo") + "</span></div>" +
-        '<div style="font-size:11.5px;color:var(--muted);margin-top:4px;">' +
-          (falta === null ? "sem dado no mês" :
-           falta <= 0 ? "alvo de dezembro já atingido" :
-           "faltam " + fmt(falta, o.casas) + (o.unidade === "%" ? " p.p." : " pts") + " para o alvo de dezembro (" + fmt(o.alvo_final, 0) + ")") +
-        "</div>";
-      sum.appendChild(d);
+      const falta = real === null ? null : o.alvo_final - real;
+      gaps.appendChild(el("div", "gap-row",
+        '<div class="gap-top"><span class="gap-name">' + o.label + "</span>" +
+          '<span class="gap-pct tabular" style="color:' + (pct >= 100 ? "#009131" : pct >= 80 ? C.blue : "#96700B") + '">' +
+          (pct === null ? "—" : pct + "%") + "</span></div>" +
+        '<div class="gap-note">' +
+          (falta === null ? "sem dado no mês"
+            : falta <= 0 ? "alvo de dezembro já atingido"
+            : "faltam " + fmt(falta, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") +
+              " para o alvo de " + fmt(o.alvo_final, 0) + unidade(o)) + "</div>"));
     });
-    if (S.metas.observacao) {
-      sum.appendChild(el("div", "callout alert", S.metas.observacao)).style.marginTop = "14px";
-    }
   }
 
-  /* ---------- PÁGINA: ALAVANCAS ---------- */
-  function renderAlavancas() {
+  /* ---------- ALAVANCAS ---------- */
+  function alavancas() {
     const sel = $("#alav-month");
     const meses = Array.from(new Set(S.zendesk.filter(r => r.narrativa).map(r => r.mes))).sort().reverse();
     if (!sel.options.length) {
       meses.forEach(m => { const o = el("option"); o.value = m; o.textContent = mesLabel(m); sel.appendChild(o); });
-      sel.addEventListener("change", () => drawTimeline(sel.value));
+      sel.addEventListener("change", () => timeline(sel.value));
     }
-    drawTimeline(sel.value || meses[0]);
+    timeline(sel.value || meses[0]);
   }
 
-  function drawTimeline(mes) {
+  function timeline(mes) {
     const box = $("#timeline"); box.innerHTML = "";
     const semanas = zenSemanal(mes).filter(r => r.narrativa);
     if (!semanas.length) {
-      box.innerHTML = '<div class="detail-empty">Nenhuma alavanca registrada para ' + mesLabel(mes) + ".</div>";
+      box.innerHTML = '<li class="empty">Nenhuma alavanca registrada para ' + mesLabel(mes).toLowerCase() + ".</li>";
       return;
     }
     semanas.forEach((r, i) => {
-      const item = el("div", "tl-item" + (i === semanas.length - 1 ? " latest" : ""));
-      const chips = [];
-      if (r.fcr_pct) chips.push("FCR <b>" + fmt(num(r.fcr_pct),1) + "%</b>");
-      if (r.csat_humano) chips.push("CSAT <b>" + fmt(num(r.csat_humano),2) + "</b>");
-      if (r.tmr) chips.push("TMR <b>" + r.tmr + "</b>");
-      if (r.resolucao_ia_pct) chips.push("Resolução IA <b>" + fmt(num(r.resolucao_ia_pct),0) + "%</b>");
-      item.innerHTML =
-        '<div class="tl-left"><div class="tl-week">Semana ' + r.semana + "</div>" +
-        '<div class="tl-period">' + (r.periodo || "") + "</div></div>" +
-        '<div class="tl-right"><div class="tl-dot"></div>' +
-          '<div class="tl-text">' + r.narrativa + "</div>" +
-          (chips.length ? '<div class="tl-chips">' + chips.map(c => '<span class="tl-chip">' + c + "</span>").join("") + "</div>" : "") +
-        "</div>";
-      box.appendChild(item);
+      const tags = [];
+      if (r.fcr_pct) tags.push("FCR <b>" + fmt(num(r.fcr_pct),1) + "%</b>");
+      if (r.csat_humano) tags.push("CSAT <b>" + fmt(num(r.csat_humano),2) + "</b>");
+      if (r.tmr) tags.push("TMR <b>" + r.tmr + "</b>");
+      if (r.resolucao_ia_pct) tags.push("Resolução IA <b>" + fmt(num(r.resolucao_ia_pct),0) + "%</b>");
+      box.appendChild(el("li", "tl" + (i === semanas.length - 1 ? " now" : ""),
+        '<div class="tl-when"><div class="tl-week">Semana ' + r.semana + "</div>" +
+          '<div class="tl-date">' + (r.periodo || "") + "</div></div>" +
+        '<div class="tl-body"><div class="tl-text">' + r.narrativa + "</div>" +
+          (tags.length ? '<div class="tl-tags">' + tags.map(t => "<span>" + t + "</span>").join("") + "</div>" : "") +
+        "</div>"));
     });
   }
 
-  /* ---------- Chart.js helpers ---------- */
-  function baseOpts(extra) {
+  /* ---------- Chart.js ---------- */
+  function opcoes(extra) {
     return Object.assign({
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
-      plugins: {
-        tooltip: {
-          backgroundColor: "#16233B", padding: 11, cornerRadius: 9,
-          titleFont: { size: 12.5, weight: "600" }, bodyFont: { size: 12 },
-          displayColors: true, boxPadding: 4
-        }
-      }
+      plugins: { tooltip: {
+        backgroundColor: "#202020", padding: 11, cornerRadius: 8,
+        titleFont: { family: "'Open Sans', sans-serif", size: 12, weight: "600" },
+        bodyFont: { family: "'Open Sans', sans-serif", size: 12 },
+        displayColors: true, boxPadding: 4
+      } }
     }, extra);
   }
-  function legendBottom(size) {
-    return { display: true, position: "bottom", labels: { boxWidth: 9, boxHeight: 9, usePointStyle: true, pointStyle: "circle", padding: 14, font: { size: size || 11 } } };
+  function legenda(size) {
+    return { display: true, position: "bottom",
+      labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true, pointStyle: "circle",
+                padding: 14, font: { size: size || 11 } } };
   }
-  function axisTitle(text) { return { display: true, text: text, font: { size: 10 }, color: C.muted }; }
-
-  function mkChart(id, cfg) {
+  function grafico(id, cfg) {
     const canvas = document.getElementById(id);
     if (!canvas) return;
     if (S.charts[id]) S.charts[id].destroy();
@@ -966,58 +774,40 @@
 
   /* ---------- init ---------- */
   async function init() {
-    Chart.defaults.font.family = "'Blinker', system-ui, sans-serif";
+    Chart.defaults.font.family = "'Open Sans', system-ui, sans-serif";
     Chart.defaults.font.size = 11.5;
-    Chart.defaults.color = C.muted;
+    Chart.defaults.color = C.text;
 
-    await loadAll();
+    await carregar();
+    navegacao();
+    topo();
 
-    setupNav();
-    renderTopbar();
+    heroi(); farol(); alerta(); leitura(); acoes();
+    composicao(); grafHistorico(false); grafRadar(); grafPerguntas(); destaques();
+    espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
+    sac(); metas(); alavancas();
 
-    renderHero();
-    renderFarol();
-    renderAtencao();
-    renderLeitura();
-    renderAcoes();
-
-    renderHistorico(false);
-    renderRadar();
-    renderPerguntas();
-    renderInsights();
-
-    renderEspStats();
-    renderEspBarlist();
-    renderEspDetail();
-    renderSatTable();
-
-    renderSac();
-    renderMetas();
-    renderAlavancas();
-
-    // toggles
     $$("#seg-hist button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-hist button").forEach(x => x.classList.toggle("active", x === b));
-      renderHistorico(b.dataset.series === "csat");
+      grafHistorico(b.dataset.series === "csat");
     }));
     $$("#seg-esp button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-esp button").forEach(x => x.classList.toggle("active", x === b));
-      S.espSort = b.dataset.sort;
-      renderEspBarlist();
+      S.espOrdem = b.dataset.sort;
+      espLista();
     }));
-
     const tSat = $("#toggle-sat"), wSat = $("#sat-wrap");
     if (tSat && wSat) tSat.addEventListener("click", () => {
       const aberto = !wSat.hidden;
       wSat.hidden = aberto;
-      tSat.textContent = aberto ? "Ver tabela completa" : "Ocultar tabela";
+      tSat.textContent = aberto ? "Ver tabela" : "Ocultar tabela";
     });
   }
 
   init().catch(err => {
     console.error(err);
-    document.querySelector(".page-wrap").insertAdjacentHTML("afterbegin",
-      '<div class="alert-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>' +
-      "<span>Não foi possível carregar os dados do painel. Detalhes no console do navegador.</span></div>");
+    $(".page-wrap").insertAdjacentHTML("afterbegin",
+      '<div class="notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>' +
+      "<span>Não foi possível carregar os dados. Detalhes no console do navegador.</span></div>");
   });
 })();
