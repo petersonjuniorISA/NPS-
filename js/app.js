@@ -237,12 +237,11 @@
 
   /* ---------- navegação ---------- */
   const PAGES = {
-    resumo:         { t: "Resumo executivo",  s: "Onde estamos, qual o risco e o que está sendo feito" },
+    resumo:         { t: "Resumo executivo",  s: "Onde estamos e qual o risco" },
     visao:          { t: "NPS em detalhe",    s: "Composição e evolução do índice" },
     especialidades: { t: "Especialidades",    s: "Onde a experiência é melhor e pior" },
     sac:            { t: "SAC & Zendesk",     s: "Indicadores de atendimento e suporte" },
-    metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" },
-    alavancas:      { t: "Alavancas",         s: "O que o time executou a cada semana" }
+    metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" }
   };
 
   function navegacao() {
@@ -258,8 +257,7 @@
     }));
     const mt = $("#menu-toggle");
     if (mt) mt.addEventListener("click", () => $("#sidebar").classList.toggle("open"));
-    const va = $("#ver-alavancas");
-    if (va) va.addEventListener("click", () => $('.nav-item[data-page="alavancas"]').click());
+
   }
 
   function topo() {
@@ -322,16 +320,16 @@
                   '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>';
     slot.innerHTML =
       !temNps() ? '<div class="notice">' + cerca + "<span>Ainda não há respostas de NPS em " +
-                  recorteLabel() + ". Os indicadores de Zendesk e as alavancas do mês continuam disponíveis.</span></div>"
+                  recorteLabel() + ". Os indicadores de Zendesk continuam disponíveis.</span></div>"
       : sem ? '<div class="notice">' + cerca + "<span>Recorte da <b>semana " + sem.semana + "</b> (" +
               sem.label + ", " + sem.respostas + " respostas). As metas do semestre e os números de Zendesk " +
               "continuam mensais.</span></div>"
       : "";
 
-    heroi(); farol(); alerta(); leitura(); acoes();
-    grafHistorico(S.histCsat); composicao(); grafRadar(); grafPerguntas(); grafSemanas(); destaques();
+    heroi(); farol(); alerta(); leitura();
+    grafHistorico(S.histCsat); composicao(); grafRadar(); grafPerguntas(); destaques();
     espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
-    sac(); metas(); alavancas();
+    sac(); metas();
   }
 
   function heroi() {
@@ -505,17 +503,6 @@
     itens.forEach(i => box.appendChild(el("li", i.t, i.txt)));
   }
 
-  function acoes() {
-    const box = $("#actions"); box.innerHTML = "";
-    const ultimas = S.zendesk
-      .filter(r => r.narrativa && (num(r.semana) ?? 0) > 0)
-      .sort((a,b) => (a.mes + String(a.semana)).localeCompare(b.mes + String(b.semana)))
-      .slice(-3).reverse();
-    if (!ultimas.length) { box.appendChild(el("li", "", "Nenhuma ação registrada ainda.")); return; }
-    ultimas.forEach(r => box.appendChild(el("li", "",
-      '<span class="when">' + mesCurto(r.mes) + " · semana " + r.semana + "</span>" + r.narrativa)));
-  }
-
   /* ---------- NPS EM DETALHE ---------- */
   function composicao() {
     const k = dados().kpi, total = k.promotores + k.neutros + k.detratores || 1;
@@ -544,7 +531,8 @@
         // o mês que está sendo lido no painel ganha um ponto maior, em rosa
         pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
         pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : C.blue),
-        pointBorderColor: "#fff", pointBorderWidth: 2 },
+        pointBorderColor: "#fff", pointBorderWidth: 2,
+        rotulo: { casas: 1, cor: C.blue } },
       { label: "Meta", data: meta, borderColor: C.text, borderDash: [5,4], borderWidth: 1.6,
         backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true }
     ];
@@ -553,7 +541,12 @@
       pointRadius: 3.5, pointBackgroundColor: C.pink, yAxisID: "y1", spanGaps: true });
 
     grafico("chart-historico", { type: "line", data: { labels: meses.map(mesCurto), datasets: ds },
-      options: opcoes({ plugins: { legend: legenda() },
+      options: opcoes({ plugins: { legend: legenda(), tooltip: { callbacks: {
+          // passar o mouse no ponto mostra a meta daquele mês junto do realizado
+          afterBody: itens => {
+            const m = meses[itens[0].dataIndex], alvo = objNps.metas[m];
+            return alvo === undefined ? "" : "Meta de " + mesCurto(m).toLowerCase() + ": " + fmt(alvo, 1);
+          } } } },
         scales: { y: { min: 0, max: 100, grid: { color: C.grid } },
                   y1: comCsat ? { min: 0, max: 5, position: "right", grid: { display: false } } : { display: false },
                   x: { grid: { display: false } } } }) });
@@ -566,11 +559,13 @@
       type: "radar",
       data: { labels: rotulos.map(l => l.split(" ")[0]), datasets: [{
         data: rotulos.map(l => map[l] ?? null), borderColor: C.teal,
-        backgroundColor: "rgba(0,195,197,.15)", borderWidth: 2, pointRadius: 3, pointBackgroundColor: C.teal }] },
+        backgroundColor: "rgba(0,195,197,.15)", borderWidth: 2, pointRadius: 3, pointBackgroundColor: C.teal,
+        rotulo: { casas: 2, cor: C.blue } }] },
       options: opcoes({ plugins: { legend: { display: false },
         tooltip: { callbacks: { title: i => rotulos[i[0].dataIndex], label: c => "Nota " + fmt(c.parsed.r, 2) } } },
         scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, backdropColor: "transparent", font: { size: 9 } },
-                       grid: { color: C.grid }, angleLines: { color: C.grid }, pointLabels: { font: { size: 10 } } } } }) });
+                       grid: { color: C.grid }, angleLines: { color: C.grid },
+                       pointLabels: { font: { size: 10 }, padding: 22 } } } }) });
   }
 
   function grafPerguntas() {
@@ -580,67 +575,12 @@
       data: { labels: itens.map(i => i.pergunta), datasets: [{
         data: itens.map(i => i.media),
         backgroundColor: itens.map((_, i) => i === 0 ? C.teal : i === itens.length - 1 ? C.pink : C.blue),
-        borderRadius: 4, maxBarThickness: 22 }] },
+        borderRadius: 4, maxBarThickness: 22, rotulo: { casas: 2, cor: C.featured || "#202020" } }] },
       options: opcoes({ indexAxis: "y",
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => "Nota " + fmt(c.parsed.x, 2) } } },
-        scales: { x: { min: 0, max: 5, grid: { color: C.grid } }, y: { grid: { display: false } } } }) });
-  }
-
-  function grafSemanas() {
-    const box = $("#semanas-wrap");
-    const sem = semanasNps();
-    if (!sem.length) {
-      box.innerHTML = '<div class="empty">Sem quebra semanal para ' + mesLabel(S.mes).toLowerCase() +
-        ". As semanas aparecem assim que houver respostas no mês.</div>";
-      return;
-    }
-    box.innerHTML = '<div class="chart h240"><canvas id="chart-semanas"></canvas></div>' +
-      '<div class="week-cards" id="week-cards"></div>';
-
-    grafico("chart-semanas", {
-      data: { labels: sem.map(s => s.label), datasets: [
-        { type: "bar", label: "Respostas", data: sem.map(s => s.respostas), backgroundColor: "rgba(0,68,116,.16)",
-          borderColor: "transparent", borderRadius: 4, maxBarThickness: 44, yAxisID: "y1", order: 2 },
-        { type: "line", label: "NPS da semana", data: sem.map(s => s.nps), borderColor: C.teal,
-          backgroundColor: "transparent", tension: .3, borderWidth: 2.6, yAxisID: "y", order: 1,
-          // semana com poucas respostas fica com o ponto vazado, pra não passar por tendência
-          pointRadius: sem.map(s => s.semana === S.semana ? 7 : s.respostas < MIN_SEMANA ? 4 : 4.5),
-          pointBackgroundColor: sem.map(s => s.semana === S.semana ? C.pink
-                                           : s.respostas < MIN_SEMANA ? "#fff" : C.teal),
-          pointBorderColor: sem.map(s => s.respostas < MIN_SEMANA && s.semana !== S.semana ? C.teal : "#fff"),
-          pointBorderWidth: 2, borderDash: [], segment: {
-            borderDash: ctx => sem[ctx.p1DataIndex].respostas < MIN_SEMANA ? [5, 4] : undefined
-          } } ] },
-      options: opcoes({ plugins: { legend: legenda() },
-        // sem semana negativa, a escala começa em zero — senão metade do gráfico ficaria vazia
-        scales: { y: { min: sem.some(s => s.nps < 0) ? -100 : 0, max: 100, grid: { color: C.grid } },
-                  y1: { position: "right", grid: { display: false }, beginAtZero: true,
-                        title: { display: true, text: "respostas", font: { size: 10 } } },
-                  x: { grid: { display: false } } } }) });
-
-    $("#week-cards").innerHTML = sem.map(s => {
-      const parcial = s.respostas < MIN_SEMANA;
-      return '<button type="button" class="week' + (parcial ? " parcial" : "") +
-        (s.semana === S.semana ? " ativa" : "") + '" data-semana="' + s.semana +
-        '" title="Filtrar o painel por esta semana">' +
-        '<div class="week-n">Semana ' + s.semana + (parcial ? ' <span class="week-tag">parcial</span>' : "") + "</div>" +
-        '<div class="week-date">' + s.label + "</div>" +
-        '<div class="week-nps tabular" style="color:' + (parcial ? "var(--gray-disabled)" : corNps(s.nps)) + '">' +
-          fmt(s.nps, 1) + "</div>" +
-        '<div class="week-meta">' + s.respostas + " respostas · " +
-          s.promotores + "P " + s.neutros + "N " + s.detratores + "D</div>" +
-        (parcial ? '<div class="week-meta">Amostra pequena demais para virar tendência.</div>' : "") +
-      "</button>";
-    }).join("");
-
-    // clicar no cartão liga/desliga o filtro daquela semana
-    $$("#week-cards .week").forEach(b => b.addEventListener("click", () => {
-      const n = Number(b.dataset.semana);
-      S.semana = S.semana === n ? null : n;
-      S.espSel = null;
-      $("#week-select").value = S.semana === null ? "" : String(S.semana);
-      desenharMes();
-    }));
+        scales: { x: { min: 0, max: 5.6, grid: { color: C.grid },
+                       ticks: { stepSize: 1, callback: v => v > 5 ? "" : v } },
+                  y: { grid: { display: false } } } }) });
   }
 
   function destaques() {
@@ -690,9 +630,6 @@
     const comN = e => e.especialidade + " · " + e.n + " respostas";
 
     const cards = [
-      { rot: "Na leitura", val: relevantes.length, casas: 0,
-        nota: pequenas.length ? pequenas.length + " fora por amostra pequena" : "todas com amostra suficiente" },
-      { rot: "Maior volume", val: maior ? maior.pct_amostra : null, casas: 1, suf: "%", nota: maior ? comN(maior) : "—" },
       { rot: "Melhor NPS", val: melhor ? melhor.nps : null, casas: 1,
         nota: melhor ? comN(melhor) : "sem amostra suficiente" },
       { rot: "Pior NPS", val: pior ? pior.nps : null, casas: 1,
@@ -851,18 +788,22 @@
     grafico("chart-csat", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
         { label: "Humano", data: mensal.map(r => num(r.csat_humano)), borderColor: C.blue, backgroundColor: C.blueFill,
-          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue, pointBorderColor: "#fff", pointBorderWidth: 2 },
+          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue, pointBorderColor: "#fff", pointBorderWidth: 2,
+          rotulo: { casas: 2, cor: C.blue } },
         { label: "IA", data: mensal.map(r => num(r.csat_ia)), borderColor: C.teal, backgroundColor: "transparent",
-          borderDash: [4,3], tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.teal } ] },
+          borderDash: [4,3], tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.teal,
+          rotulo: { casas: 2, cor: "#009193", abaixo: true } } ] },
       options: opcoes({ plugins: { legend: legenda() },
         scales: { y: { min: 0, max: 5, grid: { color: C.grid } }, x: { grid: { display: false } } } }) });
 
     grafico("chart-fcr", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
         { label: "FCR", data: mensal.map(r => num(r.fcr_pct)), borderColor: C.teal, backgroundColor: C.tealFill,
-          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.teal, pointBorderColor: "#fff", pointBorderWidth: 2 },
+          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.teal, pointBorderColor: "#fff", pointBorderWidth: 2,
+          rotulo: { casas: 1, sufixo: "%", cor: "#009193" } },
         { label: "Resolução com IA", data: mensal.map(r => num(r.resolucao_ia_pct)), borderColor: C.pink,
-          backgroundColor: "transparent", tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.pink } ] },
+          backgroundColor: "transparent", tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.pink,
+          rotulo: { casas: 0, sufixo: "%", cor: C.pink, abaixo: true } } ] },
       options: opcoes({ plugins: { legend: legenda(), tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y,1) + "%" } } },
         scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
 
@@ -871,9 +812,11 @@
     if (subSem) subSem.textContent = "Semanas de " + mesLabel(S.mes).toLowerCase() + ", preenchidas à mão";
     grafico("chart-wow", { data: { labels: sem.map(r => "Semana " + r.semana), datasets: [
         { type: "bar", label: "FCR", data: sem.map(r => num(r.fcr_pct)), backgroundColor: C.tealFill,
-          borderColor: C.teal, borderWidth: 1.5, borderRadius: 4, maxBarThickness: 38, yAxisID: "y" },
+          borderColor: C.teal, borderWidth: 1.5, borderRadius: 4, maxBarThickness: 38, yAxisID: "y",
+          rotulo: { casas: 1, sufixo: "%", cor: "#00696B", abaixo: true } },
         { type: "line", label: "CSAT humano", data: sem.map(r => num(r.csat_humano)), borderColor: C.blue,
-          backgroundColor: "transparent", tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue, yAxisID: "y1" } ] },
+          backgroundColor: "transparent", tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue,
+          yAxisID: "y1", rotulo: { casas: 2, cor: C.blue } } ] },
       options: opcoes({ plugins: { legend: legenda() },
         scales: { y: { min: 0, max: 100, grid: { color: C.grid }, ticks: { callback: v => v + "%" } },
                   y1: { min: 0, max: 5, position: "right", grid: { display: false } },
@@ -925,7 +868,7 @@
     objs.forEach((o, i) => {
       ds.push({ label: o.label, data: meses.map(m => { const r = realizado(o, m); return r === null ? null : Math.round(r / o.alvo_final * 100); }),
         borderColor: cores[i % 4], backgroundColor: "transparent", borderWidth: 2.4, tension: .3,
-        pointRadius: 4, pointBackgroundColor: cores[i % 4] });
+        pointRadius: 4, pointBackgroundColor: cores[i % 4], rotulo: { casas: 0, sufixo: "%", cor: cores[i % 4] } });
       ds.push({ label: o.label + " (meta)", data: meses.map(m => { const v = o.metas[m]; return v === undefined ? null : Math.round(v / o.alvo_final * 100); }),
         borderColor: cores[i % 4], backgroundColor: "transparent", borderWidth: 1.3, borderDash: [4,4],
         tension: .3, pointRadius: 0, spanGaps: true });
@@ -951,32 +894,51 @@
     });
   }
 
-  /* ---------- ALAVANCAS ---------- */
-  const alavancas = () => timeline(S.mes);
-
-  function timeline(mes) {
-    const box = $("#timeline"); box.innerHTML = "";
-    const semanas = zenSemanal(mes).filter(r => r.narrativa);
-    if (!semanas.length) {
-      box.innerHTML = '<li class="empty">Nenhuma alavanca registrada para ' + mesLabel(mes).toLowerCase() + ".</li>";
-      return;
-    }
-    semanas.forEach((r, i) => {
-      const tags = [];
-      if (r.fcr_pct) tags.push("FCR <b>" + fmt(num(r.fcr_pct),1) + "%</b>");
-      if (r.csat_humano) tags.push("CSAT <b>" + fmt(num(r.csat_humano),2) + "</b>");
-      if (r.tmr) tags.push("TMR <b>" + r.tmr + "</b>");
-      if (r.resolucao_ia_pct) tags.push("Resolução IA <b>" + fmt(num(r.resolucao_ia_pct),0) + "%</b>");
-      box.appendChild(el("li", "tl" + (i === semanas.length - 1 ? " now" : ""),
-        '<div class="tl-when"><div class="tl-week">Semana ' + r.semana + "</div>" +
-          '<div class="tl-date">' + (r.periodo || "") + "</div></div>" +
-        '<div class="tl-body"><div class="tl-text">' + r.narrativa + "</div>" +
-          (tags.length ? '<div class="tl-tags">' + tags.map(t => "<span>" + t + "</span>").join("") + "</div>" : "") +
-        "</div>"));
-    });
-  }
-
   /* ---------- Chart.js ---------- */
+
+  /* Escreve o valor em cima de cada ponto/barra. Escrito à mão em vez de
+     puxar o chartjs-plugin-datalabels: são três posicionamentos (ponto de
+     linha, ponto de radar, fim de barra) e nenhuma das opções da biblioteca
+     seria usada. Cada dataset liga com `rotulo: { casas, sufixo }`. */
+  const ROTULOS = {
+    id: "rotulos",
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds, i) => {
+        const cfg = ds.rotulo;
+        if (!cfg || !chart.isDatasetVisible(i)) return;
+        const meta = chart.getDatasetMeta(i);
+        const barraH = meta.type === "bar" && chart.options.indexAxis === "y";
+        const barraV = meta.type === "bar" && !barraH;
+
+        ctx.save();
+        ctx.font = "600 11px 'Open Sans', sans-serif";
+        ctx.fillStyle = cfg.cor || C.text;
+        ctx.textBaseline = "middle";
+
+        const r = chart.scales.r;   // existe só no radar
+        meta.data.forEach((ponto, j) => {
+          const v = ds.data[j];
+          if (v === null || v === undefined) return;
+          const txt = fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
+          if (barraH) { ctx.textAlign = "left"; ctx.fillText(txt, ponto.x + 7, ponto.y); }
+          else if (barraV) { ctx.textAlign = "center"; ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 15 : -11)); }
+          else if (r) {
+            // puxa o rótulo 15px na direção do centro, senão ele encosta no
+            // nome da dimensão que o radar já desenha por fora
+            const dx = ponto.x - r.xCenter, dy = ponto.y - r.yCenter;
+            const d = Math.hypot(dx, dy) || 1;
+            ctx.textAlign = "center";
+            ctx.fillText(txt, ponto.x + dx / d * 13, ponto.y + dy / d * 13);
+          }
+          else { ctx.textAlign = "center"; ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 14 : -13)); }
+        });
+        ctx.restore();
+      });
+    }
+  };
+  Chart.register(ROTULOS);
+
   function opcoes(extra) {
     return Object.assign({
       responsive: true, maintainAspectRatio: false,

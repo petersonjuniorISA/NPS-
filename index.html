@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=9">
+<link rel="stylesheet" href="css/styles.css?v=15">
 </head>
 <body>
 
@@ -42,10 +42,6 @@
     <button class="nav-item" data-page="metas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
       Metas do semestre
-    </button>
-    <button class="nav-item" data-page="alavancas">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
-      Alavancas
     </button>
   </nav>
 </aside>
@@ -121,14 +117,7 @@
       </div>
 
       <div class="section-label" id="notes-label">Leitura do mês</div>
-      <div class="reading">
-        <ul class="notes" id="notes"></ul>
-        <div>
-          <h3>O que estamos fazendo</h3>
-          <ul class="actions" id="actions"></ul>
-          <button class="btn-text" id="ver-alavancas" style="margin-top:16px;">Ver todas as alavancas</button>
-        </div>
-      </div>
+      <ul class="notes notes-largas" id="notes"></ul>
     </section>
 
     <!-- ============ NPS EM DETALHE ============ -->
@@ -153,7 +142,7 @@
           <div class="stack" id="stack"><span class="p"></span><span class="n"></span><span class="d"></span></div>
           <div class="stack-legend" id="stack-legend"></div>
           <div class="section-label" style="margin:24px 0 8px;">Nota média por dimensão</div>
-          <div class="chart h200"><canvas id="chart-radar"></canvas></div>
+          <div class="chart h260"><canvas id="chart-radar"></canvas></div>
         </div>
       </div>
 
@@ -173,20 +162,12 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Semana a semana</div>
-            <div class="card-sub">NPS de cada semana do mês selecionado, calculado pela data da resposta</div>
-          </div>
-        </div>
-        <div id="semanas-wrap"></div>
-      </div>
+
     </section>
 
     <!-- ============ ESPECIALIDADES ============ -->
     <section class="page" id="page-especialidades">
-      <div class="grid grid-4" id="esp-stats"></div>
+      <div class="grid grid-2" id="esp-stats"></div>
 
       <div class="grid grid-wide" style="margin-top:16px;">
         <div class="card">
@@ -297,27 +278,15 @@
     </section>
 
     <!-- ============ ALAVANCAS ============ -->
-    <section class="page" id="page-alavancas">
-      <div class="card">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Alavancas por semana</div>
-            <div class="card-sub">Frentes executadas pelo time de experiência no mês selecionado</div>
-          </div>
-        </div>
-        <ul class="timeline" id="timeline"></ul>
-      </div>
-    </section>
-
     <p class="footnote">
-      NPS calculado a partir do Databricks · Indicadores de Zendesk e alavancas preenchidos pelo time<br>
+      NPS calculado a partir do Databricks · Indicadores de Zendesk preenchidos pelo time<br>
       <span id="foot-updated"></span>
     </p>
   </div>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/app.js?v=15"></script>
 </body>
 </html>
