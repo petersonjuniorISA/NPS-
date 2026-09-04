@@ -23,7 +23,8 @@
         "2026-11": 57,
         "2026-12": 60
       },
-      "contexto": "Mede se o profissional recomendaria a Isa como lugar para trabalhar — proxy direto de retenção."
+      "contexto": "Mede se o profissional recomendaria a Isa como lugar para trabalhar — proxy direto de retenção.",
+      "exibir_no_farol": true
     },
     {
       "id": "csat_humano",
@@ -43,7 +44,8 @@
         "2026-11": 3.95,
         "2026-12": 4.0
       },
-      "contexto": "Satisfação de quem passou pelo atendimento humano do SAC."
+      "contexto": "Satisfação de quem passou pelo atendimento humano do SAC.",
+      "exibir_no_farol": true
     },
     {
       "id": "resolucao_ia_pct",
@@ -63,7 +65,8 @@
         "2026-11": 40,
         "2026-12": 60
       },
-      "contexto": "Quanto do suporte a IA resolve sozinha — é o que destrava escala sem aumentar time."
+      "contexto": "Quanto do suporte a IA resolve sozinha — é o que destrava escala sem aumentar time.",
+      "exibir_no_farol": true
     },
     {
       "id": "fcr_pct",
@@ -82,7 +85,48 @@
         "2026-11": 48,
         "2026-12": 50
       },
-      "contexto": "Chamados resolvidos no primeiro contato — menos retrabalho e menos fila."
+      "contexto": "Chamados resolvidos no primeiro contato — menos retrabalho e menos fila.",
+      "exibir_no_farol": true
+    },
+    {
+      "id": "tma",
+      "label": "TMA (1ª resposta)",
+      "descricao": "Reduzir o tempo médio até a primeira resposta do SAC.",
+      "peso": "—",
+      "unidade": "tempo",
+      "casas": 0,
+      "sentido": "menor_melhor",
+      "baseline": "55h",
+      "alvo_final": "8h",
+      "fonte_realizado": "zendesk:tma_primeira_resposta",
+      "metas": {
+        "2026-09": "11h",
+        "2026-10": "10h",
+        "2026-11": "9h",
+        "2026-12": "8h"
+      },
+      "contexto": "Quanto o profissional espera para ser respondido pela primeira vez.",
+      "exibir_no_farol": false
+    },
+    {
+      "id": "tmr",
+      "label": "TMR",
+      "descricao": "Reduzir o tempo médio de resolução dos chamados.",
+      "peso": "—",
+      "unidade": "tempo",
+      "casas": 0,
+      "sentido": "menor_melhor",
+      "baseline": "15h58",
+      "alvo_final": "11h30",
+      "fonte_realizado": "zendesk:tmr",
+      "metas": {
+        "2026-09": "15h",
+        "2026-10": "13h",
+        "2026-11": "12h",
+        "2026-12": "11h30"
+      },
+      "contexto": "Quanto tempo o chamado leva do início ao fim.",
+      "exibir_no_farol": false
     }
   ]
 }

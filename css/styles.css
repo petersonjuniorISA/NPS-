@@ -363,6 +363,66 @@ table.tbl td { padding: 12px; border-bottom: 1px solid var(--gray-inactive); whi
 table.tbl tbody tr:last-child td { border-bottom: none; }
 table.tbl tbody tr:hover { background: var(--gray-bg); }
 table.tbl tbody tr.on { background: var(--teal-soft); }
+
+/* Leitura automatica sob os graficos de evolucao */
+.leitura {
+  display: flex; gap: 10px; align-items: flex-start;
+  margin-top: var(--md); padding: 12px 14px;
+  background: var(--gray-bg); border-radius: 10px;
+  border-left: 3px solid var(--teal);
+  font-size: 13px; line-height: 1.6; color: var(--featured);
+}
+.leitura:empty { display: none; }
+.leitura b { font-weight: 600; }
+.leitura .rot {
+  flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: 1.1px;
+  text-transform: uppercase; color: var(--chumbo); padding-top: 2px;
+}
+
+/* ---------------- Grade de indicadores ---------------- */
+.tbl-wrap { overflow-x: auto; }
+
+table.grade { font-size: 13px; }
+table.grade th, table.grade td { padding: 10px 12px; }
+table.grade th.rot, table.grade td.rot {
+  position: sticky; left: 0; background: var(--white); z-index: 1;
+  text-align: left; min-width: 160px;
+  box-shadow: 1px 0 0 var(--gray-inactive);
+}
+table.grade tbody tr:hover td.rot { background: var(--gray-bg); }
+table.grade td.rot.strong { font-weight: 600; color: var(--featured); }
+table.grade th.num, table.grade td.num { text-align: right; min-width: 96px; }
+
+table.grade th .ano {
+  display: block; font-size: 9.5px; font-weight: 400; letter-spacing: .3px;
+  color: var(--gray-disabled); text-transform: none; margin-top: 1px;
+}
+table.grade th.futuro { color: var(--gray-disabled); }
+
+table.grade td.real b { font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--featured); }
+table.grade td.real.notion b { color: var(--chumbo); border-bottom: 1.5px dotted var(--gray-disabled); }
+table.grade td.futuro {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,68,116,.025) 6px 12px);
+  color: var(--gray-body);
+}
+table.grade td.futuro span { font-size: 14px; }
+table.grade td.vazio { color: var(--gray-disabled); }
+
+table.grade .var { display: block; font-size: 10.5px; font-weight: 600; margin-top: 2px; }
+table.grade .var.up { color: var(--positive-ink); }
+table.grade .var.down { color: var(--negative); }
+
+.legenda-grade {
+  display: flex; flex-wrap: wrap; gap: var(--lg);
+  margin-top: var(--md); padding-top: var(--md);
+  border-top: 1px solid var(--gray-inactive);
+  font-size: 11.5px; color: var(--gray-body);
+}
+.legenda-grade span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda-grade .chip { width: 13px; height: 13px; border-radius: 4px; border: 1px solid var(--gray-outline); }
+.legenda-grade .chip.real { background: var(--white); }
+.legenda-grade .chip.meta { background: repeating-linear-gradient(135deg, transparent 0 4px, rgba(0,68,116,.12) 4px 8px); }
+.legenda-grade .chip.notion { background: var(--white); border-bottom: 2px dotted var(--gray-disabled); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .strong { font-weight: 600; color: var(--featured); }
 

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=21">
+<link rel="stylesheet" href="css/styles.css?v=26">
 </head>
 <body>
 
@@ -38,6 +38,10 @@
     <button class="nav-item" data-page="sac">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>
       SAC &amp; Zendesk
+    </button>
+    <button class="nav-item" data-page="historico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/></svg>
+      Histórico
     </button>
     <button class="nav-item" data-page="metas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
@@ -175,6 +179,7 @@
           </div>
         </div>
         <div class="chart h300"><canvas id="chart-evo-dim"></canvas></div>
+        <div class="leitura" id="leitura-dim"></div>
       </div>
 
     </section>
@@ -216,6 +221,7 @@
           </div>
         </div>
         <div class="chart h300"><canvas id="chart-evo-esp"></canvas></div>
+        <div class="leitura" id="leitura-esp"></div>
       </div>
 
       <div class="card" style="margin-top:16px;">
@@ -305,6 +311,44 @@
       </div>
     </section>
 
+    <!-- ============ HISTORICO ============ -->
+    <section class="page" id="page-historico">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Histórico de indicadores</div>
+            <div class="card-sub">Realizado mês a mês com a variação contra o mês anterior. As colunas em cinza são meta, ainda não realizadas.</div>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl grade" id="tbl-historico">
+            <thead><tr id="hist-head"></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="legenda-grade">
+          <span><i class="chip real"></i> realizado</span>
+          <span><i class="chip meta"></i> meta</span>
+          <span><i class="chip notion"></i> apurado à mão (Notion)</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Semana a semana</div>
+            <div class="card-sub" id="wow-sub">Indicadores de Zendesk de cada semana do mês</div>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl grade" id="tbl-wow">
+            <thead><tr id="wow-head"></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <p class="footnote">
       NPS calculado a partir do Databricks · Indicadores de Zendesk preenchidos pelo time<br>
       <span id="foot-updated"></span>
@@ -313,7 +357,7 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=21"></script>
-<script src="js/app.js?v=21"></script>
+<script src="js/config.js?v=26"></script>
+<script src="js/app.js?v=26"></script>
 </body>
 </html>

@@ -248,6 +248,7 @@
     visao:          { t: "NPS em detalhe",    s: "Composição e evolução do índice" },
     especialidades: { t: "Especialidades",    s: "Onde a experiência é melhor e pior" },
     sac:            { t: "SAC & Zendesk",     s: "Indicadores de atendimento e suporte" },
+    historico:      { t: "Histórico de indicadores", s: "Todos os indicadores, mês a mês e semana a semana" },
     metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" }
   };
 
@@ -340,7 +341,7 @@
     grafHistorico(S.histCsat); composicao(); grafRadar(); grafPerguntas(); destaques();
     grafEvolucaoDimensoes(); grafEvolucaoEspecialidades();
     espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
-    sac(); metas();
+    sac(); metas(); gradeHistorico(); gradeSemanal();
   }
 
   function heroi() {
@@ -613,6 +614,158 @@
   }
 
 
+
+  /* ---------- Histórico de indicadores ---------- */
+
+  /* "48h48" e "55h" são texto no CSV. Para comparar mês a mês viram minutos,
+     e voltam a texto na hora de mostrar — assim a variação de tempo sai certa
+     em vez de comparar strings. */
+  function minutosDeTempo(txt) {
+    const m = String(txt || "").trim().match(/^(\d+)h(\d+)?$/i);
+    if (!m) return null;
+    return Number(m[1]) * 60 + Number(m[2] || 0);
+  }
+  function tempoDeMinutos(min) {
+    if (min === null || min === undefined) return "—";
+    const h = Math.floor(min / 60), mm = Math.round(min % 60);
+    return mm ? h + "h" + String(mm).padStart(2, "0") : h + "h";
+  }
+
+  /* A ordem é a da tabela do Notion, que a diretoria já conhece de cor. */
+  const INDICADORES = [
+    { id: "nps",              label: "NPS",               casas: 1, suf: "",  fonte: "nps",     melhor: "cima"  },
+    { id: "csat_ia",          label: "CSAT (IA)",         casas: 2, suf: "",  fonte: "zendesk", campo: "csat_ia",               melhor: "cima" },
+    { id: "csat_humano",      label: "CSAT (Humano)",     casas: 2, suf: "",  fonte: "zendesk", campo: "csat_humano",           melhor: "cima" },
+    { id: "tma",              label: "TMA (1ª resposta)", tempo: true,        fonte: "zendesk", campo: "tma_primeira_resposta", melhor: "baixo" },
+    { id: "tmr",              label: "TMR",               tempo: true,        fonte: "zendesk", campo: "tmr",                   melhor: "baixo" },
+    { id: "fcr_pct",          label: "FCR",               casas: 1, suf: "%", fonte: "zendesk", campo: "fcr_pct",               melhor: "cima" },
+    { id: "resolucao_ia_pct", label: "Resolução com IA",  casas: 0, suf: "%", fonte: "zendesk", campo: "resolucao_ia_pct",      melhor: "cima" }
+  ];
+
+  /** Valor realizado de um indicador num mês, já como número comparável. */
+  function valorReal(ind, mes) {
+    if (ind.fonte === "nps") {
+      const h = (S.nps.historico_nps || []).find(x => x.mes === mes);
+      return h ? h.nps : null;
+    }
+    const linha = zenMes(mes);
+    if (!linha) return null;
+    const bruto = linha[ind.campo];
+    return ind.tempo ? minutosDeTempo(bruto) : num(bruto);
+  }
+  /** Meta cadastrada, no mesmo formato numérico do realizado. */
+  function valorMeta(ind, mes) {
+    const o = objetivo(ind.id);
+    const bruto = o && o.metas ? o.metas[mes] : undefined;
+    if (bruto === undefined || bruto === null) return null;
+    return ind.tempo ? minutosDeTempo(bruto) : num(bruto);
+  }
+  const mostrar = (ind, v) =>
+    v === null || v === undefined ? "—"
+    : ind.tempo ? tempoDeMinutos(v)
+    : fmt(v, ind.casas) + (ind.suf || "");
+
+  /** Todos os meses que a grade precisa cobrir: realizados + metas futuras. */
+  function mesesDaGrade() {
+    const set = new Set(mesesDisponiveis());
+    (S.metas.objetivos || []).forEach(o => Object.keys(o.metas || {}).forEach(m => set.add(m)));
+    return Array.from(set).sort();
+  }
+
+  function gradeHistorico() {
+    const meses = mesesDaGrade();
+    // Mes passado sem medicao e lacuna, nao projecao: mostrar a meta ali faria
+    // julho parecer que teve 24% de resolucao com IA, quando nao foi medido.
+    const ultimoReal = meses.filter(m => INDICADORES.some(i => valorReal(i, m) !== null)).pop() || "";
+    const head = $("#hist-head");
+    head.innerHTML = '<th class="rot">Indicador</th>' +
+      meses.map(m => {
+        const real = INDICADORES.some(i => valorReal(i, m) !== null);
+        return '<th class="num' + (real ? "" : " futuro") + '">' + mesCurto(m) +
+               '<span class="ano">' + m.slice(2, 4) + "</span></th>";
+      }).join("");
+
+    const corpo = $("#tbl-historico tbody"); corpo.innerHTML = "";
+    INDICADORES.forEach(ind => {
+      const tr = el("tr");
+      tr.appendChild(el("td", "rot strong", ind.label));
+      let anterior = null;
+      meses.forEach(mes => {
+        const real = valorReal(ind, mes);
+        const meta = valorMeta(ind, mes);
+        const td = el("td", "num");
+
+        if (real !== null) {
+          let delta = "";
+          if (anterior !== null && anterior !== 0) {
+            const p = (real - anterior) / Math.abs(anterior) * 100;
+            const bom = ind.melhor === "baixo" ? p < 0 : p > 0;
+            delta = '<span class="var ' + (bom ? "up" : "down") + '">' +
+                    (p >= 0 ? "+" : "−") + fmt(Math.abs(p), 1) + "%</span>";
+          }
+          const doNotion = ind.fonte === "nps" &&
+            (S.nps.meses_do_notion || []).includes(mes);
+          td.className = "num real" + (doNotion ? " notion" : "");
+          td.innerHTML = '<b class="tabular">' + mostrar(ind, real) + "</b>" + delta;
+          if (doNotion) td.title = "Apurado à mão, antes de o NPS entrar no Databricks";
+          anterior = real;
+        } else if (meta !== null && mes > ultimoReal) {
+          td.className = "num futuro";
+          td.innerHTML = '<span class="tabular">' + mostrar(ind, meta) + "</span>";
+          td.title = "Meta de " + mesLabel(mes).toLowerCase();
+        } else {
+          td.className = "num vazio";
+          td.textContent = "—";
+        }
+        tr.appendChild(td);
+      });
+      corpo.appendChild(tr);
+    });
+  }
+
+  function gradeSemanal() {
+    const sem = zenSemanal(S.mes);
+    const sub = $("#wow-sub");
+    const head = $("#wow-head"), corpo = $("#tbl-wow tbody");
+    if (!sem.length) {
+      if (sub) sub.textContent = "Sem semanas preenchidas para " + mesLabel(S.mes).toLowerCase() + ".";
+      head.innerHTML = ""; corpo.innerHTML = "";
+      return;
+    }
+    if (sub) sub.textContent = "Indicadores de Zendesk semana a semana em " +
+      mesLabel(S.mes).toLowerCase() + ", com a variação contra a semana anterior";
+
+    head.innerHTML = '<th class="rot">Indicador</th>' +
+      sem.map(r => '<th class="num">W' + r.semana +
+        (r.periodo ? '<span class="ano">' + r.periodo.replace(/ de \w+/i, "") + "</span>" : "") + "</th>").join("");
+
+    corpo.innerHTML = "";
+    INDICADORES.filter(i => i.fonte === "zendesk").forEach(ind => {
+      const tr = el("tr");
+      tr.appendChild(el("td", "rot strong", ind.label));
+      let anterior = null;
+      sem.forEach(r => {
+        const bruto = r[ind.campo];
+        const v = ind.tempo ? minutosDeTempo(bruto) : num(bruto);
+        const td = el("td", "num" + (v === null ? " vazio" : " real"));
+        if (v === null) td.textContent = "—";
+        else {
+          let delta = "";
+          if (anterior !== null && anterior !== 0) {
+            const p = (v - anterior) / Math.abs(anterior) * 100;
+            const bom = ind.melhor === "baixo" ? p < 0 : p > 0;
+            delta = '<span class="var ' + (bom ? "up" : "down") + '">' +
+                    (p >= 0 ? "+" : "−") + fmt(Math.abs(p), 1) + "%</span>";
+          }
+          td.innerHTML = '<b class="tabular">' + mostrar(ind, v) + "</b>" + delta;
+          anterior = v;
+        }
+        tr.appendChild(td);
+      });
+      corpo.appendChild(tr);
+    });
+  }
+
   /* ---------- Evolução no tempo ---------- */
 
   /** Pontos do eixo: as semanas do mês escolhido ou os meses da série. */
@@ -643,12 +796,62 @@
      ponto — o valor vai só no último, que é onde a leitura importa. */
   const CORES_SERIE = [C.blue, C.teal, C.pink, C.amber, "#7B3FF2", "#00913B", "#B8115C", "#0E7C86"];
 
+
+  /* No Notion a "Leitura" de cada evolução era escrita à mão todo mês. Aqui
+     ela sai dos próprios números: quem mais subiu, quem mais caiu e quem
+     ainda está no fundo da lista. */
+  function escreverLeitura(alvo, eixo, series, casas, sufixo) {
+    const box = $(alvo);
+    if (!box) return;
+
+    // Semana parcial fica de fora: "de 61,9 para 0,0" tirado de uma resposta
+    // não é leitura, é ruído com cara de conclusão.
+    const usar = eixo.map((p, i) => p.parcial ? -1 : i).filter(i => i >= 0);
+    if (usar.length < 2) {
+      box.innerHTML = '<span class="rot">Leitura</span><span>Ainda não há dois períodos ' +
+        "com amostra cheia para comparar.</span>";
+      return;
+    }
+    const primeiro = eixo[usar[0]], ultimo = eixo[usar[usar.length - 1]];
+    const movimentos = series.map(s => {
+      const vals = usar.map(i => s.valores[i]);
+      const ini = vals.find(v => v !== null && v !== undefined);
+      const fimIdx = vals.reduce((ac, v, i) => (v === null || v === undefined) ? ac : i, -1);
+      const fim = fimIdx >= 0 ? vals[fimIdx] : null;
+      return (ini === undefined || fim === null) ? null
+        : { nome: s.nome, ini, fim, delta: fim - ini };
+    }).filter(Boolean);
+
+    if (movimentos.length < 2) { box.innerHTML = ""; return; }
+    const subiu = [...movimentos].sort((a, b) => b.delta - a.delta)[0];
+    const caiu  = [...movimentos].sort((a, b) => a.delta - b.delta)[0];
+    const fundo = [...movimentos].sort((a, b) => a.fim - b.fim)[0];
+    const v = x => fmt(x, casas) + (sufixo || "");
+
+    const partes = [];
+    if (subiu.delta > 0)
+      partes.push("<b>" + subiu.nome + "</b> foi quem mais avançou entre " + primeiro.label +
+                  " e " + ultimo.label + " (" + v(subiu.ini) + " → " + v(subiu.fim) + ").");
+    if (caiu.delta < 0 && caiu.nome !== subiu.nome)
+      partes.push("<b>" + caiu.nome + "</b> " +
+                  (partes.length ? "foi na direção oposta, de " : "foi quem mais caiu, de ") +
+                  v(caiu.ini) + " para " + v(caiu.fim) + ".");
+    if (fundo.nome !== caiu.nome)
+      partes.push("<b>" + fundo.nome + "</b> segue como o mais baixo do período, em " + v(fundo.fim) + ".");
+    else if (caiu.delta < 0)
+      partes.push("É também o mais baixo do período.");
+
+    box.innerHTML = partes.length
+      ? '<span class="rot">Leitura</span><span>' + partes.join(" ") + "</span>" : "";
+  }
+
   function grafEvolucaoDimensoes() {
     const eixo = eixoTempo(eixoDe("evoDim", "seg-evo-dim"));
     const sub = $("#evo-dim-sub");
     if (eixo.length < 2) {
       if (sub) sub.textContent = "Precisa de pelo menos dois períodos com resposta para desenhar a evolução.";
       grafico("chart-evo-dim", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      $("#leitura-dim").innerHTML = "";
       return;
     }
     if (sub) sub.textContent = "Nota de cada dimensão período a período · escala de 0 a 5";
@@ -678,6 +881,9 @@
         layout: { padding: { right: 34 } },
         scales: { y: { min: 3, max: 5, grid: { color: C.grid }, ticks: { stepSize: .5 } },
                   x: { grid: { display: false } } } }) });
+
+    escreverLeitura("#leitura-dim", eixo,
+      datasets.map(d => ({ nome: d.label, valores: d.data })), 2, "");
   }
 
   function grafEvolucaoEspecialidades() {
@@ -686,6 +892,7 @@
     if (eixo.length < 2) {
       if (sub) sub.textContent = "Precisa de pelo menos dois períodos com resposta para desenhar a evolução.";
       grafico("chart-evo-esp", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      $("#leitura-esp").innerHTML = "";
       return;
     }
 
@@ -722,6 +929,9 @@
         layout: { padding: { right: 34 } },
         scales: { y: { min: -20, max: 100, grid: { color: C.grid } },
                   x: { grid: { display: false } } } }) });
+
+    escreverLeitura("#leitura-esp", eixo,
+      datasets.map(d => ({ nome: d.label, valores: d.data })), 1, "");
   }
 
   function destaques() {
