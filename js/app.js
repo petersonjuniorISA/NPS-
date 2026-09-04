@@ -117,7 +117,7 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, semana: null, histCsat: false,
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null,
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -328,6 +328,7 @@
 
     heroi(); farol(); alerta(); leitura();
     grafHistorico(S.histCsat); composicao(); grafRadar(); grafPerguntas(); destaques();
+    grafEvolucaoDimensoes(); grafEvolucaoEspecialidades();
     espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
     sac(); metas();
   }
@@ -581,6 +582,118 @@
         scales: { x: { min: 0, max: 5.6, grid: { color: C.grid },
                        ticks: { stepSize: 1, callback: v => v > 5 ? "" : v } },
                   y: { grid: { display: false } } } }) });
+  }
+
+
+  /* ---------- Evolução no tempo ---------- */
+
+  /** Pontos do eixo: as semanas do mês escolhido ou os meses da série. */
+  function eixoTempo(modo) {
+    if (modo === "meses") {
+      return Object.keys(S.nps.meses || {}).sort()
+        .map(m => ({ label: mesCurto(m), bloco: S.nps.meses[m], parcial: false }));
+    }
+    return semanasNps().map(sem => ({
+      label: "S" + sem.semana, bloco: sem, parcial: sem.respostas < MIN_SEMANA
+    }));
+  }
+
+  /** Qual eixo faz sentido por padrão: o que tiver mais de um ponto. */
+  function eixoPadrao() {
+    return Object.keys(S.nps.meses || {}).length > 1 && semanasNps().length < 2
+      ? "meses" : "semanas";
+  }
+
+  /** Liga os botões Semanas/Meses e devolve o eixo em vigor. */
+  function eixoDe(qual, idSeg) {
+    const escolhido = S[qual] || eixoPadrao();
+    $$("#" + idSeg + " button").forEach(b => b.classList.toggle("active", b.dataset.eixo === escolhido));
+    return escolhido;
+  }
+
+  /* Linhas com poucos pontos ficam ilegíveis se todas levarem rótulo em cada
+     ponto — o valor vai só no último, que é onde a leitura importa. */
+  const CORES_SERIE = [C.blue, C.teal, C.pink, C.amber, "#7B3FF2", "#00913B", "#B8115C", "#0E7C86"];
+
+  function grafEvolucaoDimensoes() {
+    const eixo = eixoTempo(eixoDe("evoDim", "seg-evo-dim"));
+    const sub = $("#evo-dim-sub");
+    if (eixo.length < 2) {
+      if (sub) sub.textContent = "Precisa de pelo menos dois períodos com resposta para desenhar a evolução.";
+      grafico("chart-evo-dim", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      return;
+    }
+    if (sub) sub.textContent = "Nota de cada dimensão período a período · escala de 0 a 5";
+
+    // o rotulo vai no ultimo periodo com amostra cheia — pendurar o numero
+    // numa semana parcial daria destaque ao dado menos confiavel
+    const ancora = eixo.reduce((ac, p, i) => p.parcial ? ac : i, 0);
+
+    const datasets = DIMENSOES.map((d, i) => {
+      const cor = CORES_SERIE[i % CORES_SERIE.length];
+      return {
+        label: d.label,
+        data: eixo.map(p => {
+          const achado = (p.bloco.media_por_pergunta || []).find(x => x.pergunta === d.label);
+          return achado ? achado.media : null;
+        }),
+        borderColor: cor, backgroundColor: "transparent", borderWidth: 2.2, tension: .3,
+        pointRadius: 4, pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 1.5,
+        spanGaps: true, rotulo: { casas: 2, cor: cor, soUltimo: true, indice: ancora },
+        segment: { borderDash: ctx => eixo[ctx.p1DataIndex].parcial ? [5, 4] : undefined }
+      };
+    });
+
+    grafico("chart-evo-dim", { type: "line",
+      data: { labels: eixo.map(p => p.label), datasets },
+      options: opcoes({ plugins: { legend: legenda(10) },
+        layout: { padding: { right: 34 } },
+        scales: { y: { min: 3, max: 5, grid: { color: C.grid }, ticks: { stepSize: .5 } },
+                  x: { grid: { display: false } } } }) });
+  }
+
+  function grafEvolucaoEspecialidades() {
+    const eixo = eixoTempo(eixoDe("evoEsp", "seg-evo-esp"));
+    const sub = $("#evo-esp-sub");
+    if (eixo.length < 2) {
+      if (sub) sub.textContent = "Precisa de pelo menos dois períodos com resposta para desenhar a evolução.";
+      grafico("chart-evo-esp", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      return;
+    }
+
+    // Onze linhas viram emaranhado: só as de maior volume no mês.
+    const escolhidas = [...especialidades().relevantes]
+      .sort((a, b) => b.pct_amostra - a.pct_amostra).slice(0, 5).map(e => e.especialidade);
+    if (sub) sub.textContent = escolhidas.length
+      ? "As " + escolhidas.length + " de maior volume em " + mesLabel(S.mes).toLowerCase() +
+        " · ponto ausente = sem resposta no período"
+      : "Sem especialidade com amostra suficiente no mês.";
+
+    // o rotulo vai no ultimo periodo com amostra cheia — pendurar o numero
+    // numa semana parcial daria destaque ao dado menos confiavel
+    const ancora = eixo.reduce((ac, p, i) => p.parcial ? ac : i, 0);
+
+    const datasets = escolhidas.map((nome, i) => {
+      const cor = CORES_SERIE[i % CORES_SERIE.length];
+      return {
+        label: nome,
+        data: eixo.map(p => {
+          const achado = (p.bloco.nps_por_especialidade || []).find(x => x.especialidade === nome);
+          return achado ? achado.nps : null;
+        }),
+        borderColor: cor, backgroundColor: "transparent", borderWidth: 2.2, tension: .3,
+        pointRadius: 4, pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 1.5,
+        spanGaps: true, rotulo: { casas: 1, cor: cor, soUltimo: true, indice: ancora },
+        segment: { borderDash: ctx => eixo[ctx.p1DataIndex].parcial ? [5, 4] : undefined }
+      };
+    });
+
+    grafico("chart-evo-esp", { type: "line",
+      data: { labels: eixo.map(p => p.label), datasets },
+      options: opcoes({ plugins: { legend: legenda(10) },
+        layout: { padding: { right: 34 } },
+        scales: { y: { min: -20, max: 100, grid: { color: C.grid } },
+                  x: { grid: { display: false } } } }) });
   }
 
   function destaques() {
@@ -904,6 +1017,19 @@
     id: "rotulos",
     afterDatasetsDraw(chart) {
       const ctx = chart.ctx;
+      // Séries que terminam no mesmo valor escreveriam o rótulo no mesmo pixel;
+      // guardamos o que já foi escrito e empurramos o seguinte para baixo.
+      const ocupados = [];
+      const livre = (x, y) => {
+        for (let t = 0; t < 12; t++) {
+          const yy = y + t * 13;
+          if (!ocupados.some(o => Math.abs(o.x - x) < 34 && Math.abs(o.y - yy) < 12)) {
+            ocupados.push({ x, y: yy });
+            return yy;
+          }
+        }
+        return y;
+      };
       chart.data.datasets.forEach((ds, i) => {
         const cfg = ds.rotulo;
         if (!cfg || !chart.isDatasetVisible(i)) return;
@@ -917,9 +1043,11 @@
         ctx.textBaseline = "middle";
 
         const r = chart.scales.r;   // existe só no radar
+        const ultimoComValor = cfg.indice ?? ds.data.reduce((ac, v, k) => (v === null || v === undefined) ? ac : k, -1);
         meta.data.forEach((ponto, j) => {
           const v = ds.data[j];
           if (v === null || v === undefined) return;
+          if (cfg.soUltimo && j !== ultimoComValor) return;
           const txt = fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
           if (barraH) { ctx.textAlign = "left"; ctx.fillText(txt, ponto.x + 7, ponto.y); }
           else if (barraV) { ctx.textAlign = "center"; ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 15 : -11)); }
@@ -931,7 +1059,12 @@
             ctx.textAlign = "center";
             ctx.fillText(txt, ponto.x + dx / d * 13, ponto.y + dy / d * 13);
           }
-          else { ctx.textAlign = "center"; ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 14 : -13)); }
+          else {
+            ctx.textAlign = cfg.soUltimo ? "left" : "center";
+            const x = ponto.x + (cfg.soUltimo ? 9 : 0);
+            const y = ponto.y + (cfg.abaixo ? 14 : cfg.soUltimo ? 0 : -13);
+            ctx.fillText(txt, x, cfg.soUltimo ? livre(x, y) : y);
+          }
         });
         ctx.restore();
       });
@@ -986,6 +1119,14 @@
       $$("#seg-esp button").forEach(x => x.classList.toggle("active", x === b));
       S.espOrdem = b.dataset.sort;
       espLista();
+    }));
+    $$("#seg-evo-dim button").forEach(b => b.addEventListener("click", () => {
+      S.evoDim = b.dataset.eixo;
+      grafEvolucaoDimensoes();
+    }));
+    $$("#seg-evo-esp button").forEach(b => b.addEventListener("click", () => {
+      S.evoEsp = b.dataset.eixo;
+      grafEvolucaoEspecialidades();
     }));
     const tSat = $("#toggle-sat"), wSat = $("#sat-wrap");
     if (tSat && wSat) tSat.addEventListener("click", () => {

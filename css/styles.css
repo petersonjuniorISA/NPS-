@@ -345,7 +345,7 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 
 /* ---------------- Gráficos ---------------- */
 .chart { position: relative; width: 100%; }
-.h200 { height: 200px; } .h240 { height: 240px; } .h260 { height: 260px; } .h280 { height: 280px; } .h320 { height: 320px; }
+.h200 { height: 200px; } .h240 { height: 240px; } .h260 { height: 260px; } .h300 { height: 300px; } .h280 { height: 280px; } .h320 { height: 320px; }
 
 /* ---------------- Tabelas ---------------- */
 .table-scroll { overflow-x: auto; }

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=16">
+<link rel="stylesheet" href="css/styles.css?v=19">
 </head>
 <body>
 
@@ -156,12 +156,26 @@
           </div>
           <div class="chart h280"><canvas id="chart-perguntas"></canvas></div>
         </div>
+
         <div class="card">
           <div class="card-head"><div class="card-title">Destaques</div></div>
           <ul class="notes" id="insights"></ul>
         </div>
       </div>
 
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Evolução por dimensão</div>
+            <div class="card-sub" id="evo-dim-sub">Como cada nota se moveu ao longo do tempo</div>
+          </div>
+          <div class="seg" id="seg-evo-dim">
+            <button class="active" data-eixo="semanas">Semanas</button>
+            <button data-eixo="meses">Meses</button>
+          </div>
+        </div>
+        <div class="chart h300"><canvas id="chart-evo-dim"></canvas></div>
+      </div>
 
     </section>
 
@@ -188,6 +202,20 @@
           <div class="card-head"><div class="card-title">Detalhamento</div></div>
           <div id="esp-detail"></div>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Evolução do NPS por especialidade</div>
+            <div class="card-sub" id="evo-esp-sub">As de maior volume, ao longo do tempo</div>
+          </div>
+          <div class="seg" id="seg-evo-esp">
+            <button class="active" data-eixo="semanas">Semanas</button>
+            <button data-eixo="meses">Meses</button>
+          </div>
+        </div>
+        <div class="chart h300"><canvas id="chart-evo-esp"></canvas></div>
       </div>
 
       <div class="card" style="margin-top:16px;">
@@ -285,7 +313,7 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=16"></script>
-<script src="js/app.js?v=16"></script>
+<script src="js/config.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
 </body>
 </html>
