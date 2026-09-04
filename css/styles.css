@@ -431,6 +431,8 @@ table.grade .var.down { color: var(--negative); }
 .score.mid { color: var(--featured); }
 .score.lo { color: var(--warning-ink); }
 .score.bad { color: var(--negative); }
+table.tbl td.heat { transition: background .15s; }
+table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,.03), rgba(0,0,0,.03)); }
 
 /* ---------------- Lista de especialidades ---------------- */
 .ranks { display: flex; flex-direction: column; }

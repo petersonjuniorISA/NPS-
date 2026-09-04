@@ -978,7 +978,8 @@
     const melhor = [...firmes].sort((a,b) => b.nps - a.nps)[0];
     const pior   = [...firmes].sort((a,b) => a.nps - b.nps)[0];
     const maior  = [...relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
-    const comN = e => e.especialidade + " · " + e.n + " respostas";
+    // meses do Notion nao guardaram o tamanho da amostra
+    const comN = e => e.especialidade + (e.n ? " · " + e.n + " respostas" : "");
 
     const cards = [
       { rot: "Melhor NPS", val: melhor ? melhor.nps : null, casas: 1,
@@ -1005,8 +1006,10 @@
     lista.forEach(item => {
       const row = el("div", "rank" + (S.espSel === item.especialidade ? " on" : ""),
         '<div class="rank-name">' + item.especialidade +
-          "<span>" + item.n + (item.enviadas ? " de " + item.enviadas + " convites · " +
-            fmt(item.taxa_resposta, 1) + "% responderam" : " respostas") + "</span></div>" +
+          "<span>" + (item.enviadas ? item.n + " de " + item.enviadas + " convites · " +
+            fmt(item.taxa_resposta, 1) + "% responderam"
+            : item.n ? item.n + " respostas" : "apuração manual, sem amostra registrada") +
+          "</span></div>" +
         '<div class="rank-track"><i class="rank-fill" style="display:block;width:0;background:' + corNps(item.nps) + '"></i></div>' +
         '<div class="rank-val" style="color:' + corNps(item.nps) + '">' + fmt(item.nps,1) + "</div>");
       row.addEventListener("click", () => selecionar(item.especialidade));
@@ -1078,12 +1081,28 @@
       return S.satOrdem.dir * ((va ?? -Infinity) - (vb ?? -Infinity));
     });
 
+    // faixa observada na tabela inteira, para o heatmap ter contraste real
+    const todos = linhas.flatMap(r => DIMENSOES.map(d => r[d.key]))
+                        .filter(v => v !== null && v !== undefined);
+    const menor = Math.min(...todos), maior = Math.max(...todos);
+    const fundo = v => {
+      if (v === null || v === undefined || maior === menor) return "";
+      const t = (v - menor) / (maior - menor);          // 0 = pior, 1 = melhor
+      // curva puxada para o extremo: a faixa real e estreita (3,1 a 5,0) e um
+      // gradiente linear deixava quase tudo branco
+      const forca = Math.pow(Math.abs(t - .5) * 2, .7);
+      return t >= .5
+        ? "background:rgba(0,195,197," + (forca * .42).toFixed(3) + ")"
+        : "background:rgba(233,59,90," + (forca * .34).toFixed(3) + ")";
+    };
+
     body.innerHTML = "";
     linhas.forEach(r => {
       const tr = el("tr", S.espSel === r.especialidade ? "on" : "",
         '<td class="strong">' + r.especialidade + "</td>" +
         '<td class="num" style="color:var(--gray-body)">' + r.n + "</td>" +
-        DIMENSOES.map(d => '<td class="num"><span class="score ' + classeNota(r[d.key]) + '">' +
+        DIMENSOES.map(d => '<td class="num heat" style="' + fundo(r[d.key]) + '">' +
+          '<span class="score ' + classeNota(r[d.key]) + '">' +
           fmt(r[d.key], 2) + "</span></td>").join(""));
       tr.style.cursor = "pointer";
       tr.addEventListener("click", () => selecionar(r.especialidade));
