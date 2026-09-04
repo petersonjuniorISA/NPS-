@@ -117,7 +117,7 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null,
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null, pagina: "resumo",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -261,7 +261,8 @@
       $("#page-sub").textContent = PAGES[p].s;
       $("#sidebar").classList.remove("open");
       window.scrollTo({ top: 0, behavior: "smooth" });
-      Object.values(S.charts).forEach(c => c && c.resize());
+      S.pagina = p;
+      graficosDa(p);
     }));
     const mt = $("#menu-toggle");
     if (mt) mt.addEventListener("click", () => $("#sidebar").classList.toggle("open"));
@@ -337,11 +338,25 @@
               "continuam mensais.</span></div>"
       : "";
 
-    heroi(); farol(); alerta(); leitura();
-    grafHistorico(S.histCsat); composicao(); grafRadar(); grafPerguntas(); destaques();
-    grafEvolucaoDimensoes(); grafEvolucaoEspecialidades();
+    heroi(); farol(); alerta(); leitura(); composicao(); destaques();
     espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
-    sac(); metas(); gradeHistorico(); gradeSemanal();
+    gradeHistorico(); gradeSemanal();
+    graficosDa(S.pagina);
+  }
+
+  /* Chart.js grava o tamanho no canvas quando o gráfico nasce. Nascendo numa
+     aba oculta ele fica 0x0 para sempre — resize() e update() não recuperam,
+     porque o tamanho em cache continua zero. Por isso cada aba só desenha os
+     próprios gráficos, e só quando está visível. */
+  const GRAFICOS = {
+    visao:          () => { grafHistorico(S.histCsat); grafRadar(); grafPerguntas(); grafEvolucaoDimensoes(); },
+    especialidades: () => { grafEvolucaoEspecialidades(); },
+    sac:            () => { sac(); },
+    metas:          () => { metas(); }
+  };
+  function graficosDa(pagina) {
+    const fn = GRAFICOS[pagina];
+    if (fn) fn();
   }
 
   function heroi() {
@@ -845,6 +860,19 @@
       ? '<span class="rot">Leitura</span><span>' + partes.join(" ") + "</span>" : "";
   }
 
+
+  /** Escala colada nos dados: com faixa fixa as linhas se espremem num canto
+      e os rótulos de fim de linha brigam por espaço. */
+  function faixa(valores, folga, piso, teto) {
+    const v = valores.flat().filter(x => x !== null && x !== undefined);
+    if (!v.length) return { min: piso, max: teto };
+    let min = Math.min(...v) - folga, max = Math.max(...v) + folga;
+    if (piso !== undefined) min = Math.max(piso, min);
+    if (teto !== undefined) max = Math.min(teto, max);
+    if (max - min < folga) { min -= folga; max += folga; }
+    return { min: Math.floor(min * 10) / 10, max: Math.ceil(max * 10) / 10 };
+  }
+
   function grafEvolucaoDimensoes() {
     const eixo = eixoTempo(eixoDe("evoDim", "seg-evo-dim"));
     const sub = $("#evo-dim-sub");
@@ -878,8 +906,9 @@
     grafico("chart-evo-dim", { type: "line",
       data: { labels: eixo.map(p => p.label), datasets },
       options: opcoes({ plugins: { legend: legenda(10) },
-        layout: { padding: { right: 34 } },
-        scales: { y: { min: 3, max: 5, grid: { color: C.grid }, ticks: { stepSize: .5 } },
+        layout: { padding: { right: 48 } },
+        scales: { y: Object.assign(faixa(datasets.map(d => d.data), .12, 0, 5),
+                    { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
 
     escreverLeitura("#leitura-dim", eixo,
@@ -926,8 +955,9 @@
     grafico("chart-evo-esp", { type: "line",
       data: { labels: eixo.map(p => p.label), datasets },
       options: opcoes({ plugins: { legend: legenda(10) },
-        layout: { padding: { right: 34 } },
-        scales: { y: { min: -20, max: 100, grid: { color: C.grid } },
+        layout: { padding: { right: 48 } },
+        scales: { y: Object.assign(faixa(datasets.map(d => d.data), 8, -100, 100),
+                    { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
 
     escreverLeitura("#leitura-esp", eixo,
@@ -1275,57 +1305,85 @@
     id: "rotulos",
     afterDatasetsDraw(chart) {
       const ctx = chart.ctx;
-      // Séries que terminam no mesmo valor escreveriam o rótulo no mesmo pixel;
-      // guardamos o que já foi escrito e empurramos o seguinte para baixo.
-      const ocupados = [];
-      const livre = (x, y) => {
-        for (let t = 0; t < 12; t++) {
-          const yy = y + t * 13;
-          if (!ocupados.some(o => Math.abs(o.x - x) < 34 && Math.abs(o.y - yy) < 12)) {
-            ocupados.push({ x, y: yy });
-            return yy;
-          }
-        }
-        return y;
-      };
+      const r = chart.scales.r;   // existe só no radar
+      const ancorados = [];       // rótulos de fim de linha, colocados depois
+
+      ctx.save();
+      ctx.font = "600 11px 'Open Sans', sans-serif";
+      ctx.textBaseline = "middle";
+
       chart.data.datasets.forEach((ds, i) => {
         const cfg = ds.rotulo;
         if (!cfg || !chart.isDatasetVisible(i)) return;
         const meta = chart.getDatasetMeta(i);
         const barraH = meta.type === "bar" && chart.options.indexAxis === "y";
         const barraV = meta.type === "bar" && !barraH;
+        const cor = cfg.cor || C.text;
+        const ultimo = cfg.indice ?? ds.data.reduce((ac, v, k) => (v === null || v === undefined) ? ac : k, -1);
 
-        ctx.save();
-        ctx.font = "600 11px 'Open Sans', sans-serif";
-        ctx.fillStyle = cfg.cor || C.text;
-        ctx.textBaseline = "middle";
-
-        const r = chart.scales.r;   // existe só no radar
-        const ultimoComValor = cfg.indice ?? ds.data.reduce((ac, v, k) => (v === null || v === undefined) ? ac : k, -1);
         meta.data.forEach((ponto, j) => {
           const v = ds.data[j];
           if (v === null || v === undefined) return;
-          if (cfg.soUltimo && j !== ultimoComValor) return;
+          if (cfg.soUltimo && j !== ultimo) return;
           const txt = fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
-          if (barraH) { ctx.textAlign = "left"; ctx.fillText(txt, ponto.x + 7, ponto.y); }
-          else if (barraV) { ctx.textAlign = "center"; ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 15 : -11)); }
-          else if (r) {
-            // puxa o rótulo 15px na direção do centro, senão ele encosta no
-            // nome da dimensão que o radar já desenha por fora
+          ctx.fillStyle = cor;
+
+          if (cfg.soUltimo) {
+            // guardado para posicionar junto com os outros, mais abaixo
+            ancorados.push({ txt, cor, x: ponto.x + 10, y: ponto.y, py: ponto.y, px: ponto.x });
+          } else if (barraH) {
+            ctx.textAlign = "left"; ctx.fillText(txt, ponto.x + 7, ponto.y);
+          } else if (barraV) {
+            ctx.textAlign = "center"; ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 15 : -11));
+          } else if (r) {
+            // fora do ponto, na direção do centro, senão encosta no nome da dimensão
             const dx = ponto.x - r.xCenter, dy = ponto.y - r.yCenter;
             const d = Math.hypot(dx, dy) || 1;
             ctx.textAlign = "center";
             ctx.fillText(txt, ponto.x + dx / d * 13, ponto.y + dy / d * 13);
-          }
-          else {
-            ctx.textAlign = cfg.soUltimo ? "left" : "center";
-            const x = ponto.x + (cfg.soUltimo ? 9 : 0);
-            const y = ponto.y + (cfg.abaixo ? 14 : cfg.soUltimo ? 0 : -13);
-            ctx.fillText(txt, x, cfg.soUltimo ? livre(x, y) : y);
+          } else {
+            ctx.textAlign = "center";
+            ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 14 : -13));
           }
         });
-        ctx.restore();
       });
+
+      /* Rótulos de fim de linha: empurrar um por um na ordem dos datasets
+         invertia a ordem vertical — "60,0" saía embaixo de "54,1" mesmo com a
+         linha do 60,0 por cima. Aqui eles são ordenados pela altura real do
+         ponto e só então espaçados, então a sequência na tela é a mesma das
+         linhas. Quem sai do lugar ganha um fio ligando ao seu ponto. */
+      if (ancorados.length) {
+        const ALTURA = 13, area = chart.chartArea;
+        ancorados.sort((a, b) => a.py - b.py);
+        for (let i = 1; i < ancorados.length; i++) {
+          if (ancorados[i].y - ancorados[i - 1].y < ALTURA)
+            ancorados[i].y = ancorados[i - 1].y + ALTURA;
+        }
+        const sobra = ancorados[ancorados.length - 1].y - (area.bottom - 4);
+        if (sobra > 0) {
+          ancorados.forEach(a => a.y -= sobra);
+          const falta = area.top + 4 - ancorados[0].y;
+          if (falta > 0) ancorados.forEach(a => a.y += falta);
+        }
+
+        ancorados.forEach(a => {
+          if (Math.abs(a.y - a.py) > 2) {
+            ctx.strokeStyle = a.cor;
+            ctx.globalAlpha = .5;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(a.px + 4, a.py);
+            ctx.lineTo(a.x - 2, a.y);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+          ctx.fillStyle = a.cor;
+          ctx.textAlign = "left";
+          ctx.fillText(a.txt, a.x, a.y);
+        });
+      }
+      ctx.restore();
     }
   };
   Chart.register(ROTULOS);
