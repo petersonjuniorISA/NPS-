@@ -142,6 +142,10 @@
   const semanaAtual = () =>
     S.semana === null ? null : semanasNps().find(s => s.semana === S.semana) || null;
 
+  /** "notion" para os meses apurados à mão, "databricks" para os da tabela. */
+  const origemDoMes = mes => (blocoDoMes(mes) || {}).origem || "databricks";
+  const doNotion = mes => origemDoMes(mes) === "notion";
+
   /** Recorte em vigor: a semana escolhida, senão o mês. */
   function bloco(mes) {
     if (!mes && S.semana !== null) {
@@ -229,6 +233,9 @@
     const n = {};
     (dados().satisfacao_por_especialidade || []).forEach(s => n[s.especialidade] = s.n);
     const todas = (dados().nps_por_especialidade || []).map(e => Object.assign({ n: n[e.especialidade] ?? null }, e));
+    // Nos meses do Notion não guardamos o tamanho da amostra; a lista de lá já
+    // vinha filtrada, então entra inteira em vez de sumir por falta do "n".
+    if (doNotion()) return { relevantes: todas, pequenas: [] };
     return {
       relevantes: todas.filter(e => (e.n ?? 0) >= MIN_AMOSTRA),
       pequenas:   todas.filter(e => (e.n ?? 0) < MIN_AMOSTRA)
@@ -321,6 +328,9 @@
     slot.innerHTML =
       !temNps() ? '<div class="notice">' + cerca + "<span>Ainda não há respostas de NPS em " +
                   recorteLabel() + ". Os indicadores de Zendesk continuam disponíveis.</span></div>"
+      : doNotion() ? '<div class="notice">' + cerca + "<span><b>" + mesLabel(S.mes) +
+              "</b> vem da apuração manual do Notion, anterior à entrada do NPS no Databricks. " +
+              "Só o índice geral, a nota por dimensão e o NPS por especialidade foram preservados.</span></div>"
       : sem ? '<div class="notice">' + cerca + "<span>Recorte da <b>semana " + sem.semana + "</b> (" +
               sem.label + ", " + sem.respostas + " respostas). As metas do semestre e os números de Zendesk " +
               "continuam mensais.</span></div>"
@@ -339,9 +349,13 @@
       ? "Semana " + sem.semana + " · " + sem.label
       : mesLabel(mes) + " de " + mes.slice(0,4);
     conta($("#hero-nps"), k.nps_geral, 1);
-    $("#hero-desc").textContent = temNps()
-      ? "Calculado sobre " + k.total_respostas + " respostas. NPS é a diferença entre o percentual de promotores e o de detratores."
-      : "Ainda não há respostas de NPS em " + recorteLabel() + ".";
+    $("#hero-desc").textContent =
+      !temNps() ? "Ainda não há respostas de NPS em " + recorteLabel() + "."
+      : k.total_respostas === null
+        ? "Mês apurado à mão, antes de o NPS entrar no Databricks. Só o índice geral foi preservado."
+        : "Calculado sobre " + k.total_respostas + " respostas de " +
+          (k.convites_enviados ? k.convites_enviados + " convites" : "campanha") +
+          ". NPS é a diferença entre o percentual de promotores e o de detratores.";
 
     const tag = $("#hero-tag");
     if (typeof k.nps_geral_variacao_pct === "number") {
@@ -363,7 +377,8 @@
       ["Respostas", k.total_respostas, null]
     ].map(([rot, val, cor]) =>
       '<div><div class="fact-value tabular">' +
-        (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") + (temNps() ? val : "—") +
+        (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") +
+        (temNps() && val !== null && val !== undefined ? val : "—") +
       '</div><div class="fact-label">' + rot + "</div></div>").join("");
 
     // O medidor fica sempre no mês: a meta é mensal, comparar com uma semana
@@ -439,7 +454,7 @@
         "Para chegar a " + fmt(o.alvo_final, 0) + unidade(o) + " até dezembro, é o indicador que depende de decisão agora.";
 
     // A escada que ainda falta subir — é o que a diretoria precisa aprovar.
-    const futuros = Object.keys(o.metas || {}).filter(m => m > mes).sort();
+    const futuros = Object.keys(o.metas || {}).filter(m => m > mes).sort().slice(0, 4);
     $("#alerta-trajeto").innerHTML = !futuros.length ? "" :
       '<div class="trajeto-label">O que falta subir</div>' +
       '<div class="trajeto">' + futuros.map(m => {
@@ -481,7 +496,7 @@
 
     const objs = S.metas.objetivos || [];
     const sts = objs.map(o => ({ o, st: status(o, mes) }));
-    const validos = sts.filter(x => !x.st.defasada);
+    const validos = sts.filter(x => !x.st.defasada && x.st.att !== null);
     const noAlvo = validos.filter(x => (x.st.att || 0) >= 100).length;
     const defasados = sts.filter(x => x.st.defasada);
     itens.push({ t: noAlvo === validos.length ? "up" : noAlvo === 0 ? "down" : "",
@@ -496,17 +511,27 @@
       txt: "<b>" + perg[0].pergunta + "</b> sustenta a nota (" + fmt(perg[0].media,2) + ") e <b>" +
            perg[perg.length-1].pergunta + "</b> é o que mais puxa para baixo (" + fmt(perg[perg.length-1].media,2) + ")." });
 
-    const maior = [...especialidades().relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
-    if (maior) itens.push({ t: "",
+    const maior = [...especialidades().relevantes].sort((a,b) => (b.pct_amostra ?? 0) - (a.pct_amostra ?? 0))[0];
+    if (maior && maior.pct_amostra !== null && maior.pct_amostra !== undefined) itens.push({ t: "",
       txt: "<b>" + maior.especialidade + "</b> concentra " + fmt(maior.pct_amostra,1) +
-           "% das respostas — o índice geral se move principalmente com esse grupo." });
+           "% das respostas" +
+           (maior.taxa_resposta ? " (" + fmt(maior.taxa_resposta,1) + "% dos convites do grupo foram respondidos)" : "") +
+           " — o índice geral se move principalmente com esse grupo." });
 
     itens.forEach(i => box.appendChild(el("li", i.t, i.txt)));
   }
 
   /* ---------- NPS EM DETALHE ---------- */
   function composicao() {
-    const k = dados().kpi, total = k.promotores + k.neutros + k.detratores || 1;
+    const k = dados().kpi;
+    if (k.promotores === null || k.promotores === undefined) {
+      $("#stack-legend").innerHTML =
+        '<div class="empty" style="padding:8px 0">Sem a divisão promotor/neutro/detrator — ' +
+        mesLabel(S.mes).toLowerCase() + " veio da apuração manual, que guardou só o índice.</div>";
+      Array.from($("#stack").children).forEach(c => c.style.width = "0%");
+      return;
+    }
+    const total = k.promotores + k.neutros + k.detratores || 1;
     const barra = $("#stack");
     [["p", k.promotores], ["n", k.neutros], ["d", k.detratores]].forEach(([cls, val], i) => {
       const s = barra.children[i];
@@ -529,6 +554,9 @@
     const ds = [
       { label: "Realizado", data: real, borderColor: C.blue, backgroundColor: C.blueFill,
         fill: true, tension: .3, borderWidth: 2.5, yAxisID: "y",
+        // trecho apurado a mao fica tracejado: mesma serie, confiabilidade diferente
+        segment: { borderDash: ctx => (S.nps.meses_do_notion || []).includes(meses[ctx.p1DataIndex])
+                                      ? [6, 4] : undefined },
         // o mês que está sendo lido no painel ganha um ponto maior, em rosa
         pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
         pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : C.blue),
@@ -705,7 +733,7 @@
     const mes = S.mes, k = dados().kpi;
     const perg = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
     const esp = especialidades().relevantes;
-    const firmes = esp.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
+    const firmes = doNotion() ? esp : esp.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
     const melhor = [...firmes].sort((a,b) => b.nps - a.nps)[0];
     const pior = [...firmes].sort((a,b) => a.nps - b.nps)[0];
     const meta = metaDoMes("nps", mes);
@@ -736,7 +764,7 @@
     const { relevantes, pequenas } = especialidades();
     // "Melhor" e "pior" viram frase de diretoria — 100,0 tirado de 7 respostas
     // não sustenta isso. Os destaques exigem uma amostra bem maior que a lista.
-    const firmes = relevantes.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
+    const firmes = doNotion() ? relevantes : relevantes.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
     const melhor = [...firmes].sort((a,b) => b.nps - a.nps)[0];
     const pior   = [...firmes].sort((a,b) => a.nps - b.nps)[0];
     const maior  = [...relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
@@ -767,7 +795,8 @@
     lista.forEach(item => {
       const row = el("div", "rank" + (S.espSel === item.especialidade ? " on" : ""),
         '<div class="rank-name">' + item.especialidade +
-          "<span>" + item.n + " respostas · " + fmt(item.pct_amostra,1) + "% da amostra</span></div>" +
+          "<span>" + item.n + (item.enviadas ? " de " + item.enviadas + " convites · " +
+            fmt(item.taxa_resposta, 1) + "% responderam" : " respostas") + "</span></div>" +
         '<div class="rank-track"><i class="rank-fill" style="display:block;width:0;background:' + corNps(item.nps) + '"></i></div>' +
         '<div class="rank-val" style="color:' + corNps(item.nps) + '">' + fmt(item.nps,1) + "</div>");
       row.addEventListener("click", () => selecionar(item.especialidade));

@@ -32,8 +32,11 @@ DATABRICKS_HOST = os.environ.get("DATABRICKS_HOST", "dbc-0fbb1123-410c.cloud.dat
 DATABRICKS_HTTP_PATH = os.environ.get("DATABRICKS_HTTP_PATH", "/sql/1.0/warehouses/8cd8e339bbea1ffd")
 DATABRICKS_TOKEN = os.environ.get("DATABRICKS_TOKEN")  # se ausente, usa login OAuth (databricks auth login)
 DATABRICKS_TABLE = os.environ.get("DATABRICKS_TABLE", "isa_experience_dev.gold.fact_inps_response")
+DATABRICKS_TABLE_AGG = os.environ.get(
+    "DATABRICKS_TABLE_AGG", "isa_experience_dev.gold.agg_inps_per_specialty_month")
 
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "nps.json")
+HISTORICO_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "historico_nps.json")
 
 SCORE_COLUMNS = {
     "app_isa_atende": "score_app_isa_atende",
@@ -81,7 +84,7 @@ def garantir_cli_no_path() -> bool:
     return False
 
 
-def fetch_dataframe() -> pd.DataFrame:
+def fetch_dataframe():
     connect_kwargs = dict(server_hostname=DATABRICKS_HOST, http_path=DATABRICKS_HTTP_PATH)
     if DATABRICKS_TOKEN:
         connect_kwargs["access_token"] = DATABRICKS_TOKEN
@@ -104,8 +107,18 @@ def fetch_dataframe() -> pd.DataFrame:
     with sql.connect(**connect_kwargs) as conn:
         with conn.cursor() as cursor:
             cursor.execute(f"SELECT * FROM {DATABRICKS_TABLE} WHERE is_answered")
-            rows = cursor.fetchall()
-            return pd.DataFrame([r.asDict() for r in rows])
+            respostas = pd.DataFrame([r.asDict() for r in cursor.fetchall()])
+
+            # A tabela agregada e a unica fonte de quantos convites foram
+            # enviados — e "% da amostra" no Notion e respondidas/enviadas,
+            # nao a fatia de cada especialidade no total de respostas.
+            cursor.execute(
+                "SELECT date_format(reference_month, 'yyyy-MM') AS mes, specialty_name,"
+                "       sum(n_sent) AS enviadas, sum(n_answered) AS respondidas"
+                f" FROM {DATABRICKS_TABLE_AGG} GROUP BY 1, 2"
+            )
+            envios = pd.DataFrame([r.asDict() for r in cursor.fetchall()])
+    return respostas, envios
 
 
 def nps_from_bucket_counts(promotores: int, neutros: int, detratores: int) -> float:
@@ -136,7 +149,7 @@ def media_ou_none(frame: pd.DataFrame, coluna: str):
     return round(float(valores.mean()), 2)
 
 
-def resumo_do_mes(cur: pd.DataFrame, nps_mes_anterior=None) -> dict:
+def resumo_do_mes(cur: pd.DataFrame, nps_mes_anterior=None, enviados=None) -> dict:
     """Calcula o bloco completo de indicadores de um único mês."""
     promotores, neutros, detratores = bucket_counts(cur)
     total_respostas = len(cur)
@@ -162,8 +175,14 @@ def resumo_do_mes(cur: pd.DataFrame, nps_mes_anterior=None) -> dict:
         if pd.isna(especialidade):
             continue
         p, n, d = bucket_counts(grupo)
+        # taxa_resposta = respondidas / convites enviados. E o que o Notion
+        # chama de "% da amostra"; a fatia no total de respostas e outra coisa
+        # e ficava divergindo do numero oficial.
+        enviadas = (enviados or {}).get(especialidade)
         nps_por_especialidade.append({
             "especialidade": especialidade,
+            "enviadas": int(enviadas) if enviadas else None,
+            "taxa_resposta": round(len(grupo) / enviadas * 100, 1) if enviadas else None,
             "pct_amostra": round(len(grupo) / total_respostas * 100, 1) if total_respostas else 0,
             "nps": nps_from_bucket_counts(p, n, d),
         })
@@ -229,7 +248,7 @@ def semanas_do_mes(cur: pd.DataFrame) -> list:
     return semanas
 
 
-def build_payload(df: pd.DataFrame) -> dict:
+def build_payload(df: pd.DataFrame, envios: pd.DataFrame = None) -> dict:
     df = df.copy()
     df["reference_month"] = pd.to_datetime(df["reference_month"]).dt.to_period("M")
 
@@ -253,7 +272,13 @@ def build_payload(df: pd.DataFrame) -> dict:
         chave = str(mes)
         anterior = nps_por_mes[str(months_sorted[i - 1])] if i > 0 else None
         recorte = df[df["reference_month"] == mes]
-        meses[chave] = resumo_do_mes(recorte, anterior)
+        enviados = {}
+        if envios is not None and not envios.empty:
+            doMes = envios[envios["mes"] == chave]
+            enviados = dict(zip(doMes["specialty_name"], doMes["enviadas"]))
+        meses[chave] = resumo_do_mes(recorte, anterior, enviados)
+        meses[chave]["kpi"]["convites_enviados"] = int(
+            envios[envios["mes"] == chave]["enviadas"].sum()) if envios is not None and not envios.empty else None
         semanas[chave] = semanas_do_mes(recorte)
 
     atual = meses[current_month]
@@ -272,9 +297,63 @@ def build_payload(df: pd.DataFrame) -> dict:
     }
 
 
+def juntar_historico(payload: dict) -> dict:
+    """Cola os meses que só existem no Notion antes dos que vêm do Databricks.
+
+    Maio, junho e julho foram apurados à mão e nunca entraram na tabela. Sem
+    isso o painel começa em agosto e a diretoria perde a curva que ela já
+    conhece. O Databricks sempre vence: um mês que exista nos dois lugares
+    fica com a versão da tabela.
+    """
+    try:
+        with open(HISTORICO_PATH, encoding="utf-8") as f:
+            hist = json.load(f)
+    except FileNotFoundError:
+        return payload
+
+    meses_hist = hist.get("meses", {})
+    for chave in sorted(meses_hist):
+        if chave in payload["meses"]:
+            continue  # o Databricks manda
+        bloco = meses_hist[chave]
+        payload["meses"][chave] = {
+            "kpi": {
+                "nps_geral": bloco["nps_geral"],
+                "nps_geral_variacao_pct": None,
+                "total_respostas": None,
+                "promotores": None, "neutros": None, "detratores": None,
+                "convites_enviados": None,
+            },
+            "media_por_pergunta": sorted(
+                ({"pergunta": k, "media": v} for k, v in bloco.get("media_por_pergunta", {}).items()),
+                key=lambda x: x["media"], reverse=True),
+            "nps_por_especialidade": sorted(
+                ({"especialidade": k, "nps": v, "enviadas": None,
+                  "taxa_resposta": None, "pct_amostra": None}
+                 for k, v in bloco.get("nps_por_especialidade", {}).items()),
+                key=lambda x: x["nps"], reverse=True),
+            "satisfacao_por_especialidade": [],
+            "origem": "notion",
+        }
+
+    # historico_nps volta a ser a serie completa, na ordem
+    serie = []
+    for chave in sorted(payload["meses"]):
+        nps = payload["meses"][chave]["kpi"]["nps_geral"]
+        if nps is None:
+            continue
+        mes_num = int(chave.split("-")[1])
+        serie.append({"mes": chave, "label": MONTH_LABELS_PT[mes_num], "nps": nps,
+                      "origem": payload["meses"][chave].get("origem", "databricks")})
+    payload["historico_nps"] = serie
+    payload["meses_do_notion"] = [k for k in sorted(meses_hist) if payload["meses"].get(k, {}).get("origem") == "notion"]
+    return payload
+
+
 def main():
-    df = fetch_dataframe()
-    payload = build_payload(df)
+    df, envios = fetch_dataframe()
+    payload = build_payload(df, envios)
+    payload = juntar_historico(payload)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     print(f"OK: {payload['kpi']['total_respostas']} respostas em {payload['current_month']} escritas em {OUTPUT_PATH}")

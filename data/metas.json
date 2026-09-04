@@ -1,7 +1,7 @@
 {
-  "fonte": "Planilha 'Metas 2S - Isa Experience' (Google Sheets). Atualizar quando a liderança revisar as metas do semestre.",
-  "atualizado_em": "2026-09-02",
-  "observacao": "Metas de nov/dez foram inferidas da projeção que estava no Notion — confira na planilha oficial e ajuste se necessário.",
+  "fonte": "Tabela 'Historico de indicadores' da pagina 'NPS dos ISAs' no Notion, que e a referencia oficial apresentada a diretoria.",
+  "atualizado_em": "2026-09-03",
+  "observacao": "Metas conferidas contra o Notion em 03/09/2026. As de nov/dez de resolucao com IA seguem o Notion (40% e 60%), nao a projecao anterior.",
   "objetivos": [
     {
       "id": "nps",
@@ -14,10 +14,12 @@
       "alvo_final": 60,
       "fonte_realizado": "nps",
       "metas": {
-        "2026-07": 45.8,
-        "2026-08": 46.5,
-        "2026-09": 48.6,
-        "2026-10": 54.3,
+        "2026-05": 38,
+        "2026-06": 39,
+        "2026-07": 46,
+        "2026-08": 48,
+        "2026-09": 52,
+        "2026-10": 54,
         "2026-11": 57,
         "2026-12": 60
       },
@@ -39,7 +41,7 @@
         "2026-09": 3.85,
         "2026-10": 3.9,
         "2026-11": 3.95,
-        "2026-12": 4
+        "2026-12": 4.0
       },
       "contexto": "Satisfação de quem passou pelo atendimento humano do SAC."
     },
@@ -56,9 +58,9 @@
       "metas": {
         "2026-07": 24,
         "2026-08": 25,
-        "2026-09": 40,
-        "2026-10": 45,
-        "2026-11": 50,
+        "2026-09": 20,
+        "2026-10": 40,
+        "2026-11": 40,
         "2026-12": 60
       },
       "contexto": "Quanto do suporte a IA resolve sozinha — é o que destrava escala sem aumentar time."

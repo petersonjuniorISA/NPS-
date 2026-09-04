@@ -1,0 +1,74 @@
+{
+  "fonte": "Notion — página 'NPS dos ISAs', bases 'Evolução por Pergunta do NPS' e 'Evolução do NPS por Especialidade'.",
+  "atualizado_em": "2026-09-03",
+  "por_que_existe": "A tabela isa_experience_dev.gold.fact_inps_response só tem reference_month = 2026-08. Maio, junho e julho foram apurados à mão e vivem apenas no Notion. Este arquivo preserva esses meses para o painel mostrar a série completa; de agosto em diante tudo vem do Databricks e sobrescreve o que estiver aqui.",
+  "meses": {
+    "2026-05": {
+      "nps_geral": 38,
+      "media_por_pergunta": {
+        "Pontualidade Pagamento": 4.39,
+        "Gestão de Escalas": 4.04,
+        "App Isa Atende": 3.95,
+        "Comunicação": 3.88,
+        "Suporte Chat": 3.92
+      },
+      "nps_por_especialidade": {
+        "Fisioterapia": 90,
+        "Nutrição": 80,
+        "Tecnico em Enfermagem": 79,
+        "Medicina": 77,
+        "Terapia Ocupacional": 75,
+        "Fonoaudiologia": 73,
+        "Enfermeiro (a)": 70,
+        "Auxiliar de Enfermagem": 31,
+        "Psicologia": 100
+      }
+    },
+    "2026-06": {
+      "nps_geral": 39,
+      "media_por_pergunta": {
+        "Pontualidade Pagamento": 4.23,
+        "Gestão de Escalas": 4.04,
+        "App Isa Atende": 3.76,
+        "Comunicação": 3.84,
+        "Suporte Chat": 3.85
+      },
+      "nps_por_especialidade": {
+        "Medicina": 86,
+        "Nutrição": 82,
+        "Terapia Ocupacional": 81,
+        "Psicologia": 80,
+        "Fisioterapia": 70,
+        "Enfermeiro (a)": 70,
+        "Tecnico em Enfermagem": 65,
+        "Fonoaudiologia": 60,
+        "Auxiliar de Enfermagem": 25
+      }
+    },
+    "2026-07": {
+      "nps_geral": 45.8,
+      "media_por_pergunta": {
+        "Pontualidade Pagamento": 4.4,
+        "Gestão de Escalas": 4.1,
+        "App Isa Atende": 3.9,
+        "Comunicação": 3.8,
+        "Suporte Chat": 3.9
+      },
+      "nps_por_especialidade": {
+        "Terapia Ocupacional": 100,
+        "Medicina": 81,
+        "Psicologia": 66,
+        "Nutrição": 61,
+        "Tecnico em Enfermagem": 49,
+        "Fisioterapia": 48,
+        "Fonoaudiologia": 42,
+        "Enfermeiro (a)": 31,
+        "Auxiliar de Enfermagem": 11
+      }
+    }
+  },
+  "observacoes": [
+    "A base 'Evolução por Pergunta do NPS' do Notion tem 5 perguntas — Experiência Geral não é acompanhada lá, embora apareça na tabela 'Média por Pergunta'. Por isso os meses históricos não trazem essa dimensão.",
+    "Os nomes de especialidade seguem a grafia do Databricks ('Tecnico em Enfermagem', 'Enfermeiro (a)') para as séries casarem com agosto em diante."
+  ]
+}
