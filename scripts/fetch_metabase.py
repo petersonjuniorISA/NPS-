@@ -54,7 +54,9 @@ def chave_do_cofre():
         return None
     ps = (
         "$ErrorActionPreference='Stop';"
-        "$s = Get-Content -Raw '%s' | ConvertTo-SecureString;"
+        # o .Trim() e obrigatorio: Set-Content deixa uma quebra de linha no fim
+        # e o ConvertTo-SecureString rejeita o blob com ela
+        "$s = (Get-Content -Raw '%s').Trim() | ConvertTo-SecureString;"
         "[Runtime.InteropServices.Marshal]::PtrToStringAuto("
         "[Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"
     ) % ARQUIVO_CHAVE.replace("'", "''")
