@@ -5,3 +5,7 @@ __pycache__/
 venv/
 logs/
 data/ocorrencias_export_*.csv
+
+# chave de API do Metabase (fora do repositorio)
+.nps-isas/
+*.key

@@ -19,15 +19,21 @@ try {
     python scripts\fetch_databricks.py
     if ($LASTEXITCODE -ne 0) { throw "fetch_databricks.py falhou com codigo $LASTEXITCODE" }
 
+    Write-Output "== Buscando ocorrencias no Metabase =="
+    # Sem chave de API o script avisa e sai com 0: a falta das ocorrencias nao
+    # pode derrubar a atualizacao do NPS, que e a parte critica.
+    python scripts\fetch_metabase.py
+    if ($LASTEXITCODE -ne 0) { Write-Warning "fetch_metabase.py falhou (codigo $LASTEXITCODE) - seguindo sem atualizar ocorrencias." }
+
     Write-Output "== Verificando alteracoes =="
-    git add data\nps.json
+    git add data\nps.json data\ocorrencias.json
     $changes = git diff --cached --name-only
 
     if ($changes) {
         Write-Output "== Publicando alteracoes =="
-        git commit -m "chore: atualiza dados do NPS (automatico)"
+        git commit -m "chore: atualiza dados do NPS e das ocorrencias (automatico)"
         git push
-        Write-Output "OK: nps.json atualizado e publicado."
+        Write-Output "OK: dados atualizados e publicados."
     } else {
         Write-Output "OK: sem mudancas nos dados desta semana."
     }

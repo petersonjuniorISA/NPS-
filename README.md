@@ -5,7 +5,7 @@ Notion. Site estático, publicado no GitHub Pages.
 
 ## Como funciona
 
-O painel tem três fontes de dados, com níveis de automação diferentes:
+O painel tem quatro fontes de dados, com níveis de automação diferentes:
 
 1. **NPS (Databricks) — 100% automático.** Toda sexta-feira às 18h, o
    Agendador de Tarefas do Windows roda `scripts/weekly_update.ps1` na
@@ -39,6 +39,15 @@ O painel tem três fontes de dados, com níveis de automação diferentes:
    meta é revisada. O painel cruza meta × realizado sozinho e mostra o
    atingimento de cada objetivo (NPS, CSAT do SAC, Resolução com IA e FCR)
    na página **Metas SMART**, além da linha de meta no histórico do NPS.
+
+4. **Ocorrências (Metabase) — automático assim que houver chave de API.**
+   As ocorrências da Comunidade (sem Captação) vêm do Metabase, card 380
+   "Ocorrências Finalizadas", sobre o MongoDB de tickets.
+   `scripts/fetch_metabase.py` baixa o CSV pela API e
+   `scripts/build_ocorrencias.py` calcula volume e SLA em
+   `data/ocorrencias.json`. Falta só criar a chave de API e guardá-la — veja
+   a seção "Ocorrências (Metabase)" abaixo. Sem a chave, o passo é pulado com
+   um aviso e a atualização do NPS segue normalmente.
 
 ## Navegar entre meses e semanas
 
@@ -202,7 +211,44 @@ Colunas esperadas (a primeira linha do arquivo já traz isso):
 | `resolucao_ia_pct` | `40` | número, sem o `%` |
 | `narrativa` | texto livre | as "alavancas da semana" |
 
-### 4. Atualizar as metas SMART
+### 4. Ocorrências (Metabase) — ligar a atualização automática
+
+A aba **Ocorrências** mostra o volume e o SLA de encerramento das ocorrências
+da Comunidade (Treinamento, Onboarding, SAC ISAs, Enfermagem, Equipe Multi),
+**sem as de Captação**. A fonte é o Metabase — `report.isalab.com.br`, card 380
+"Ocorrências Finalizadas", sobre o MongoDB de tickets.
+
+Falta só a chave de API para isso rodar sozinho junto com o NPS:
+
+1. No Metabase: **Configurações > Autenticação > Chaves de API > Criar chave**.
+   Dê um nome tipo "Painel NPS ISAs" e escolha um grupo que enxergue a coleção
+   SAC. Copie a chave — ela só aparece uma vez.
+2. Na máquina que roda a tarefa agendada:
+
+   ```powershell
+   powershell -File scripts\salvar_chave_metabase.ps1
+   ```
+
+   O script pede a chave (não aparece na tela), guarda cifrada com DPAPI em
+   `%USERPROFILE%\.nps-isas\metabase.key` e já testa a conexão. DPAPI amarra o
+   segredo à sua conta do Windows: o arquivo é inútil em outra máquina, e não
+   entra no Git.
+
+Feito isso, `scripts/weekly_update.ps1` passa a atualizar `data/ocorrencias.json`
+toda sexta junto com o NPS. Sem a chave, o script apenas avisa e segue — a
+atualização do NPS nunca é derrubada por causa das ocorrências.
+
+Para rodar à mão a partir de um CSV já exportado do Metabase:
+
+```powershell
+py scriptsuild_ocorrencias.py "C:\caminho\export.csv"
+```
+
+**Uma limitação que fica:** o card 380 devolve só ocorrências **já
+finalizadas**. As que seguem abertas não entram, e nenhum card do Metabase as
+expõe linha a linha. Por isso o painel fala em "finalizadas", não em "total".
+
+### 5. Atualizar as metas SMART
 
 As metas do semestre ficam em `data/metas.json` (espelho da planilha
 "Metas 2S - Isa Experience"). Cada objetivo tem a meta de cada mês e sabe
@@ -231,13 +277,13 @@ de onde vem o realizado:
 Com isso, a página **Metas SMART** calcula sozinha o "Real vs. meta" de cada
 objetivo — não precisa mexer em código quando a meta mudar, só neste arquivo.
 
-### 5. Trocar o logo
+### 6. Trocar o logo
 
 Suba o logo da área como `assets/logo.png` (direto pelo GitHub:
 **Add file → Upload files**). Ele aparece no topo da barra lateral. Enquanto
 o arquivo não existir, o painel mostra um selo "ISA" em teal automaticamente.
 
-### 6. Espelhar no Google Sites (acesso restrito ao domínio ISA)
+### 7. Espelhar no Google Sites (acesso restrito ao domínio ISA)
 
 Já feito: **https://sites.google.com/isasaude.com/nps-dos-isas** — site
 criado no Google Sites (Workspace ISA Saúde), com um bloco de **Incorporar**
