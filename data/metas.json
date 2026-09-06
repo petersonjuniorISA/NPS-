@@ -106,7 +106,7 @@
         "2026-12": "8h"
       },
       "contexto": "Quanto o profissional espera para ser respondido pela primeira vez.",
-      "exibir_no_farol": false
+      "exibir_no_farol": true
     },
     {
       "id": "tmr",
@@ -126,7 +126,7 @@
         "2026-12": "11h30"
       },
       "contexto": "Quanto tempo o chamado leva do início ao fim.",
-      "exibir_no_farol": false
+      "exibir_no_farol": true
     }
   ]
 }

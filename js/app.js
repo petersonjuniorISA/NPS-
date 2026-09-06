@@ -198,7 +198,12 @@
   const zenMes     = mes => zenMensal().find(r => r.mes === mes) || null;
 
   const objetivo = id => (S.metas.objetivos || []).find(o => o.id === id) || null;
-  function metaDoMes(id, mes) { const o = objetivo(id); return o && o.metas ? (o.metas[mes] ?? null) : null; }
+  function metaDoMes(id, mes) {
+    const o = objetivo(id);
+    const bruto = o && o.metas ? (o.metas[mes] ?? null) : null;
+    if (bruto === null) return null;
+    return o.unidade === "tempo" ? minutosDeTempo(bruto) : bruto;
+  }
   function realizado(o, mes) {
     if (!o) return null;
     if (o.fonte_realizado === "nps") {
@@ -208,7 +213,9 @@
     if (!o.fonte_realizado) return null;
     const campo = String(o.fonte_realizado || "").split(":")[1];
     const linha = zenMes(mes);
-    return linha ? num(linha[campo]) : null;
+    if (!linha) return null;
+    // TMA e TMR sao texto ("10h", "12h48") — viram minutos para poder comparar
+    return o.unidade === "tempo" ? minutosDeTempo(linha[campo]) : num(linha[campo]);
   }
   /* Acima disso o atingimento deixa de informar: 458% não diz que o indicador
      vai bem, diz que a meta do mês está defasada. */
@@ -216,19 +223,27 @@
 
   function status(o, mes) {
     const meta = metaDoMes(o.id, mes), real = realizado(o, mes);
-    const att = (meta && real !== null) ? Math.round(real / meta * 100) : null;
+    // Em TMA e TMR a meta e um teto: cumprir e ficar ABAIXO dela. Usar
+    // real/meta ali diria que demorar mais e "atingir mais".
+    const menorMelhor = o.sentido === "menor_melhor";
+    const att = (meta && real !== null && real !== 0)
+      ? Math.round((menorMelhor ? meta / real : real / meta) * 100) : null;
     const defasada = att !== null && att >= ATT_DEFASADA;
     return {
       meta, real, att, defasada,
       cls: att === null ? "risco" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off",
       // o que mostrar no lugar do número quando ele perde o sentido
-      texto: att === null ? "—" : defasada ? (real / meta).toFixed(1).replace(".", ",") + "×" : att + "%",
-      palavra: att === null ? "sem dado"
+      texto: att === null ? "—"
+           : defasada ? (menorMelhor ? meta / real : real / meta).toFixed(1).replace(".", ",") + "×"
+           : att + "%",
+      palavra: att === null ? (meta === null && real !== null ? "sem meta no mês" : "sem dado")
              : defasada ? "meta defasada"
              : att >= 100 ? "no alvo" : att >= 85 ? "atenção" : "atrasado"
     };
   }
   const unidade = o => (o.unidade === "%" ? "%" : "");
+  /** Formata o realizado/meta de um objetivo respeitando a unidade. */
+  const mostrarObjetivo = (o, v) => o.unidade === "tempo" ? tempoDeMinutos(v) : fmt(v, o.casas) + unidade(o);
 
   /** Especialidades com amostra suficiente vs. as que não sustentam leitura. */
   function especialidades() {
@@ -437,8 +452,8 @@
           '<div class="farol-ctx">' + (st.defasada
             ? "Já passou o alvo de dezembro (" + fmt(o.alvo_final, 0) + unidade(o) + "). A meta precisa ser revista."
             : (o.contexto || "")) + "</div></div>" +
-        '<div class="farol-nums"><div class="farol-real tabular">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
-          '<div class="farol-meta">meta ' + fmt(st.meta, o.casas) + unidade(o) + "</div></div>" +
+        '<div class="farol-nums"><div class="farol-real tabular">' + mostrarObjetivo(o, st.real) + "</div>" +
+          '<div class="farol-meta">meta ' + mostrarObjetivo(o, st.meta) + "</div></div>" +
         '<div class="farol-status"><div class="farol-att tabular ' + (st.defasada ? "stale" : st.cls) + '">' +
           st.texto + "</div>" +
           '<div class="farol-word">' + st.palavra + "</div></div>"));
@@ -796,19 +811,30 @@
   function ocorrencias() {
     const m = ocMes(), vazio = !m;
     $("#oc-mes").textContent = mesLabel(S.mes) + " de " + S.mes.slice(0, 4);
-    conta($("#oc-total"), vazio ? null : m.finalizadas, 0);
+    conta($("#oc-total"), vazio ? null : m.total, 0);
     $("#oc-desc").textContent = vazio
-      ? "Sem ocorrências finalizadas registradas neste mês."
-      : "Ocorrências da Comunidade encerradas, sem contar as de Captação. " +
-        "O tempo é medido entre a abertura e o encerramento.";
+      ? "Sem ocorrências registradas neste mês."
+      : "Abertas na Comunidade, sem contar Captação.";
+
+    $("#oc-fatos").innerHTML = vazio ? "" : [
+      ["Finalizadas", m.finalizadas, C.positive],
+      ["Em aberto", m.em_aberto, C.amber],
+      ["Canceladas", m.canceladas, null]
+    ].map(function (f) {
+      return '<div><div class="fact-value tabular">' +
+        (f[2] ? '<span class="dot" style="background:' + f[2] + '"></span>' : "") + f[1] +
+        '</div><div class="fact-label">' + f[0] + "</div></div>";
+    }).join("");
 
     $("#oc-sla").textContent = vazio ? "—" : emDias(m.sla_mediano_h);
     $("#oc-sla").style.color = vazio ? "" : m.sla_mediano_h > 168 ? C.negative
                                           : m.sla_mediano_h > 72 ? "#96700B" : "#009131";
     $("#oc-sla-cap").innerHTML = vazio ? "" :
-      "mediano · média de <b>" + emDias(m.sla_medio_h) + "</b>" +
+      "mediano sobre as <b>" + m.finalizadas + " finalizadas</b> · média de <b>" +
+      emDias(m.sla_medio_h) + "</b>" +
       (m.sla_max_h > m.sla_mediano_h * 2
-        ? ", puxada por um caso de <b>" + emDias(m.sla_max_h) + "</b>" : "");
+        ? ", puxada por um caso de <b>" + emDias(m.sla_max_h) + "</b>" : "") +
+      (m.em_aberto ? ". As <b>" + m.em_aberto + " em aberto</b> não entram: nelas ainda não há encerramento para medir." : "");
 
     listaOc("#oc-departamentos", m && m.por_departamento, n => n.replace("Comunidade - ", ""));
     listaOc("#oc-tipos", m && m.por_tipo, n => n, 5);
@@ -823,12 +849,20 @@
     const box = $(alvo);
     const itens = Object.entries(mapa || {}).slice(0, limite || 99);
     if (!itens.length) { box.innerHTML = '<div class="empty">Sem dados no mês.</div>'; return; }
-    const maior = Math.max.apply(null, itens.map(x => x[1].finalizadas)) || 1;
-    box.innerHTML = itens.map(x =>
-      '<div class="oc-linha"><div class="oc-topo"><span>' + nome(x[0]) + "</span>" +
-      '<b class="tabular">' + x[1].finalizadas + "</b></div>" +
-      '<div class="oc-barra"><i style="width:' + (x[1].finalizadas / maior * 100) + '%"></i></div>' +
-      '<div class="oc-pe">SLA mediano ' + emDias(x[1].sla_mediano_h) + "</div></div>").join("");
+    const maior = Math.max.apply(null, itens.map(x => x[1].total)) || 1;
+    box.innerHTML = itens.map(function (x) {
+      const v = x[1];
+      // a barra e o total; a parte cheia mostra quanto ja foi encerrado
+      const pctFin = v.total ? v.finalizadas / v.total * 100 : 0;
+      return '<div class="oc-linha"><div class="oc-topo"><span>' + nome(x[0]) + "</span>" +
+        '<b class="tabular">' + v.total + "</b></div>" +
+        '<div class="oc-barra" style="width:' + (v.total / maior * 100) + '%">' +
+        '<i style="width:' + pctFin + '%"></i></div>' +
+        '<div class="oc-pe">' + v.finalizadas + " finalizadas" +
+        (v.em_aberto ? " · " + v.em_aberto + " em aberto" : "") +
+        (v.sla_mediano_h === undefined ? "" : " · SLA " + emDias(v.sla_mediano_h)) +
+        "</div></div>";
+    }).join("");
   }
 
   function grafOcSemana(m) {
@@ -836,9 +870,11 @@
     grafico("chart-oc-semana", {
       data: { labels: sem.map(s => s.label), datasets: [
         { type: "bar", label: "Finalizadas", data: sem.map(s => s.finalizadas),
-          backgroundColor: C.blueFill, borderColor: C.blue, borderWidth: 1.2,
-          borderRadius: 4, maxBarThickness: 40, yAxisID: "y",
-          rotulo: { casas: 0, cor: C.blue } },
+          backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 40,
+          stack: "oc", yAxisID: "y" },
+        { type: "bar", label: "Em aberto", data: sem.map(s => s.em_aberto),
+          backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 40,
+          stack: "oc", yAxisID: "y" },
         { type: "line", label: "SLA mediano (dias)",
           data: sem.map(s => s.sla_mediano_dias === undefined ? null : s.sla_mediano_dias),
           borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
@@ -857,9 +893,11 @@
     grafico("chart-oc-mensal", {
       data: { labels: meses.map(mesCurto), datasets: [
         { type: "bar", label: "Finalizadas", data: dados.map(d => d.finalizadas),
-          backgroundColor: meses.map(k => k === S.mes ? C.pink : C.blueFill),
-          borderColor: meses.map(k => k === S.mes ? C.pink : C.blue),
-          borderWidth: 1.2, borderRadius: 4, maxBarThickness: 30, yAxisID: "y" },
+          backgroundColor: meses.map(k => k === S.mes ? C.pink : C.blue),
+          borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
+        { type: "bar", label: "Em aberto", data: dados.map(d => d.em_aberto),
+          backgroundColor: meses.map(k => k === S.mes ? "#F79AC4" : C.amber),
+          borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
         { type: "line", label: "SLA mediano (dias)",
           data: dados.map(d => d.sla_mediano_dias === undefined ? null : d.sla_mediano_dias),
           borderColor: C.teal, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
@@ -881,7 +919,9 @@
       ini.label.toLowerCase() + " para <b>" + fmt(fim.sla_mediano_dias, 1) + " dias</b> em " +
       fim.label.toLowerCase() + (dif <= 0 ? " — encurtou " : " — alongou ") +
       fmt(Math.abs(dif), 1) + " dias. O maior volume da série foi <b>" + pico.label +
-      "</b>, com " + pico.finalizadas + " ocorrências finalizadas.</span>";
+      "</b>, com " + pico.total + " ocorrências." +
+      (fim.em_aberto ? " Em " + fim.label.toLowerCase() + ", <b>" + fim.em_aberto +
+        " das " + fim.total + "</b> seguem em aberto." : "") + "</span>";
   }
 
   function tabelaOc(m) {
@@ -891,7 +931,9 @@
       : "Sem semanas para " + mesLabel(S.mes).toLowerCase() + ".";
     corpo.innerHTML = sem.map(s =>
       '<tr><td class="rot strong">' + s.label + "</td>" +
-      '<td class="num real"><b class="tabular">' + s.finalizadas + "</b></td>" +
+      '<td class="num real"><b class="tabular">' + s.total + "</b></td>" +
+      '<td class="num"><span class="tabular">' + s.finalizadas + "</span></td>" +
+      '<td class="num"><span class="tabular">' + (s.em_aberto || "—") + "</span></td>" +
       '<td class="num real"><b class="tabular">' + emDias(s.sla_mediano_h) + "</b></td>" +
       '<td class="num"><span class="tabular">' + emDias(s.sla_medio_h) + "</span></td>" +
       '<td class="num"><span class="tabular">' + emDias(s.sla_max_h) + "</span></td></tr>").join("");
@@ -1373,9 +1415,9 @@
       const st = status(o, mes);
       const ok = st.att !== null && st.att >= 100;
       box.appendChild(el("div", "card goal",
-        '<div class="goal-tag">Meta ' + mesCurto(mes).toLowerCase() + ": " + fmt(st.meta, o.casas) + unidade(o) + "</div>" +
+        '<div class="goal-tag">Meta ' + mesCurto(mes).toLowerCase() + ": " + mostrarObjetivo(o, st.meta) + "</div>" +
         '<div class="goal-desc">' + o.descricao + "</div>" +
-        '<div class="goal-num tabular">' + fmt(st.real, o.casas) + unidade(o) + "</div>" +
+        '<div class="goal-num tabular">' + mostrarObjetivo(o, st.real) + "</div>" +
         (st.defasada ? '<div class="goal-warn">Acima do alvo de dezembro — meta a revisar</div>' : "") +
         '<div class="goal-foot"><span>Real vs. meta</span>' +
           '<div class="goal-att tabular ' + (st.defasada ? "stale" : ok ? "ok" : "off") + '">' + st.texto + "</div></div>"));

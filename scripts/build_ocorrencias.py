@@ -3,25 +3,20 @@
 
 De onde vem o CSV
 -----------------
-Metabase (report.isalab.com.br), card 380 "Ocorrências Finalizadas", exportado
-em CSV. O card mora na coleção SAC e devolve uma linha por ocorrência com
-departamento, tipo, abertura (CreatedAt) e encerramento (UpdatedAt).
+De scripts/fetch_metabase.py, que monta a consulta em MBQL e chama o
+/api/dataset/csv do Metabase. Uma linha por ocorrência da Comunidade, com
+departamento, tipo, status, abertura (CreatedAt) e encerramento (UpdatedAt).
 
     py scripts/build_ocorrencias.py "<caminho do csv exportado>"
 
-Por que não é automático como o NPS
------------------------------------
-Os tickets vivem num MongoDB, e o conector do Metabase disponível aqui não
-aceita pipeline de agregação próprio — só rodar cards já salvos. Não há
-credencial do Metabase nesta máquina para um script buscar sozinho. Então este
-passo é manual: exportar o card e rodar isto. Se o time liberar uma API key do
-Metabase, dá para trocar por uma busca automática igual à do Databricks.
+Status
+------
+Vêm todos: Finalizado, Criado, Em Progresso e Cancelado. "Em aberto" é
+Criado + Em Progresso — o que ainda consome fila.
 
-O que fica de fora
-------------------
-O card 380 traz apenas ocorrências **finalizadas**. As que ainda estão abertas
-não entram — não existe card que as devolva linha a linha. Por isso o painel
-fala em "finalizadas", não em "total aberto".
+O SLA só é calculado sobre as finalizadas, porque só nelas o UpdatedAt marca
+de fato o encerramento. Numa ocorrência aberta esse campo é a última mexida,
+que não quer dizer nada como tempo de resolução.
 """
 
 import csv
@@ -58,11 +53,22 @@ def da_comunidade(dep):
     return d.startswith(PREFIXOS) and not any(x in d.lower() for x in EXCLUIR)
 
 
+ABERTOS = ("criado", "em progresso")
+
+
 def resumo(itens):
-    """Contagem e SLA de um recorte. Mediana junto da média de propósito: uma
-    ocorrência parada 18 dias puxa a média e some na mediana."""
-    horas = sorted(i["horas"] for i in itens)
-    dados = {"finalizadas": len(itens)}
+    """Contagem por status e SLA do recorte.
+
+    Mediana ao lado da média de propósito: uma ocorrência parada 18 dias puxa a
+    média e some na mediana."""
+    finalizadas = [i for i in itens if i["status"] == "Finalizado"]
+    horas = sorted(i["horas"] for i in finalizadas if i["horas"] is not None)
+    dados = {
+        "total": len(itens),
+        "finalizadas": len(finalizadas),
+        "em_aberto": len([i for i in itens if i["status"].lower() in ABERTOS]),
+        "canceladas": len([i for i in itens if i["status"] == "Cancelado"]),
+    }
     if horas:
         dados["sla_medio_h"] = round(statistics.mean(horas), 1)
         dados["sla_mediano_h"] = round(statistics.median(horas), 1)
@@ -88,16 +94,23 @@ def main():
     for l in brutos:
         if not da_comunidade(l.get("Department: Description")):
             continue
-        abriu, fechou = momento(l.get("CreatedAt")), momento(l.get("UpdatedAt"))
-        if not abriu or not fechou or fechou < abriu:
+        abriu = momento(l.get("CreatedAt"))
+        if not abriu:
             continue
+        status = (l.get("Status: Description") or "—").strip()
+        fechou = momento(l.get("UpdatedAt"))
+        # so a finalizada tem tempo de resolucao; nas outras o UpdatedAt e
+        # apenas a ultima mexida no ticket
+        horas = None
+        if status == "Finalizado" and fechou and fechou >= abriu:
+            horas = (fechou - abriu).total_seconds() / 3600.0
         itens.append({
             "departamento": l["Department: Description"].strip(),
             "tipo": (l.get("Type: Description") or "—").strip(),
+            "status": status,
             "mes": abriu.strftime("%Y-%m"),
-            "semana": abriu.isocalendar()[1],
             "inicio_semana": (abriu - timedelta(days=abriu.weekday())).strftime("%Y-%m-%d"),
-            "horas": (fechou - abriu).total_seconds() / 3600.0,
+            "horas": horas,
         })
 
     meses = {}
@@ -123,11 +136,11 @@ def main():
 
     payload = {
         "gerado_em": datetime.now(timezone.utc).isoformat(),
-        "fonte": "Metabase · card 380 'Ocorrências Finalizadas' (report.isalab.com.br)",
+        "fonte": "Metabase · consulta própria sobre a coleção tickets (report.isalab.com.br)",
         "recorte": "Departamentos da Comunidade, exceto Captação",
-        "somente_finalizadas": True,
-        "observacao": ("O card de origem devolve apenas ocorrências finalizadas. "
-                       "As que seguem abertas não entram na contagem."),
+        "somente_finalizadas": False,
+        "observacao": ("Todos os status entram na contagem. O SLA é calculado só "
+                       "sobre as finalizadas, porque só nelas o encerramento é real."),
         "meses": saida_meses,
     }
     with io.open(SAIDA, "w", encoding="utf-8") as f:
