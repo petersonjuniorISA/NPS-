@@ -117,7 +117,7 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null, pagina: "resumo",
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null, pagina: "resumo",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -174,12 +174,14 @@
   }
 
   async function carregar() {
-    const [nps, metas, zen] = await Promise.all([
+    const [nps, metas, zen, oc] = await Promise.all([
       fetch("data/nps.json", { cache: "no-store" }).then(r => r.json()),
       fetch("data/metas.json", { cache: "no-store" }).then(r => r.ok ? r.json() : { objetivos: [] }).catch(() => ({ objetivos: [] })),
-      carregarZendesk()
+      carregarZendesk(),
+      fetch("data/ocorrencias.json", { cache: "no-store" })
+        .then(r => r.ok ? r.json() : null).catch(() => null)
     ]);
-    S.nps = nps; S.metas = metas; S.zendesk = zen;
+    S.nps = nps; S.metas = metas; S.zendesk = zen; S.oc = oc;
   }
   async function carregarZendesk() {
     const url = window.NPS_CONFIG && window.NPS_CONFIG.ZENDESK_CSV_URL;
@@ -248,6 +250,7 @@
     visao:          { t: "NPS em detalhe",    s: "Composição e evolução do índice" },
     especialidades: { t: "Especialidades",    s: "Onde a experiência é melhor e pior" },
     sac:            { t: "SAC & Zendesk",     s: "Indicadores de atendimento e suporte" },
+    ocorrencias:    { t: "Ocorrências", s: "Volume e tempo de encerramento na Comunidade" },
     historico:      { t: "Histórico de indicadores", s: "Todos os indicadores, mês a mês e semana a semana" },
     metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" }
   };
@@ -352,6 +355,7 @@
     visao:          () => { grafHistorico(S.histCsat); grafRadar(); grafPerguntas(); grafEvolucaoDimensoes(); },
     especialidades: () => { grafEvolucaoEspecialidades(); },
     sac:            () => { sac(); },
+    ocorrencias:    () => { ocorrencias(); },
     metas:          () => { metas(); }
   };
   function graficosDa(pagina) {
@@ -779,6 +783,121 @@
       });
       corpo.appendChild(tr);
     });
+  }
+
+
+  /* ---------- Ocorrências ---------- */
+
+  const ocMes = mes => (S.oc && S.oc.meses) ? (S.oc.meses[mes || S.mes] || null) : null;
+  /** Horas viram "3,1 dias" quando passam de um dia — ninguém lê 175,3h. */
+  const emDias = h => h === null || h === undefined ? "—"
+    : h < 24 ? fmt(h, 1) + "h" : fmt(h / 24, 1) + " dias";
+
+  function ocorrencias() {
+    const m = ocMes(), vazio = !m;
+    $("#oc-mes").textContent = mesLabel(S.mes) + " de " + S.mes.slice(0, 4);
+    conta($("#oc-total"), vazio ? null : m.finalizadas, 0);
+    $("#oc-desc").textContent = vazio
+      ? "Sem ocorrências finalizadas registradas neste mês."
+      : "Ocorrências da Comunidade encerradas, sem contar as de Captação. " +
+        "O tempo é medido entre a abertura e o encerramento.";
+
+    $("#oc-sla").textContent = vazio ? "—" : emDias(m.sla_mediano_h);
+    $("#oc-sla").style.color = vazio ? "" : m.sla_mediano_h > 168 ? C.negative
+                                          : m.sla_mediano_h > 72 ? "#96700B" : "#009131";
+    $("#oc-sla-cap").innerHTML = vazio ? "" :
+      "mediano · média de <b>" + emDias(m.sla_medio_h) + "</b>" +
+      (m.sla_max_h > m.sla_mediano_h * 2
+        ? ", puxada por um caso de <b>" + emDias(m.sla_max_h) + "</b>" : "");
+
+    listaOc("#oc-departamentos", m && m.por_departamento, n => n.replace("Comunidade - ", ""));
+    listaOc("#oc-tipos", m && m.por_tipo, n => n, 5);
+
+    grafOcSemana(m);
+    grafOcMensal();
+    tabelaOc(m);
+  }
+
+  /** Barrinhas proporcionais — mesmo padrão da lista de especialidades. */
+  function listaOc(alvo, mapa, nome, limite) {
+    const box = $(alvo);
+    const itens = Object.entries(mapa || {}).slice(0, limite || 99);
+    if (!itens.length) { box.innerHTML = '<div class="empty">Sem dados no mês.</div>'; return; }
+    const maior = Math.max.apply(null, itens.map(x => x[1].finalizadas)) || 1;
+    box.innerHTML = itens.map(x =>
+      '<div class="oc-linha"><div class="oc-topo"><span>' + nome(x[0]) + "</span>" +
+      '<b class="tabular">' + x[1].finalizadas + "</b></div>" +
+      '<div class="oc-barra"><i style="width:' + (x[1].finalizadas / maior * 100) + '%"></i></div>' +
+      '<div class="oc-pe">SLA mediano ' + emDias(x[1].sla_mediano_h) + "</div></div>").join("");
+  }
+
+  function grafOcSemana(m) {
+    const sem = (m && m.semanas) || [];
+    grafico("chart-oc-semana", {
+      data: { labels: sem.map(s => s.label), datasets: [
+        { type: "bar", label: "Finalizadas", data: sem.map(s => s.finalizadas),
+          backgroundColor: C.blueFill, borderColor: C.blue, borderWidth: 1.2,
+          borderRadius: 4, maxBarThickness: 40, yAxisID: "y",
+          rotulo: { casas: 0, cor: C.blue } },
+        { type: "line", label: "SLA mediano (dias)",
+          data: sem.map(s => s.sla_mediano_dias === undefined ? null : s.sla_mediano_dias),
+          borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
+          pointRadius: 4, pointBackgroundColor: C.pink, pointBorderColor: "#fff", pointBorderWidth: 2,
+          spanGaps: true, yAxisID: "y1", rotulo: { casas: 1, cor: C.pink, abaixo: true } } ] },
+      options: opcoes({ plugins: { legend: legenda() },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  y1: { beginAtZero: true, position: "right", grid: { display: false },
+                        title: { display: true, text: "dias", font: { size: 10 } } },
+                  x: { grid: { display: false } } } }) });
+  }
+
+  function grafOcMensal() {
+    const meses = Object.keys((S.oc && S.oc.meses) || {}).sort();
+    const dados = meses.map(k => S.oc.meses[k]);
+    grafico("chart-oc-mensal", {
+      data: { labels: meses.map(mesCurto), datasets: [
+        { type: "bar", label: "Finalizadas", data: dados.map(d => d.finalizadas),
+          backgroundColor: meses.map(k => k === S.mes ? C.pink : C.blueFill),
+          borderColor: meses.map(k => k === S.mes ? C.pink : C.blue),
+          borderWidth: 1.2, borderRadius: 4, maxBarThickness: 30, yAxisID: "y" },
+        { type: "line", label: "SLA mediano (dias)",
+          data: dados.map(d => d.sla_mediano_dias === undefined ? null : d.sla_mediano_dias),
+          borderColor: C.teal, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
+          pointRadius: 3.5, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y1" } ] },
+      options: opcoes({ plugins: { legend: legenda() },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  y1: { beginAtZero: true, position: "right", grid: { display: false },
+                        title: { display: true, text: "dias", font: { size: 10 } } },
+                  x: { grid: { display: false } } } }) });
+
+    const box = $("#oc-leitura");
+    const comSla = meses.filter(k => S.oc.meses[k].sla_mediano_dias !== undefined);
+    if (comSla.length < 2 || !ocMes()) { box.innerHTML = ""; return; }
+    const ini = S.oc.meses[comSla[0]], fim = ocMes();
+    const dif = fim.sla_mediano_dias - ini.sla_mediano_dias;
+    const pico = comSla.map(k => S.oc.meses[k]).sort((a, b) => b.finalizadas - a.finalizadas)[0];
+    box.innerHTML = '<span class="rot">Leitura</span><span>' +
+      "O SLA mediano saiu de <b>" + fmt(ini.sla_mediano_dias, 1) + " dias</b> em " +
+      ini.label.toLowerCase() + " para <b>" + fmt(fim.sla_mediano_dias, 1) + " dias</b> em " +
+      fim.label.toLowerCase() + (dif <= 0 ? " — encurtou " : " — alongou ") +
+      fmt(Math.abs(dif), 1) + " dias. O maior volume da série foi <b>" + pico.label +
+      "</b>, com " + pico.finalizadas + " ocorrências finalizadas.</span>";
+  }
+
+  function tabelaOc(m) {
+    const corpo = $("#tbl-oc tbody"), sem = (m && m.semanas) || [];
+    $("#oc-det-sub").textContent = sem.length
+      ? "Semanas de " + mesLabel(S.mes).toLowerCase() + ", pela data de abertura da ocorrência"
+      : "Sem semanas para " + mesLabel(S.mes).toLowerCase() + ".";
+    corpo.innerHTML = sem.map(s =>
+      '<tr><td class="rot strong">' + s.label + "</td>" +
+      '<td class="num real"><b class="tabular">' + s.finalizadas + "</b></td>" +
+      '<td class="num real"><b class="tabular">' + emDias(s.sla_mediano_h) + "</b></td>" +
+      '<td class="num"><span class="tabular">' + emDias(s.sla_medio_h) + "</span></td>" +
+      '<td class="num"><span class="tabular">' + emDias(s.sla_max_h) + "</span></td></tr>").join("");
+    $("#oc-nota").textContent = S.oc
+      ? S.oc.recorte + " · " + S.oc.fonte + " · só ocorrências já encerradas"
+      : "";
   }
 
   /* ---------- Evolução no tempo ---------- */

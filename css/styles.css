@@ -532,3 +532,19 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
   .hero { padding: var(--lg); }
   .hero-number { font-size: 48px; }
 }
+
+/* ---------------- Ocorrências ---------------- */
+.hero-compacto { grid-template-columns: 1fr; padding: var(--lg) var(--xl); }
+.hero-compacto .hero-number { font-size: 52px; }
+
+.sla-num { font-family: var(--serif); font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+.sla-cap { font-size: 13px; color: var(--gray-body); margin-top: var(--sm); line-height: 1.6; }
+.sla-cap b { color: var(--featured); font-weight: 600; }
+
+.oc-linha { padding: 10px 0; border-bottom: 1px solid var(--gray-inactive); }
+.oc-linha:last-child { border-bottom: none; }
+.oc-topo { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sm); font-size: 13.5px; }
+.oc-topo b { font-family: var(--serif); font-size: 16px; }
+.oc-barra { height: 6px; background: var(--gray-inactive); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.oc-barra i { display: block; height: 100%; background: var(--teal); border-radius: 999px; transition: width .7s cubic-bezier(.2,.8,.3,1); }
+.oc-pe { font-size: 11.5px; color: var(--gray-body); margin-top: 4px; }
