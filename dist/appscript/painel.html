@@ -138,6 +138,12 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 .topbar-actions { display: flex; align-items: center; gap: var(--sm); }
 
 .page-wrap { padding: var(--xl); max-width: 1360px; }
+/* Dentro de um iframe estreito (Google Sites) o respiro de 32px vira desperdicio:
+   e espaco que ja falta. Abaixo de 1200px o painel encolhe as bordas. */
+@media (max-width: 1200px) {
+  .topbar { padding-left: var(--lg); padding-right: var(--lg); }
+  .page-wrap { padding: var(--lg); }
+}
 .page { display: none; }
 .page.active { display: block; }
 
