@@ -136,17 +136,23 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   .nav-item { justify-content: center; padding: 13px 0; font-size: 0; border-left-width: 3px; }
   .nav-item svg { width: 20px; height: 20px; }
   .nav-sep { margin: var(--sm) 14px; }
-  .topbar { padding-left: var(--lg); padding-right: var(--lg); }
+  .topbar-inner { padding-left: var(--lg); padding-right: var(--lg); }
 }
 
 /* ---------------- Estrutura ---------------- */
 .main { flex: 1; min-width: 0; padding-bottom: var(--xxl); }
 
+/* O fundo e a borda atravessam a tela toda; o conteudo respeita a mesma
+   largura maxima do corpo, senao numa tela larga o "atualizado em" fica
+   sozinho no canto direito, longe dos cards. */
 .topbar {
   position: sticky; top: 0; z-index: 20;
   background: rgba(244,246,249,.92);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--gray-outline);
+}
+.topbar-inner {
+  max-width: 1600px; margin: 0 auto;
   padding: var(--lg) var(--xl);
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--md) var(--lg); flex-wrap: wrap;
@@ -155,11 +161,11 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 .topbar-sub { font-size: 14px; color: var(--gray-body); margin-top: 2px; }
 .topbar-actions { display: flex; align-items: center; gap: var(--sm); }
 
-.page-wrap { padding: var(--xl); max-width: 1360px; }
+.page-wrap { padding: var(--xl); max-width: 1600px; margin: 0 auto; }
 /* Dentro de um iframe estreito (Google Sites) o respiro de 32px vira desperdicio:
    e espaco que ja falta. Abaixo de 1200px o painel encolhe as bordas. */
 @media (max-width: 1200px) {
-  .topbar { padding-left: var(--lg); padding-right: var(--lg); }
+  .topbar-inner { padding-left: var(--lg); padding-right: var(--lg); }
   .page-wrap { padding: var(--lg); }
 }
 .page { display: none; }
@@ -564,7 +570,7 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
   .mobile-bar button { background: rgba(255,255,255,.14); border: none; color: inherit; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .mobile-bar svg { width: 18px; height: 18px; }
   .mobile-bar strong { font-family: var(--serif); font-size: 16px; }
-  .topbar, .page-wrap { padding-left: var(--md); padding-right: var(--md); }
+  .topbar-inner, .page-wrap { padding-left: var(--md); padding-right: var(--md); }
   .hero { padding: var(--lg); }
   .hero-number { font-size: 48px; }
 }
@@ -640,6 +646,7 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
   </div>
 
   <header class="topbar">
+   <div class="topbar-inner">
     <div>
       <h1 id="page-title">Resumo executivo</h1>
       <div class="topbar-sub" id="page-sub">Onde estamos, qual o risco e o que está sendo feito</div>
@@ -652,6 +659,7 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
         <span id="updated-text">—</span>
       </span>
     </div>
+   </div>
   </header>
 
   <div class="page-wrap">
