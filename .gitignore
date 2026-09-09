@@ -9,3 +9,7 @@ data/ocorrencias_export_*.csv
 # chave de API do Metabase (fora do repositorio)
 .nps-isas/
 *.key
+
+# credenciais e config do clasp (Apps Script)
+.clasp.json
+.clasprc.json

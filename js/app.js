@@ -173,24 +173,44 @@
     return Array.from(new Set([...doNps, ...doHist, ...doZen])).sort();
   }
 
+  /* Os dados chegam de dois jeitos, e o painel aceita os dois sem saber a
+     diferença: servidos como arquivo (GitHub Pages, servidor local) ou já
+     embutidos na página em window.DADOS (Apps Script, que não serve arquivo
+     nenhum — não existe fetch de caminho relativo lá dentro). */
+  const embutido = nome => (window.DADOS || {})[nome];
+
+  async function buscarJson(nome, arquivo, padrao) {
+    const pronto = embutido(nome);
+    if (pronto !== undefined) return pronto;
+    try {
+      const r = await fetch(arquivo, { cache: "no-store" });
+      return r.ok ? await r.json() : padrao;
+    } catch (e) { return padrao; }
+  }
+
   async function carregar() {
     const [nps, metas, zen, oc] = await Promise.all([
-      fetch("data/nps.json", { cache: "no-store" }).then(r => r.json()),
-      fetch("data/metas.json", { cache: "no-store" }).then(r => r.ok ? r.json() : { objetivos: [] }).catch(() => ({ objetivos: [] })),
+      buscarJson("nps", "data/nps.json", null),
+      buscarJson("metas", "data/metas.json", { objetivos: [] }),
       carregarZendesk(),
-      fetch("data/ocorrencias.json", { cache: "no-store" })
-        .then(r => r.ok ? r.json() : null).catch(() => null)
+      buscarJson("ocorrencias", "data/ocorrencias.json", null)
     ]);
+    if (!nps) throw new Error("Não consegui carregar os dados de NPS.");
     S.nps = nps; S.metas = metas; S.zendesk = zen; S.oc = oc;
   }
+
   async function carregarZendesk() {
+    const pronto = embutido("zendesk");
+    if (pronto !== undefined) return parseCSV(pronto);
     const url = window.NPS_CONFIG && window.NPS_CONFIG.ZENDESK_CSV_URL;
     if (url) {
       try { const r = await fetch(url, { cache: "no-store" }); if (r.ok) return parseCSV(await r.text()); }
       catch (e) { console.warn("Fonte externa indisponível, usando o arquivo do repositório.", e); }
     }
-    const r = await fetch("data/zendesk_semanal.csv", { cache: "no-store" });
-    return r.ok ? parseCSV(await r.text()) : [];
+    try {
+      const r = await fetch("data/zendesk_semanal.csv", { cache: "no-store" });
+      return r.ok ? parseCSV(await r.text()) : [];
+    } catch (e) { return []; }
   }
 
   const zenMensal  = () => S.zendesk.filter(r => (num(r.semana) ?? 0) === 0).sort((a,b) => a.mes.localeCompare(b.mes));
@@ -1442,8 +1462,15 @@
     const gaps = $("#meta-gaps"); gaps.innerHTML = "";
     objs.forEach(o => {
       const real = realizado(o, mes);
-      const pct = real === null ? null : Math.round(real / o.alvo_final * 100);
-      const falta = real === null ? null : o.alvo_final - real;
+      // Em TMA e TMR o alvo_final e texto ("8h", "11h30") e menor e melhor.
+      // Sem converter, real / alvo_final dava NaN%.
+      const tempo = o.unidade === "tempo";
+      const alvo = tempo ? minutosDeTempo(o.alvo_final) : o.alvo_final;
+      const pct = (real === null || !alvo) ? null
+        : Math.round((tempo ? alvo / real : real / alvo) * 100);
+      // "falta" e sempre a distancia ate o alvo, no sentido que melhora
+      const falta = real === null || alvo === null ? null
+        : (tempo ? real - alvo : alvo - real);
       gaps.appendChild(el("div", "gap-row",
         '<div class="gap-top"><span class="gap-name">' + o.label + "</span>" +
           '<span class="gap-pct tabular" style="color:' + (pct >= 100 ? "#009131" : pct >= 80 ? C.blue : "#96700B") + '">' +
@@ -1451,8 +1478,10 @@
         '<div class="gap-note">' +
           (falta === null ? "sem dado no mês"
             : falta <= 0 ? "alvo de dezembro já atingido"
-            : "faltam " + fmt(falta, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") +
-              " para o alvo de " + fmt(o.alvo_final, 0) + unidade(o)) + "</div>"));
+            : tempo
+              ? "faltam " + tempoDeMinutos(falta) + " para o alvo de " + o.alvo_final
+              : "faltam " + fmt(falta, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") +
+                " para o alvo de " + fmt(o.alvo_final, 0) + unidade(o)) + "</div>"));
     });
   }
 

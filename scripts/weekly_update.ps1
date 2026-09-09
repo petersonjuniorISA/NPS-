@@ -48,15 +48,49 @@ try {
     $cliDir = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages\Databricks.DatabricksCLI_Microsoft.Winget.Source_8wekyb3d8bbwe"
     if (Test-Path $cliDir) { $env:PATH = "$cliDir;$env:PATH" }
 
+    # Uma fonte que falha nao deve impedir as outras de atualizar: um painel
+    # com o Zendesk novo e o NPS da semana passada e melhor que nenhum painel.
+    # As falhas sao guardadas e derrubam a tarefa no fim, para aparecerem no
+    # Agendador em vez de passarem em branco.
+    $falhas = @()
+
     Write-Output "== Buscando dados no Databricks =="
     & $python scripts\fetch_databricks.py
-    if ($LASTEXITCODE -ne 0) { throw "fetch_databricks.py falhou com codigo $LASTEXITCODE" }
+    if ($LASTEXITCODE -ne 0) {
+        $falhas += "Databricks (codigo $LASTEXITCODE) - se for token expirado, rode: databricks auth login --host https://dbc-0fbb1123-410c.cloud.databricks.com"
+        Write-Warning $falhas[-1]
+    }
 
     Write-Output "== Buscando ocorrencias no Metabase =="
     # Sem chave de API o script avisa e sai com 0: a falta das ocorrencias nao
     # pode derrubar a atualizacao do NPS, que e a parte critica.
     & $python scripts\fetch_metabase.py
-    if ($LASTEXITCODE -ne 0) { Write-Warning "fetch_metabase.py falhou (codigo $LASTEXITCODE) - seguindo sem atualizar ocorrencias." }
+    if ($LASTEXITCODE -ne 0) {
+        $falhas += "Metabase (codigo $LASTEXITCODE)"
+        Write-Warning $falhas[-1]
+    }
+
+    Write-Output "== Empacotando para o Apps Script =="
+    & $python scripts\build_appscript.py
+    if ($LASTEXITCODE -ne 0) {
+        $falhas += "empacotamento do Apps Script (codigo $LASTEXITCODE)"
+        Write-Warning $falhas[-1]
+    }
+
+    # Publica no Apps Script se o clasp estiver configurado. Sem ele o pacote
+    # fica em dist/appscript/ para colar a mao — ver dist/appscript/LEIA-ME.md.
+    if (Test-Path (Join-Path $repoDir ".clasp.json")) {
+        Write-Output "== Publicando no Apps Script =="
+        npx --yes @google/clasp push --force
+        if ($LASTEXITCODE -eq 0) {
+            npx --yes @google/clasp deploy --description "atualizacao semanal"
+            if ($LASTEXITCODE -ne 0) { Write-Warning "clasp deploy falhou - o codigo subiu, mas a implantacao nao foi atualizada." }
+        } else {
+            Write-Warning "clasp push falhou - o painel no Apps Script segue com os dados anteriores."
+        }
+    } else {
+        Write-Output "clasp nao configurado - pacote pronto em dist\appscript\ para publicar a mao."
+    }
 
     Write-Output "== Verificando alteracoes =="
     git add data\nps.json data\ocorrencias.json
@@ -69,6 +103,13 @@ try {
         Write-Output "OK: dados atualizados e publicados."
     } else {
         Write-Output "OK: sem mudancas nos dados desta semana."
+    }
+
+    if ($falhas.Count -gt 0) {
+        Write-Output ""
+        Write-Output "CONCLUIDO COM FALHAS:"
+        $falhas | ForEach-Object { Write-Output "  - $_" }
+        exit 1
     }
 } catch {
     Write-Error $_
