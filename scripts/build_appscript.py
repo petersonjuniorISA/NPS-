@@ -113,6 +113,22 @@ function doGet() {
 '''
 
 
+# O manifesto fixa a restricao de dominio no proprio projeto, em vez de
+# depender de escolher certo no menu de implantacao.
+#   access "DOMAIN"          -> so quem tem conta @isasaude.com abre
+#   executeAs "USER_DEPLOYING" -> roda como quem publicou
+APPSSCRIPT_JSON = """{
+  "timeZone": "America/Sao_Paulo",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "webapp": {
+    "access": "DOMAIN",
+    "executeAs": "USER_DEPLOYING"
+  }
+}
+"""
+
+
 def main():
     # o LEIA-ME e escrito a mao e nao deve ser perdido no rebuild
     leia_me = os.path.join(SAIDA, "LEIA-ME.md")
@@ -129,10 +145,16 @@ def main():
         f.write(pagina)
     with io.open(os.path.join(SAIDA, "Codigo.gs"), "w", encoding="utf-8") as f:
         f.write(CODIGO_GS)
+    # o clasp empurra .js como .gs; o .gs acima e para colar a mao
+    with io.open(os.path.join(SAIDA, "Codigo.js"), "w", encoding="utf-8") as f:
+        f.write(CODIGO_GS)
+    with io.open(os.path.join(SAIDA, "appsscript.json"), "w", encoding="utf-8") as f:
+        f.write(APPSSCRIPT_JSON)
 
     kb = len(pagina.encode("utf-8")) / 1024.0
     print("OK: dist/appscript/painel.html  (%.0f KB)" % kb)
-    print("    dist/appscript/Codigo.gs")
+    print("    dist/appscript/Codigo.gs  (colar a mao)")
+    print("    dist/appscript/Codigo.js + appsscript.json  (usados pelo clasp)")
 
     # conferencias que evitam um deploy quebrado
     problemas = []
