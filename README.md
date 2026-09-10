@@ -1,7 +1,13 @@
 # NPS dos ISAs
 
 Painel semanal do NPS dos ISAs, feito para substituir o preenchimento manual do
-Notion. Site estático, publicado no GitHub Pages.
+Notion.
+
+**Onde o painel vive:** num Web App do Google Apps Script, publicado com acesso
+restrito a `@isasaude.com`. Só quem tem conta do domínio abre — nem com o link.
+
+O GitHub Pages foi desativado em 10/09/2026. Este repositório continua sendo a
+origem do código e dos dados, mas não publica mais site nenhum.
 
 ## Como funciona
 
@@ -14,7 +20,7 @@ O painel tem quatro fontes de dados, com níveis de automação diferentes:
    OAuth salvo localmente, sem token), calcula os indicadores (NPS geral,
    distribuição, nota por pergunta, NPS por especialidade, satisfação por
    especialidade, histórico), sobrescreve `data/nps.json` e sobe direto pro
-   GitHub. O site lê esse arquivo — ninguém precisa preencher nada.
+   GitHub. O painel lê esse arquivo — ninguém precisa preencher nada.
 
    Essa tarefa só roda com a máquina ligada e o usuário logado (ver seção
    "Conectar no Databricks" abaixo pra saber por quê). Existe também um
@@ -29,9 +35,8 @@ O painel tem quatro fontes de dados, com níveis de automação diferentes:
    `data/zendesk_semanal.csv` (editado direto pelo site do GitHub, que tem
    um editor de tabela pra CSV) em vez do Notion ou de uma planilha externa
    — o Workspace da ISA bloqueia publicação externa do Google Sheets, então
-   esse caminho evita esbarrar nisso. O site lê esse arquivo direto (mesma
-   origem do GitHub Pages), então basta editar e comitar — a próxima
-   visita à página já reflete a mudança.
+   esse caminho evita esbarrar nisso. Depois de editar e comitar, rode `py scripts/build_appscript.py`
+   e republique no Apps Script para o número novo aparecer.
 
 3. **Metas SMART — preenchido à mão, raramente.** A liderança define as metas
    do semestre na planilha "Metas 2S - Isa Experience". Esses números não
@@ -96,17 +101,27 @@ Zendesk e alavancas continuam disponíveis.
 
 ## Configuração — passo a passo
 
-### 1. Publicar o site (GitHub Pages)
+### 1. Publicar o painel (Apps Script)
 
-1. Suba este projeto para `https://github.com/petersonjuniorISA/NPS-`.
-2. No repositório, vá em **Settings > Pages**.
-3. Em "Build and deployment", escolha **Deploy from a branch**, branch
-   `main`, pasta `/ (root)`. Salve.
-4. Em alguns minutos o site fica disponível em
-   `https://petersonjuniorisa.github.io/NPS-/`.
+O painel é empacotado num arquivo único por `scripts/build_appscript.py` e
+colado num projeto do Apps Script. O passo a passo completo está em
+`dist/appscript/LEIA-ME.md`.
 
-Como o repositório e o GitHub Pages são públicos por padrão, veja a seção
-**Privacidade** mais abaixo antes de divulgar o link.
+Resumo: **script.google.com** > novo projeto > cole `Codigo.gs` e um arquivo
+HTML chamado `painel` > **Implantar > App da Web** com **"Qualquer pessoa em
+ISA Saúde"**.
+
+A URL sai no formato `script.google.com/a/macros/isasaude.com/s/.../exec` — o
+trecho `/a/macros/isasaude.com/` é o que confirma que a restrição pegou.
+
+Para atualizar depois de uma mudança nos dados ou no código:
+
+```powershell
+py scripts\build_appscript.py
+```
+
+e cole o novo `dist/appscript/painel.html` no arquivo `painel`, seguido de
+**Implantar > Gerenciar implantações > ✏️ > Nova versão**.
 
 ### 2. Conectar no Databricks
 
@@ -241,7 +256,7 @@ atualização do NPS nunca é derrubada por causa das ocorrências.
 Para rodar à mão a partir de um CSV já exportado do Metabase:
 
 ```powershell
-py scriptsuild_ocorrencias.py "C:\caminho\export.csv"
+py scriptsuild_ocorrencias.py "C:\caminho\export.csv"
 ```
 
 **Uma limitação que fica:** o card 380 devolve só ocorrências **já
@@ -283,28 +298,36 @@ Suba o logo da área como `assets/logo.png` (direto pelo GitHub:
 **Add file → Upload files**). Ele aparece no topo da barra lateral. Enquanto
 o arquivo não existir, o painel mostra um selo "ISA" em teal automaticamente.
 
-### 7. Espelhar no Google Sites (acesso restrito ao domínio ISA)
+### 7. Google Sites — desativado
 
-Já feito: **https://sites.google.com/isasaude.com/nps-dos-isas** — site
-criado no Google Sites (Workspace ISA Saúde), com um bloco de **Incorporar**
-apontando para a URL do GitHub Pages
-(`https://petersonjuniorisa.github.io/NPS-/`), e visibilidade padrão
-"Qualquer pessoa em ISA Saúde" (ou seja, restrito ao domínio
-`isasaude.com` por padrão — não precisou configurar nada extra).
+O painel ficou espelhado em **https://sites.google.com/isasaude.com/nps-dos-isas**
+até 10/09/2026, com um bloco de Incorporar apontando para o GitHub Pages.
 
-Para editar esse site depois (ex.: trocar o título, adicionar mais
-páginas): abra o link acima, clique no ícone de lápis/editar no canto
-inferior direito, e use **Publicar** quando terminar as alterações.
+Isso foi abandonado por dois motivos:
 
-**Importante sobre privacidade:** os dados incluem nome do profissional,
-cidade e comentários individuais. Restringir o acesso pelo Google Sites
-controla quem *encontra* o painel através dele, mas a URL do GitHub Pages em
-si continua tecnicamente acessível para quem tiver o link direto (GitHub
-Pages não tem controle de acesso no plano gratuito). Se isso for um
-problema, as opções são: manter o link do GitHub Pages só circulando dentro
-do Google Sites (nunca divulgado à parte), ou migrar a hospedagem para um
-serviço com senha/autenticação (ex.: Vercel/Netlify com proteção por senha,
-que são planos pagos).
+1. **A restrição do Sites era só de fachada.** Ela controlava quem encontrava o
+   painel *através da página*, mas o iframe apontava para uma URL pública do
+   GitHub — quem tivesse o link direto entrava sem passar pelo domínio. O Web
+   App do Apps Script resolve isso de verdade: sem conta `@isasaude.com`, o
+   Google nem serve a página.
+2. **A largura.** A grade do tema do Sites limita o conteúdo a ~920px e não há
+   ajuste para remover essa margem. Aberto direto pelo Apps Script, o painel usa
+   a tela inteira.
+
+> **Pendência:** a página do Sites ainda existe e ainda embute a URL do GitHub,
+> que agora está fora do ar — então mostra um quadro quebrado. Precisa ser
+> tratada: trocar o conteúdo por um link para o Apps Script, ou cancelar a
+> publicação em ⋮ > Cancelar publicação.
+
+### Privacidade — o que é publicado
+
+Nada de dado pessoal. Foi conferido arquivo por arquivo em `data/`: não há nome
+de profissional, de paciente, CPF nem e-mail. O `build_ocorrencias.py` descarta
+tudo isso e guarda só contagem e estatística de SLA.
+
+O que existe é informação de negócio agregada — NPS, metas do semestre, SLA,
+volume de ocorrências. É por isso que o acesso restrito ao domínio importa,
+mesmo sem dado pessoal envolvido.
 
 ## Rodar localmente
 
