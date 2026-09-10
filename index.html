@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=39">
+<link rel="stylesheet" href="css/styles.css?v=42">
 </head>
 <body>
 
@@ -247,49 +247,56 @@
       </div>
     </section>
 
-    <!-- ============ SAC & ZENDESK ============ -->
+    <!-- ============ SUPORTE ============ -->
     <section class="page" id="page-sac">
       <div class="section-label" id="sac-ref" style="margin-top:0;"></div>
-      <div class="grid grid-3" id="sac-stats"></div>
+
+      <!-- 6 indicadores: numero grande + evolucao logo abaixo -->
+      <div class="grid grid-3" id="sac-linha-1"></div>
+      <div class="grid grid-3" style="margin-top:16px;" id="sac-linha-2"></div>
 
       <div class="grid grid-2" style="margin-top:16px;">
         <div class="card">
-          <div class="card-head"><div><div class="card-title">CSAT</div><div class="card-sub">Atendimento humano e IA, escala 0–5</div></div></div>
-          <div class="chart h240"><canvas id="chart-csat"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">FCR e resolução com IA</div><div class="card-sub">Percentual por mês</div></div></div>
-          <div class="chart h240"><canvas id="chart-fcr"></canvas></div>
-        </div>
-      </div>
-
-      <div class="grid grid-2" style="margin-top:16px;">
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">Semana a semana</div><div class="card-sub" id="sac-sem-sub">Mês selecionado</div></div></div>
-          <div class="chart h240"><canvas id="chart-wow"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div class="card-title">Histórico mensal</div></div>
-          <div class="table-scroll">
-            <table class="tbl" id="tbl-zendesk">
-              <thead><tr>
-                <th>Mês</th><th class="num">CSAT IA</th><th class="num">CSAT humano</th>
-                <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th><th class="num">Res. IA</th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
+          <div class="card-head">
+            <div>
+              <div class="card-title">CSAT</div>
+              <div class="card-sub">Humano, IA e a média dos dois · meta tracejada</div>
+            </div>
           </div>
+          <div class="chart h280"><canvas id="chart-csat"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">FCR</div>
+              <div class="card-sub">Resolvido no primeiro contato · meta tracejada</div>
+            </div>
+          </div>
+          <div class="chart h280"><canvas id="chart-fcr"></canvas></div>
         </div>
       </div>
 
       <div class="card" style="margin-top:16px;">
-        <div class="card-head"><div class="card-title">Detalhamento semanal</div></div>
-        <div class="table-scroll">
-          <table class="tbl" id="tbl-semanal">
-            <thead><tr>
-              <th>Semana</th><th>Período</th><th class="num">CSAT IA</th><th class="num">CSAT humano</th>
-              <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th>
-            </tr></thead>
+        <div class="card-head">
+          <div>
+            <div class="card-title">Semana a semana</div>
+            <div class="card-sub" id="sac-sem-sub"></div>
+          </div>
+          <div class="seg" id="seg-sac-mes"></div>
+        </div>
+        <div class="chart h280"><canvas id="chart-wow"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Histórico de suporte</div>
+            <div class="card-sub">Mês a mês, com a variação contra o mês anterior</div>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl grade" id="tbl-zendesk">
+            <thead><tr id="sac-hist-head"></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -437,7 +444,7 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=39"></script>
-<script src="js/app.js?v=39"></script>
+<script src="js/config.js?v=42"></script>
+<script src="js/app.js?v=42"></script>
 </body>
 </html>

@@ -579,3 +579,14 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 .oc-barra { height: 6px; background: var(--warning); border-radius: 999px; overflow: hidden; margin-top: 6px; min-width: 3px; }
 .oc-barra i { display: block; height: 100%; background: var(--blue-dark); border-radius: 999px; transition: width .7s cubic-bezier(.2,.8,.3,1); }
 .oc-pe { font-size: 11.5px; color: var(--gray-body); margin-top: 4px; }
+
+/* ---------------- Suporte ---------------- */
+.sup-card { display: flex; flex-direction: column; }
+.sup-num {
+  font-family: var(--serif); font-size: 34px; font-weight: 700; line-height: 1.1;
+  color: var(--featured); margin: 6px 0 2px;
+  display: flex; align-items: baseline; gap: var(--sm); flex-wrap: wrap;
+}
+.sup-num .delta { font-family: var(--sans); font-size: 12px; font-weight: 600; }
+/* a evolucao fica colada no rodape do cartao, para os seis alinharem entre si */
+.sup-spark { height: 74px; margin-top: auto; padding-top: var(--md); position: relative; }

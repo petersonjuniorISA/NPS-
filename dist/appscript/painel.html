@@ -592,6 +592,17 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 .oc-barra i { display: block; height: 100%; background: var(--blue-dark); border-radius: 999px; transition: width .7s cubic-bezier(.2,.8,.3,1); }
 .oc-pe { font-size: 11.5px; color: var(--gray-body); margin-top: 4px; }
 
+/* ---------------- Suporte ---------------- */
+.sup-card { display: flex; flex-direction: column; }
+.sup-num {
+  font-family: var(--serif); font-size: 34px; font-weight: 700; line-height: 1.1;
+  color: var(--featured); margin: 6px 0 2px;
+  display: flex; align-items: baseline; gap: var(--sm); flex-wrap: wrap;
+}
+.sup-num .delta { font-family: var(--sans); font-size: 12px; font-weight: 600; }
+/* a evolucao fica colada no rodape do cartao, para os seis alinharem entre si */
+.sup-spark { height: 74px; margin-top: auto; padding-top: var(--md); position: relative; }
+
 </style>
 </head>
 <body>
@@ -830,49 +841,56 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
       </div>
     </section>
 
-    <!-- ============ SAC & ZENDESK ============ -->
+    <!-- ============ SUPORTE ============ -->
     <section class="page" id="page-sac">
       <div class="section-label" id="sac-ref" style="margin-top:0;"></div>
-      <div class="grid grid-3" id="sac-stats"></div>
+
+      <!-- 6 indicadores: numero grande + evolucao logo abaixo -->
+      <div class="grid grid-3" id="sac-linha-1"></div>
+      <div class="grid grid-3" style="margin-top:16px;" id="sac-linha-2"></div>
 
       <div class="grid grid-2" style="margin-top:16px;">
         <div class="card">
-          <div class="card-head"><div><div class="card-title">CSAT</div><div class="card-sub">Atendimento humano e IA, escala 0–5</div></div></div>
-          <div class="chart h240"><canvas id="chart-csat"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">FCR e resolução com IA</div><div class="card-sub">Percentual por mês</div></div></div>
-          <div class="chart h240"><canvas id="chart-fcr"></canvas></div>
-        </div>
-      </div>
-
-      <div class="grid grid-2" style="margin-top:16px;">
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">Semana a semana</div><div class="card-sub" id="sac-sem-sub">Mês selecionado</div></div></div>
-          <div class="chart h240"><canvas id="chart-wow"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div class="card-title">Histórico mensal</div></div>
-          <div class="table-scroll">
-            <table class="tbl" id="tbl-zendesk">
-              <thead><tr>
-                <th>Mês</th><th class="num">CSAT IA</th><th class="num">CSAT humano</th>
-                <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th><th class="num">Res. IA</th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
+          <div class="card-head">
+            <div>
+              <div class="card-title">CSAT</div>
+              <div class="card-sub">Humano, IA e a média dos dois · meta tracejada</div>
+            </div>
           </div>
+          <div class="chart h280"><canvas id="chart-csat"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">FCR</div>
+              <div class="card-sub">Resolvido no primeiro contato · meta tracejada</div>
+            </div>
+          </div>
+          <div class="chart h280"><canvas id="chart-fcr"></canvas></div>
         </div>
       </div>
 
       <div class="card" style="margin-top:16px;">
-        <div class="card-head"><div class="card-title">Detalhamento semanal</div></div>
-        <div class="table-scroll">
-          <table class="tbl" id="tbl-semanal">
-            <thead><tr>
-              <th>Semana</th><th>Período</th><th class="num">CSAT IA</th><th class="num">CSAT humano</th>
-              <th class="num">TMA</th><th class="num">TMR</th><th class="num">FCR</th>
-            </tr></thead>
+        <div class="card-head">
+          <div>
+            <div class="card-title">Semana a semana</div>
+            <div class="card-sub" id="sac-sem-sub"></div>
+          </div>
+          <div class="seg" id="seg-sac-mes"></div>
+        </div>
+        <div class="chart h280"><canvas id="chart-wow"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Histórico de suporte</div>
+            <div class="card-sub">Mês a mês, com a variação contra o mês anterior</div>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl grade" id="tbl-zendesk">
+            <thead><tr id="sac-hist-head"></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -1157,7 +1175,7 @@ window.NPS_CONFIG = {
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null, pagina: "resumo",
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, sacMes: null, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null, pagina: "resumo",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -2361,109 +2379,272 @@ window.NPS_CONFIG = {
     });
   }
 
-  /* ---------- SAC ---------- */
+  /* ---------- Suporte ---------- */
+
+  /* Os seis indicadores da aba, na ordem pedida: a primeira linha é tempo e
+     resolução, a segunda é satisfação. `melhor` diz para que lado é bom, o
+     que muda a cor da variação. */
+  const IND_SUPORTE = [
+    { id: "fcr_pct",          campo: "fcr_pct",               rotulo: "FCR",
+      nota: "Resolvido no primeiro contato", casas: 1, suf: "%", melhor: "cima", cor: "#00C3C5" },
+    { id: "tma",              campo: "tma_primeira_resposta", rotulo: "TMA",
+      nota: "Tempo até a primeira resposta", tempo: true,      melhor: "baixo", cor: "#004474" },
+    { id: "tmr",              campo: "tmr",                   rotulo: "TMR",
+      nota: "Tempo até o encerramento", tempo: true,           melhor: "baixo", cor: "#4A4A68" },
+    { id: "csat_humano",      campo: "csat_humano",           rotulo: "CSAT humano",
+      nota: "Escala de 0 a 5", casas: 2, suf: "", melhor: "cima", cor: "#004474" },
+    { id: "csat_ia",          campo: "csat_ia",               rotulo: "CSAT IA",
+      nota: "Escala de 0 a 5", casas: 2, suf: "", melhor: "cima", cor: "#00C3C5" },
+    { id: "resolucao_ia_pct", campo: "resolucao_ia_pct",      rotulo: "Resolução com IA",
+      nota: "Sem intervenção humana", casas: 0, suf: "%", melhor: "cima", cor: "#ED1E79" }
+  ];
+
+  /** Lê o valor de um indicador numa linha do CSV, já como número comparável. */
+  function valorSup(ind, linha) {
+    if (!linha) return null;
+    return ind.tempo ? minutosDeTempo(linha[ind.campo]) : num(linha[ind.campo]);
+  }
+  const mostrarSup = (ind, v) =>
+    v === null || v === undefined ? "—"
+    : ind.tempo ? tempoDeMinutos(v)
+    : fmt(v, ind.casas) + (ind.suf || "");
+
+  /** Meta do indicador no mês, quando existe objetivo cadastrado. */
+  function metaSup(ind, mes) {
+    const o = objetivo(ind.id);
+    if (!o || !o.metas) return null;
+    const bruto = o.metas[mes];
+    if (bruto === undefined || bruto === null) return null;
+    return ind.tempo ? minutosDeTempo(bruto) : num(bruto);
+  }
+
   function sac() {
     const mensal = zenMensal();
-    const preenchidos = mensal.filter(r =>
-      ["csat_ia","csat_humano","fcr_pct","resolucao_ia_pct"].some(c => num(r[c]) !== null) ||
-      (r.tma_primeira_resposta || "").trim() || (r.tmr || "").trim());
-    // segue o mês escolhido no topo; se ele ainda não foi preenchido, mostra o último que foi
+    const meses = mensal.map(r => r.mes);
+
+    // o mês lido é o selecionado no topo, se tiver dado; senão o último cheio
+    const preenchidos = mensal.filter(r => IND_SUPORTE.some(i => valorSup(i, r) !== null));
     const escolhido = preenchidos.findIndex(r => r.mes === S.mes);
     const pos = escolhido >= 0 ? escolhido : preenchidos.length - 1;
-    const atual = preenchidos[pos];
-    const anterior = pos > 0 ? preenchidos[pos - 1] : null;
+    const atual = preenchidos[pos], anterior = pos > 0 ? preenchidos[pos - 1] : null;
 
-    function variacao(campo, inverso) {
-      if (!atual || !anterior) return "";
-      const a = num(atual[campo]), b = num(anterior[campo]);
-      if (a === null || b === null || b === 0) return "";
-      const p = (a - b) / Math.abs(b) * 100;
-      const bom = inverso ? p < 0 : p > 0;
-      return '<span class="delta ' + (bom ? "up" : "down") + '">' + (p >= 0 ? "+" : "−") + fmt(Math.abs(p),1) + "%</span>";
-    }
-
-    $("#sac-ref").innerHTML = atual
-      ? "Números de " + (atual.mes_label || mesLabel(atual.mes)) +
+    $("#sac-ref").innerHTML = !atual ? "Nenhum mês preenchido ainda"
+      : "Números de " + (atual.mes_label || mesLabel(atual.mes)) +
         (anterior ? " · variação contra " + (anterior.mes_label || mesLabel(anterior.mes)).toLowerCase() : "") +
-        (escolhido < 0 ? " · " + mesLabel(S.mes).toLowerCase() + " ainda não foi preenchido" : "")
-      : "Nenhum mês preenchido ainda";
+        (escolhido < 0 ? " · " + mesLabel(S.mes).toLowerCase() + " ainda não foi preenchido" : "");
 
-    const cards = [
-      { rot: "CSAT humano", val: atual ? num(atual.csat_humano) : null, casas: 2, nota: "Escala 0 a 5" + variacao("csat_humano") },
-      { rot: "CSAT IA", val: atual ? num(atual.csat_ia) : null, casas: 2, nota: "Escala 0 a 5" + variacao("csat_ia") },
-      { rot: "Resolução com IA", val: atual ? num(atual.resolucao_ia_pct) : null, casas: 0, suf: "%", nota: "Sem intervenção humana" + variacao("resolucao_ia_pct") },
-      { rot: "FCR", val: atual ? num(atual.fcr_pct) : null, casas: 1, suf: "%", nota: "Resolvido no primeiro contato" + variacao("fcr_pct") },
-      { rot: "TMA 1ª resposta", txt: (atual && atual.tma_primeira_resposta) || "—", nota: "Tempo médio de atendimento" },
-      { rot: "TMR", txt: (atual && atual.tmr) || "—", nota: "Tempo médio de resolução" }
-    ];
-    const box = $("#sac-stats"); box.innerHTML = "";
-    cards.forEach(c => {
-      const d = el("div", "metric",
-        '<div class="metric-label">' + c.rot + "</div>" +
-        '<div class="metric-value tabular">' + (c.txt !== undefined ? c.txt : "—") + "</div>" +
-        '<div class="metric-note">' + c.nota + "</div>");
-      box.appendChild(d);
-      if (c.txt === undefined) conta(d.querySelector(".metric-value"), c.val, c.casas, c.suf);
+    cartoesSuporte(mensal, atual, anterior);
+    grafCsat(mensal);
+    grafFcr(mensal);
+    seletorMesSemana();
+    grafSemanal();
+    historicoSuporte(mensal);
+  }
+
+  /** Os seis cartões: número grande e, logo abaixo, a evolução do indicador. */
+  function cartoesSuporte(mensal, atual, anterior) {
+    [["#sac-linha-1", 0, 3], ["#sac-linha-2", 3, 6]].forEach(([alvo, de, ate]) => {
+      const box = $(alvo);
+      box.innerHTML = IND_SUPORTE.slice(de, ate).map(ind => {
+        const v = valorSup(ind, atual), ant = valorSup(ind, anterior);
+        let delta = "";
+        if (v !== null && ant !== null && ant !== 0) {
+          const pct = (v - ant) / Math.abs(ant) * 100;
+          const bom = ind.melhor === "baixo" ? pct < 0 : pct > 0;
+          delta = '<span class="delta ' + (bom ? "up" : "down") + '">' +
+                  (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
+        }
+        return '<div class="card sup-card">' +
+          '<div class="metric-label">' + ind.rotulo + "</div>" +
+          '<div class="sup-num tabular">' + mostrarSup(ind, v) + delta + "</div>" +
+          '<div class="metric-note">' + ind.nota + "</div>" +
+          '<div class="sup-spark"><canvas id="spark-' + ind.id + '"></canvas></div>' +
+          "</div>";
+      }).join("");
     });
 
+    // as evoluções só podem ser desenhadas depois que os canvas existem no DOM
+    IND_SUPORTE.forEach(ind => {
+      const dados = mensal.map(r => valorSup(ind, r));
+      grafico("spark-" + ind.id, {
+        type: "line",
+        data: { labels: mensal.map(r => mesCurto(r.mes)), datasets: [{
+          data: dados, borderColor: ind.cor, backgroundColor: "transparent",
+          borderWidth: 2, tension: .35, spanGaps: true,
+          pointRadius: mensal.map(r => atual && r.mes === atual.mes ? 4 : 2.5),
+          pointBackgroundColor: mensal.map(r => atual && r.mes === atual.mes ? C.pink : ind.cor),
+          pointBorderWidth: 0
+        }] },
+        options: opcoes({
+          plugins: { legend: { display: false }, tooltip: { callbacks: {
+            label: c => mostrarSup(ind, c.parsed.y) } } },
+          scales: { y: { display: false, grace: "18%" }, x: { grid: { display: false },
+                    ticks: { font: { size: 9 }, color: C.text } } }
+        })
+      });
+    });
+  }
+
+  /** CSAT: humano, IA, a média dos dois e a meta tracejada. */
+  function grafCsat(mensal) {
     const meses = mensal.map(r => r.mes);
+    const humano = mensal.map(r => num(r.csat_humano));
+    const ia = mensal.map(r => num(r.csat_ia));
+    // "geral" só faz sentido onde os dois existem; com um lado só seria o
+    // próprio número disfarçado de média
+    const geral = mensal.map((r, i) =>
+      humano[i] !== null && ia[i] !== null ? Math.round((humano[i] + ia[i]) / 2 * 100) / 100 : null);
+    const meta = meses.map(m => metaSup({ id: "csat_humano" }, m));
+
     grafico("chart-csat", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
-        { label: "Humano", data: mensal.map(r => num(r.csat_humano)), borderColor: C.blue, backgroundColor: C.blueFill,
-          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue, pointBorderColor: "#fff", pointBorderWidth: 2,
+        { label: "Humano", data: humano, borderColor: C.blue, backgroundColor: "transparent",
+          borderWidth: 2.4, tension: .3, pointRadius: 4, pointBackgroundColor: C.blue,
+          pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
           rotulo: { casas: 2, cor: C.blue } },
-        { label: "IA", data: mensal.map(r => num(r.csat_ia)), borderColor: C.teal, backgroundColor: "transparent",
-          borderDash: [4,3], tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.teal,
-          rotulo: { casas: 2, cor: "#009193", abaixo: true } } ] },
-      options: opcoes({ plugins: { legend: legenda() },
-        scales: { y: { min: 0, max: 5, grid: { color: C.grid } }, x: { grid: { display: false } } } }) });
+        { label: "IA", data: ia, borderColor: C.teal, backgroundColor: "transparent",
+          borderWidth: 2.4, tension: .3, pointRadius: 4, pointBackgroundColor: C.teal,
+          pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
+          rotulo: { casas: 2, cor: "#009193", abaixo: true } },
+        { label: "Geral", data: geral, borderColor: C.pink, backgroundColor: "transparent",
+          borderWidth: 2.8, tension: .3, pointRadius: 5, pointBackgroundColor: C.pink,
+          pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
+          rotulo: { casas: 2, cor: C.pink } },
+        { label: "Meta", data: meta, borderColor: C.text, borderDash: [5, 4], borderWidth: 1.6,
+          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true } ] },
+      options: opcoes({
+        onClick: (e, els) => aoClicarMes(e, els, meses),
+        plugins: { legend: legenda() },
+        scales: { y: { min: 0, max: 5, grid: { color: C.grid }, ticks: { stepSize: 1 } },
+                  x: { grid: { display: false } } }
+      })
+    });
+  }
 
+  /** FCR: realizado e meta tracejada. */
+  function grafFcr(mensal) {
+    const meses = mensal.map(r => r.mes);
     grafico("chart-fcr", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
-        { label: "FCR", data: mensal.map(r => num(r.fcr_pct)), borderColor: C.teal, backgroundColor: C.tealFill,
-          fill: true, tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.teal, pointBorderColor: "#fff", pointBorderWidth: 2,
-          rotulo: { casas: 1, sufixo: "%", cor: "#009193" } },
-        { label: "Resolução com IA", data: mensal.map(r => num(r.resolucao_ia_pct)), borderColor: C.pink,
-          backgroundColor: "transparent", tension: .3, borderWidth: 2, pointRadius: 3.5, pointBackgroundColor: C.pink,
-          rotulo: { casas: 0, sufixo: "%", cor: C.pink, abaixo: true } } ] },
-      options: opcoes({ plugins: { legend: legenda(), tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y,1) + "%" } } },
-        scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
+        { label: "Realizado", data: mensal.map(r => num(r.fcr_pct)),
+          borderColor: C.teal, backgroundColor: C.tealFill, fill: true, borderWidth: 2.6,
+          tension: .3, pointRadius: 4.5, pointBackgroundColor: C.teal,
+          pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
+          rotulo: { casas: 1, sufixo: "%", cor: "#00696B" } },
+        { label: "Meta", data: meses.map(m => metaSup({ id: "fcr_pct" }, m)),
+          borderColor: C.text, borderDash: [5, 4], borderWidth: 1.6,
+          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true } ] },
+      options: opcoes({
+        onClick: (e, els) => aoClicarMes(e, els, meses),
+        plugins: { legend: legenda(), tooltip: { callbacks: {
+          label: c => c.dataset.label + ": " + fmt(c.parsed.y, 1) + "%" } } },
+        scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } },
+                  x: { grid: { display: false } } }
+      })
+    });
+  }
 
-    const sem = zenSemanal(S.mes);
-    const subSem = $("#sac-sem-sub");
-    if (subSem) subSem.textContent = "Semanas de " + mesLabel(S.mes).toLowerCase() + ", preenchidas à mão";
-    grafico("chart-wow", { data: { labels: sem.map(r => "Semana " + r.semana), datasets: [
-        { type: "bar", label: "FCR", data: sem.map(r => num(r.fcr_pct)), backgroundColor: C.tealFill,
-          borderColor: C.teal, borderWidth: 1.5, borderRadius: 4, maxBarThickness: 38, yAxisID: "y",
-          rotulo: { casas: 1, sufixo: "%", cor: "#00696B", abaixo: true } },
-        { type: "line", label: "CSAT humano", data: sem.map(r => num(r.csat_humano)), borderColor: C.blue,
-          backgroundColor: "transparent", tension: .3, borderWidth: 2.4, pointRadius: 4, pointBackgroundColor: C.blue,
-          yAxisID: "y1", rotulo: { casas: 2, cor: C.blue } } ] },
+  /* Clicar num ponto do gráfico mensal troca o mês do bloco semanal. É o que
+     liga os dois: o mensal responde "como estamos" e o semanal, "por quê". */
+  function aoClicarMes(evento, elementos, meses) {
+    if (!elementos.length) return;
+    const mes = meses[elementos[0].index];
+    if (!mes) return;
+    S.sacMes = mes;
+    seletorMesSemana();
+    grafSemanal();
+    $("#chart-wow").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  /** Botões de mês acima do gráfico semanal, só com os meses que têm semanas. */
+  function seletorMesSemana() {
+    const comSemanas = Array.from(new Set(
+      S.zendesk.filter(r => (num(r.semana) ?? 0) > 0).map(r => r.mes))).sort();
+    // So escolhe sozinho na primeira vez. Se o usuario clicou num mes que nao
+    // tem semanas, mantemos a escolha dele e o grafico explica a ausencia —
+    // voltar para outro mes calado pareceria que o clique nao funcionou.
+    if (!S.sacMes) {
+      S.sacMes = comSemanas.includes(S.mes) ? S.mes : (comSemanas[comSemanas.length - 1] || null);
+    }
+    const seg = $("#seg-sac-mes");
+    seg.innerHTML = comSemanas.map(m =>
+      '<button class="' + (m === S.sacMes ? "active" : "") + '" data-mes="' + m + '">' +
+      mesCurto(m) + "</button>").join("");
+    $$("#seg-sac-mes button").forEach(b => b.addEventListener("click", () => {
+      S.sacMes = b.dataset.mes;
+      seletorMesSemana();
+      grafSemanal();
+    }));
+  }
+
+  /** FCR e CSAT semana a semana do mês escolhido. */
+  function grafSemanal() {
+    const sem = zenSemanal(S.sacMes);
+    const sub = $("#sac-sem-sub");
+    if (!sem.length) {
+      const outros = Array.from(new Set(
+        S.zendesk.filter(r => (num(r.semana) ?? 0) > 0).map(r => r.mes))).sort();
+      if (sub) sub.textContent = !S.sacMes ? "Nenhum mês tem detalhamento semanal ainda."
+        : "Sem semanas preenchidas para " + mesLabel(S.sacMes).toLowerCase() + "." +
+          (outros.length ? " Há detalhamento em " +
+            outros.map(m => mesLabel(m).toLowerCase()).join(", ") + "." : "");
+      grafico("chart-wow", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      return;
+    }
+    if (sub) sub.textContent = "FCR e CSAT humano de " + mesLabel(S.sacMes).toLowerCase() +
+      " · clique num ponto dos gráficos acima para trocar de mês";
+
+    grafico("chart-wow", {
+      data: { labels: sem.map(r => "S" + r.semana + (r.periodo ? " · " + r.periodo.replace(/ de \w+/i, "") : "")),
+        datasets: [
+          { type: "bar", label: "FCR", data: sem.map(r => num(r.fcr_pct)),
+            backgroundColor: C.tealFill, borderColor: C.teal, borderWidth: 1.5,
+            borderRadius: 4, maxBarThickness: 46, yAxisID: "y",
+            rotulo: { casas: 1, sufixo: "%", cor: "#00696B", abaixo: true } },
+          { type: "line", label: "CSAT humano", data: sem.map(r => num(r.csat_humano)),
+            borderColor: C.blue, backgroundColor: "transparent", tension: .3, borderWidth: 2.6,
+            pointRadius: 4.5, pointBackgroundColor: C.blue, pointBorderColor: "#fff",
+            pointBorderWidth: 2, yAxisID: "y1", spanGaps: true,
+            rotulo: { casas: 2, cor: C.blue } } ] },
       options: opcoes({ plugins: { legend: legenda() },
-        scales: { y: { min: 0, max: 100, grid: { color: C.grid }, ticks: { callback: v => v + "%" } },
-                  y1: { min: 0, max: 5, position: "right", grid: { display: false } },
-                  x: { grid: { display: false } } } }) });
+        scales: { y: { min: 0, max: 100, grid: { color: C.grid }, ticks: { callback: v => v + "%" },
+                       title: { display: true, text: "FCR", font: { size: 10 } } },
+                  y1: { min: 0, max: 5, position: "right", grid: { display: false },
+                        title: { display: true, text: "CSAT", font: { size: 10 } } },
+                  x: { grid: { display: false } } } })
+    });
+  }
 
-    const tb = $("#tbl-zendesk tbody"); tb.innerHTML = "";
-    mensal.forEach(r => tb.appendChild(el("tr", "",
-      '<td class="strong">' + (r.mes_label || mesLabel(r.mes)) + "</td>" +
-      '<td class="num">' + fmt(num(r.csat_ia), 2) + "</td>" +
-      '<td class="num">' + fmt(num(r.csat_humano), 2) + "</td>" +
-      '<td class="num">' + (r.tma_primeira_resposta || "—") + "</td>" +
-      '<td class="num">' + (r.tmr || "—") + "</td>" +
-      '<td class="num">' + (r.fcr_pct ? fmt(num(r.fcr_pct),1) + "%" : "—") + "</td>" +
-      '<td class="num">' + (r.resolucao_ia_pct ? fmt(num(r.resolucao_ia_pct),0) + "%" : "—") + "</td>")));
+  /** Tabela mês a mês com a variação, no mesmo padrão da grade histórica. */
+  function historicoSuporte(mensal) {
+    $("#sac-hist-head").innerHTML = '<th class="rot">Indicador</th>' +
+      mensal.map(r => '<th class="num">' + mesCurto(r.mes) +
+        '<span class="ano">' + r.mes.slice(2, 4) + "</span></th>").join("");
 
-    const ts = $("#tbl-semanal tbody"); ts.innerHTML = "";
-    if (!sem.length) ts.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma semana preenchida para ' +
-      mesLabel(S.mes).toLowerCase() + ".</td></tr>";
-    sem.forEach(r => ts.appendChild(el("tr", "",
-      '<td class="strong">Semana ' + r.semana + "</td><td>" + (r.periodo || "—") + "</td>" +
-      '<td class="num">' + fmt(num(r.csat_ia), 2) + "</td>" +
-      '<td class="num">' + fmt(num(r.csat_humano), 2) + "</td>" +
-      '<td class="num">' + (r.tma_primeira_resposta || "—") + "</td>" +
-      '<td class="num">' + (r.tmr || "—") + "</td>" +
-      '<td class="num">' + (r.fcr_pct ? fmt(num(r.fcr_pct),1) + "%" : "—") + "</td>")));
+    const corpo = $("#tbl-zendesk tbody"); corpo.innerHTML = "";
+    IND_SUPORTE.forEach(ind => {
+      const tr = el("tr");
+      tr.appendChild(el("td", "rot strong", ind.rotulo));
+      let anterior = null;
+      mensal.forEach(r => {
+        const v = valorSup(ind, r);
+        const td = el("td", "num" + (v === null ? " vazio" : " real"));
+        if (v === null) td.textContent = "—";
+        else {
+          let delta = "";
+          if (anterior !== null && anterior !== 0) {
+            const pct = (v - anterior) / Math.abs(anterior) * 100;
+            const bom = ind.melhor === "baixo" ? pct < 0 : pct > 0;
+            delta = '<span class="var ' + (bom ? "up" : "down") + '">' +
+                    (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
+          }
+          td.innerHTML = '<b class="tabular">' + mostrarSup(ind, v) + "</b>" + delta;
+          anterior = v;
+        }
+        tr.appendChild(td);
+      });
+      corpo.appendChild(tr);
+    });
   }
 
   /* ---------- METAS ---------- */
