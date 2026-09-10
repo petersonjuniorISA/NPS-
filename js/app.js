@@ -1400,7 +1400,8 @@
           '<div class="metric-label">' + ind.rotulo + "</div>" +
           '<div class="sup-num tabular">' + mostrarSup(ind, v) + delta + "</div>" +
           '<div class="metric-note">' + ind.nota + "</div>" +
-          '<div class="sup-spark"><canvas id="spark-' + ind.id + '"></canvas></div>' +
+          '<div class="sup-spark" title="Clique num mês para ver as semanas">' +
+          '<canvas id="spark-' + ind.id + '"></canvas></div>' +
           "</div>";
       }).join("");
     });
@@ -1418,6 +1419,9 @@
           pointBorderWidth: 0
         }] },
         options: opcoes({
+          // o mesmo clique dos graficos grandes: qualquer ponto mensal do
+          // painel leva ao detalhe semanal daquele mes
+          onClick: (e, els) => aoClicarMes(e, els, mensal.map(r => r.mes)),
           plugins: { legend: { display: false }, tooltip: { callbacks: {
             label: c => mostrarSup(ind, c.parsed.y) } } },
           scales: { y: { display: false, grace: "18%" }, x: { grid: { display: false },

@@ -589,4 +589,4 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 }
 .sup-num .delta { font-family: var(--sans); font-size: 12px; font-weight: 600; }
 /* a evolucao fica colada no rodape do cartao, para os seis alinharem entre si */
-.sup-spark { height: 74px; margin-top: auto; padding-top: var(--md); position: relative; }
+.sup-spark { height: 74px; margin-top: auto; padding-top: var(--md); position: relative; cursor: pointer; }

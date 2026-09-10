@@ -601,7 +601,7 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 }
 .sup-num .delta { font-family: var(--sans); font-size: 12px; font-weight: 600; }
 /* a evolucao fica colada no rodape do cartao, para os seis alinharem entre si */
-.sup-spark { height: 74px; margin-top: auto; padding-top: var(--md); position: relative; }
+.sup-spark { height: 74px; margin-top: auto; padding-top: var(--md); position: relative; cursor: pointer; }
 
 </style>
 </head>
@@ -2458,7 +2458,8 @@ window.NPS_CONFIG = {
           '<div class="metric-label">' + ind.rotulo + "</div>" +
           '<div class="sup-num tabular">' + mostrarSup(ind, v) + delta + "</div>" +
           '<div class="metric-note">' + ind.nota + "</div>" +
-          '<div class="sup-spark"><canvas id="spark-' + ind.id + '"></canvas></div>' +
+          '<div class="sup-spark" title="Clique num mês para ver as semanas">' +
+          '<canvas id="spark-' + ind.id + '"></canvas></div>' +
           "</div>";
       }).join("");
     });
@@ -2476,6 +2477,9 @@ window.NPS_CONFIG = {
           pointBorderWidth: 0
         }] },
         options: opcoes({
+          // o mesmo clique dos graficos grandes: qualquer ponto mensal do
+          // painel leva ao detalhe semanal daquele mes
+          onClick: (e, els) => aoClicarMes(e, els, mensal.map(r => r.mes)),
           plugins: { legend: { display: false }, tooltip: { callbacks: {
             label: c => mostrarSup(ind, c.parsed.y) } } },
           scales: { y: { display: false, grace: "18%" }, x: { grid: { display: false },
