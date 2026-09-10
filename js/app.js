@@ -19,6 +19,7 @@
     positive: "#00C643",
     negative: "#E93B5A",
     chumbo: "#4A4A68",
+    cinzaMeta: "#B9BFC9",
     grid: "#E8EAED",
     text: "#666E80"
   };
@@ -118,9 +119,9 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null,
-              sacMes: null, ocMes: null, tkMes: null, comFiltro: null, mes: null, semana: null,
-              histModo: "nps", evoDim: null, evoEsp: null, pagina: "resumo",
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, focos: null,
+              sacMes: null, ocMes: null, ocVista: "classe", tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,
+              evoDim: null, evoEsp: null, pagina: "nps",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -192,17 +193,18 @@
   }
 
   async function carregar() {
-    const [nps, metas, zen, oc, onb, com] = await Promise.all([
+    const [nps, metas, zen, oc, onb, com, foc] = await Promise.all([
       buscarJson("nps", "data/nps.json", null),
       buscarJson("metas", "data/metas.json", { objetivos: [] }),
       carregarZendesk(),
       buscarJson("ocorrencias", "data/ocorrencias.json", null),
       buscarJson("onboarding", "data/onboarding.json", null),
-      buscarJson("comentarios", "data/comentarios.json", null)
+      buscarJson("comentarios", "data/comentarios.json", null),
+      buscarJson("focos", "data/focos.json", null)
     ]);
     if (!nps) throw new Error("Não consegui carregar os dados de NPS.");
     S.nps = nps; S.metas = metas; S.zendesk = zen; S.oc = oc;
-    S.onb = onb; S.com = com;
+    S.onb = onb; S.com = com; S.focos = foc;
   }
 
   async function carregarZendesk() {
@@ -287,14 +289,10 @@
 
   /* ---------- navegação ---------- */
   const PAGES = {
-    resumo:         { t: "Resumo executivo",  s: "Onde estamos e qual o risco" },
-    visao:          { t: "NPS em detalhe",    s: "Composição e evolução do índice" },
-    especialidades: { t: "Especialidades",    s: "Onde a experiência é melhor e pior" },
-    sac:            { t: "Suporte",           s: "FCR, tempos de atendimento e satisfação" },
-    ocorrencias:    { t: "Ocorrências", s: "Volume e tempo de encerramento na Comunidade" },
-    historico:      { t: "Histórico de indicadores", s: "Todos os indicadores, mês a mês e semana a semana" },
-    onboarding:     { t: "Onboarding", s: "Da inscrição ao primeiro plantão, semana a semana" },
-    metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" }
+    nps:         { t: "NPS", s: "Onde estamos, o que puxa e o que os ISAs escreveram" },
+    sac:         { t: "Suporte", s: "FCR, tempos de atendimento, satisfação e análise de tickets" },
+    ocorrencias: { t: "Ocorrências", s: "Volume, classe e tempo de encerramento na Comunidade" },
+    onboarding:  { t: "Onboarding", s: "Da inscrição ao primeiro plantão, semana a semana" }
   };
 
   function navegacao() {
@@ -383,9 +381,8 @@
               "continuam mensais.</span></div>"
       : "";
 
-    heroi(); farol(); alerta(); leitura(); composicao(); destaques();
-    espIndicadores(); espLista(); espDetalhe(); tabelaSatisfacao();
-    gradeHistorico(); gradeSemanal();
+    heroi(); farol(); focos(); leitura();
+    espLista(); espDetalhe(); cruzamento();
     graficosDa(S.pagina);
   }
 
@@ -394,12 +391,10 @@
      porque o tamanho em cache continua zero. Por isso cada aba só desenha os
      próprios gráficos, e só quando está visível. */
   const GRAFICOS = {
-    visao:          () => { grafHistorico(S.histModo); grafRadar(); grafPerguntas(); grafEvolucaoDimensoes(); },
-    especialidades: () => { grafEvolucaoEspecialidades(); },
-    sac:            () => { sac(); tickets(); },
-    ocorrencias:    () => { ocorrencias(); },
-    onboarding:     () => { onboarding(); },
-    metas:          () => { metas(); }
+    nps:         () => { grafHistorico(); grafEvolucaoDimensoes(); grafEvolucaoEspecialidades(); },
+    sac:         () => { sac(); tickets(); },
+    ocorrencias: () => { ocorrencias(); },
+    onboarding:  () => { onboarding(); }
   };
   function graficosDa(pagina) {
     const fn = GRAFICOS[pagina];
@@ -488,46 +483,6 @@
     });
   }
 
-  function alerta() {
-    const mes = S.mes;
-    let pior = null;
-    (S.metas.objetivos || []).forEach(o => {
-      const st = status(o, mes);
-      // meta defasada não disputa o pior atingimento: o problema ali é a meta
-      if (st.att !== null && !st.defasada && (!pior || st.att < pior.st.att)) pior = { o, st };
-    });
-    if (!pior) {
-      $("#alerta-text").textContent = "Sem metas cadastradas para comparar.";
-      $("#alerta-trajeto").innerHTML = "";
-      return;
-    }
-
-    const { o, st } = pior;
-    $("#alerta-kicker").textContent = o.label + " · " + mesLabel(mes);
-    conta($("#alerta-number"), st.att, 0, "%");
-    $("#alerta-number").style.color = st.att >= 100 ? "#009131" : st.att >= 85 ? "#96700B" : C.negative;
-
-    $("#alerta-text").innerHTML = st.att >= 100
-      ? "Nenhum objetivo ficou abaixo da meta neste mês. O menor atingimento é <b>" + o.label +
-        "</b>, ainda assim em " + st.att + "% do esperado."
-      : "<b>" + o.label + "</b> fechou " + mesLabel(mes).toLowerCase() + " em <b>" + fmt(st.real, o.casas) + unidade(o) +
-        "</b> contra meta de <b>" + fmt(st.meta, o.casas) + unidade(o) + "</b> — lacuna de " +
-        fmt(st.meta - st.real, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") + ". " +
-        (o.contexto ? o.contexto + " " : "") +
-        "Para chegar a " + fmt(o.alvo_final, 0) + unidade(o) + " até dezembro, é o indicador que depende de decisão agora.";
-
-    // A escada que ainda falta subir — é o que a diretoria precisa aprovar.
-    const futuros = Object.keys(o.metas || {}).filter(m => m > mes).sort().slice(0, 4);
-    $("#alerta-trajeto").innerHTML = !futuros.length ? "" :
-      '<div class="trajeto-label">O que falta subir</div>' +
-      '<div class="trajeto">' + futuros.map(m => {
-        const salto = o.metas[m] - (o.metas[futuros[futuros.indexOf(m) - 1]] ?? st.real);
-        return '<div class="trajeto-passo"><div class="trajeto-mes">' + mesCurto(m) + "</div>" +
-          '<div class="trajeto-meta tabular">' + fmt(o.metas[m], o.casas) + unidade(o) + "</div>" +
-          '<div class="trajeto-delta">' + (salto > 0 ? "+" : "") + fmt(salto, o.casas) + "</div></div>";
-      }).join("") + "</div>";
-  }
-
   function leitura() {
     const box = $("#notes"); box.innerHTML = "";
     $("#notes-label").textContent = S.semana === null ? "Leitura do mês" : "Leitura da semana";
@@ -584,144 +539,149 @@
     itens.forEach(i => box.appendChild(el("li", i.t, i.txt)));
   }
 
-  /* ---------- NPS EM DETALHE ---------- */
-  function composicao() {
-    const k = dados().kpi;
-    if (k.promotores === null || k.promotores === undefined) {
-      $("#stack-legend").innerHTML =
-        '<div class="empty" style="padding:8px 0">Sem a divisão promotor/neutro/detrator — ' +
-        mesLabel(S.mes).toLowerCase() + " veio da apuração manual, que guardou só o índice.</div>";
-      Array.from($("#stack").children).forEach(c => c.style.width = "0%");
-      return;
-    }
-    const total = k.promotores + k.neutros + k.detratores || 1;
-    const barra = $("#stack");
-    [["p", k.promotores], ["n", k.neutros], ["d", k.detratores]].forEach(([cls, val], i) => {
-      const s = barra.children[i];
-      s.style.width = "0%";
-      aoPintar(() => s.style.width = (val / total * 100) + "%");
-    });
-    $("#stack-legend").innerHTML = [
-      ["Promotores", k.promotores], ["Neutros", k.neutros], ["Detratores", k.detratores]
-    ].map(([rot, v]) => "<div>" + rot + " <b>" + v + "</b> (" + fmt(v / total * 100, 1) + "%)</div>").join("");
-  }
+  /* Evolucao do NPS: indice, promotores, neutros, detratores, meta e o volume
+     de respostas — tudo num grafico so, como o board le.
 
-  function grafHistorico(modo) {
-    // aceita o booleano antigo para nao quebrar chamadas existentes
-    if (modo === true) modo = "csat";
-    if (!modo) modo = "nps";
+     Duas escalas: o indice e a meta vao de 0 a 100 na esquerda; as contagens
+     tem ordem de grandeza propria e vivem na direita. A meta e a unica linha
+     tracejada do painel inteiro, porque e o unico indicador daqui com meta. */
+  function grafHistorico() {
     const hist = S.nps.historico_nps || [];
     const objNps = objetivo("nps") || { metas: {} };
-    const meses = Array.from(new Set([...hist.map(h => h.mes), ...Object.keys(objNps.metas || {})])).sort();
+    const meses = Array.from(new Set([...hist.map(h => h.mes),
+                                      ...Object.keys(objNps.metas || {})])).sort();
+    const doMes = m => (S.nps.meses || {})[m];
+    const contagem = campo => meses.map(m => {
+      const b = doMes(m);
+      return b && b.kpi && b.kpi[campo] !== null && b.kpi[campo] !== undefined ? b.kpi[campo] : null;
+    });
+
     const real = meses.map(m => { const h = hist.find(x => x.mes === m); return h ? h.nps : null; });
     const meta = meses.map(m => objNps.metas[m] ?? null);
-    const csatMap = {}; zenMensal().forEach(r => csatMap[r.mes] = num(r.csat_humano));
 
     const ds = [
-      { label: "Realizado", data: real, borderColor: C.blue, backgroundColor: C.blueFill,
-        fill: true, tension: .3, borderWidth: 2.5, yAxisID: "y",
+      { label: "NPS", data: real, borderColor: C.blue, backgroundColor: C.blueFill,
+        fill: true, tension: .3, borderWidth: 2.8, yAxisID: "y",
         // trecho apurado a mao fica tracejado: mesma serie, confiabilidade diferente
         segment: { borderDash: ctx => (S.nps.meses_do_notion || []).includes(meses[ctx.p1DataIndex])
                                       ? [6, 4] : undefined },
-        // o mês que está sendo lido no painel ganha um ponto maior, em rosa
         pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
         pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : C.blue),
         pointBorderColor: "#fff", pointBorderWidth: 2,
-        rotulo: { casas: 1, cor: C.blue, soUltimo: modo === "composicao" } }
+        rotulo: { casas: 1, cor: C.blue } },
+      { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderDash: [5, 4], borderWidth: 1.8,
+        backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true,
+        rotulo: { casas: 0, cor: C.cinzaMeta, soUltimo: true } }
     ];
-    /* A meta so aparece quando o grafico e sobre o indice. Na composicao ela
-       disputaria espaco com quatro series novas sem acrescentar leitura. */
-    if (modo !== "composicao")
-      ds.push({ label: "Meta", data: meta, borderColor: C.text, borderDash: [5,4], borderWidth: 1.6,
-        backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true });
-    if (modo === "csat") ds.push({ label: "CSAT humano", data: meses.map(m => csatMap[m] ?? null),
-      borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
-      pointRadius: 3.5, pointBackgroundColor: C.pink, yAxisID: "y1", spanGaps: true });
 
-    /* Composicao: promotores, neutros, detratores e o volume de respostas, num
-       eixo proprio a direita. So os meses vindos do Databricks tem essa quebra —
-       nos apurados a mao sobrou apenas o indice, entao a linha simplesmente nao
-       comeca antes. */
-    if (modo === "composicao") {
-      const doMes = m => (S.nps.meses || {})[m];
-      const serie = campo => meses.map(m => {
-        const b = doMes(m);
-        return b && b.kpi && b.kpi[campo] !== null && b.kpi[campo] !== undefined ? b.kpi[campo] : null;
-      });
-      [["Promotores", "promotores", C.positive],
-       ["Neutros", "neutros", C.amber],
-       ["Detratores", "detratores", C.negative],
-       ["Respostas", "total_respostas", C.chumbo || "#4A4A68"]].forEach(([rot, campo, cor]) => {
-        ds.push({ label: rot, data: serie(campo), borderColor: cor,
-          backgroundColor: "transparent", borderWidth: rot === "Respostas" ? 2.4 : 2,
-          borderDash: rot === "Respostas" ? [4, 3] : undefined,
-          tension: .3, pointRadius: 3.5, pointBackgroundColor: cor,
-          yAxisID: "y1", spanGaps: true,
-          rotulo: { casas: 0, cor: cor, soUltimo: true } });
-      });
-    }
+    [["Promotores", "promotores", C.positive],
+     ["Neutros", "neutros", C.amber],
+     ["Detratores", "detratores", C.negative],
+     ["Respostas", "total_respostas", C.chumbo]].forEach(([rot, campo, cor]) => {
+      ds.push({ label: rot, data: contagem(campo), borderColor: cor,
+        backgroundColor: "transparent", borderWidth: rot === "Respostas" ? 2.4 : 2,
+        borderDash: rot === "Respostas" ? [3, 3] : undefined,
+        tension: .3, pointRadius: 3.5, pointBackgroundColor: cor,
+        yAxisID: "y1", spanGaps: true,
+        rotulo: { casas: 0, cor: cor, soUltimo: true } });
+    });
 
-    // o subtitulo acompanha o modo: falar em meta num grafico sem meta confunde
-    const sub = $("#sub-historico");
-    if (sub) sub.textContent = modo === "composicao"
-      ? "Índice, promotores, neutros, detratores e volume de respostas"
-      : modo === "csat" ? "NPS e CSAT humano mês a mês"
-      : "Realizado contra a meta de cada mês";
-
-    grafico("chart-historico", { type: "line", data: { labels: meses.map(mesCurto), datasets: ds },
-      options: opcoes({ layout: { padding: { right: modo === "composicao" ? 44 : 8 } },
+    grafico("chart-historico", { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: ds },
+      options: opcoes({ layout: { padding: { right: 52 } },
         plugins: { legend: legenda(), tooltip: { callbacks: {
-          // passar o mouse no ponto mostra a meta daquele mês junto do realizado
           afterBody: itens => {
             const m = meses[itens[0].dataIndex], alvo = objNps.metas[m];
             return alvo === undefined ? "" : "Meta de " + mesCurto(m).toLowerCase() + ": " + fmt(alvo, 1);
           } } } },
-        scales: { y: { min: 0, max: 100, grid: { color: C.grid } },
-                  y1: modo === "csat" ? { min: 0, max: 5, position: "right", grid: { display: false } }
-                    : modo === "composicao" ? { min: 0, position: "right", grid: { display: false },
-                        title: { display: true, text: "respostas", font: { size: 10 } } }
-                    : { display: false },
+        scales: { y: { min: 0, max: 100, grid: { color: C.grid },
+                       title: { display: true, text: "índice", font: { size: 10 } } },
+                  y1: { min: 0, position: "right", grid: { display: false },
+                        title: { display: true, text: "respostas", font: { size: 10 } } },
                   x: { grid: { display: false } } } }) });
   }
 
-  function grafRadar() {
-    const map = {}; (dados().media_por_pergunta || []).forEach(p => map[p.pergunta] = p.media);
-    const rotulos = DIMENSOES.map(d => d.label);
-    grafico("chart-radar", {
-      type: "radar",
-      data: { labels: rotulos.map(l => l.split(" ")[0]), datasets: [{
-        data: rotulos.map(l => map[l] ?? null), borderColor: C.teal,
-        backgroundColor: "rgba(0,195,197,.15)", borderWidth: 2, pointRadius: 3, pointBackgroundColor: C.teal,
-        rotulo: { casas: 2, cor: C.blue } }] },
-      options: opcoes({ plugins: { legend: { display: false },
-        tooltip: { callbacks: { title: i => rotulos[i[0].dataIndex], label: c => "Nota " + fmt(c.parsed.r, 2) } } },
-        scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, backdropColor: "transparent", font: { size: 9 } },
-                       grid: { color: C.grid }, angleLines: { color: C.grid },
-                       pointLabels: { font: { size: 10 }, padding: 22 } } } }) });
+  /* ---------- Focos do mes ----------
+     Sao escritos a mao em data/focos.json: nao ha metrica que diga em que a
+     area escolheu mexer neste mes. O quadro de "Resolucao com IA" que morava
+     aqui saiu — era um indicador solto, e indicador ja tem lugar no farol. */
+  function focos() {
+    const box = $("#focos"), sub = $("#focos-sub");
+    const cfg = S.focos || {};
+    const doMes = (cfg.meses || {})[S.mes] || (cfg.meses || {})[cfg.padrao] || null;
+
+    if (sub) sub.textContent = doMes && doMes.subtitulo
+      ? doMes.subtitulo
+      : "Escritos a mão em data/focos.json";
+
+    if (!doMes || !(doMes.itens || []).length) {
+      box.innerHTML = '<li class="empty">Sem focos escritos para ' +
+        mesLabel(S.mes).toLowerCase() + '. Edite <code>data/focos.json</code>.</li>';
+      return;
+    }
+    box.innerHTML = doMes.itens.map(f => {
+      const texto = typeof f === "string" ? f : f.texto;
+      const dono = typeof f === "string" ? null : f.dono;
+      const estado = (typeof f === "string" ? "" : f.estado || "").toLowerCase();
+      return '<li class="foco ' + estado + '"><span class="foco-marca"></span>' +
+        "<div><span>" + texto + "</span>" +
+        (dono ? '<span class="foco-dono">' + dono + "</span>" : "") + "</div></li>";
+    }).join("");
   }
 
-  function grafPerguntas() {
-    const itens = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
-    grafico("chart-perguntas", {
-      type: "bar",
-      data: { labels: itens.map(i => i.pergunta), datasets: [{
-        data: itens.map(i => i.media),
-        backgroundColor: itens.map((_, i) => i === 0 ? C.teal : i === itens.length - 1 ? C.pink : C.blue),
-        borderRadius: 4, maxBarThickness: 22, rotulo: { casas: 2, cor: C.featured || "#202020" } }] },
-      options: opcoes({ indexAxis: "y",
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => "Nota " + fmt(c.parsed.x, 2) } } },
-        scales: { x: { min: 0, max: 5.6, grid: { color: C.grid },
-                       ticks: { stepSize: 1, callback: v => v > 5 ? "" : v } },
-                  y: { grid: { display: false } } } }) });
+  /* ---------- Especialidade x dimensao ----------
+     Matriz de calor. A tabela que existia aqui pedia comparacao de cabeca
+     entre 6 colunas de decimais; a cor resolve isso antes da leitura. */
+  function cruzamento() {
+    const box = $("#cruz"), sub = $("#cruz-sub");
+    const linhas = (dados().satisfacao_por_especialidade || [])
+      .filter(l => (l.n || 0) >= MIN_AMOSTRA)
+      .sort((a, b) => (b.n || 0) - (a.n || 0));
+
+    if (!linhas.length) {
+      box.innerHTML = '<div class="empty">Sem especialidade com ' + MIN_AMOSTRA +
+        " respostas ou mais em " + recorteLabel() + ".</div>";
+      if (sub) sub.textContent = "";
+      return;
+    }
+
+    const cols = DIMENSOES.slice();
+    const todos = [];
+    linhas.forEach(l => cols.forEach(c => { const v = l[c.key]; if (v != null) todos.push(v); }));
+    const menor = Math.min.apply(null, todos), maior = Math.max.apply(null, todos);
+
+    if (sub) sub.innerHTML = "Nota media de cada dimensao dentro de cada especialidade, " +
+      "de <b>" + fmt(menor, 2) + "</b> a <b>" + fmt(maior, 2) + "</b>. " +
+      "Só entram especialidades com " + MIN_AMOSTRA + " respostas ou mais.";
+
+    /* A cor vai do rosa ao teal da marca, esticada entre o menor e o maior do
+       proprio mes: numa escala fixa de 0 a 5 tudo ficaria da mesma cor. */
+    const tom = v => {
+      if (v == null) return "background:var(--gray-inactive,#E8EAED)";
+      const t = maior === menor ? .5 : (v - menor) / (maior - menor);
+      const cor = t < .5
+        ? "237,30,121"          // rosa: abaixo da media do mes
+        : "0,195,197";          // teal: acima
+      const forca = .12 + Math.abs(t - .5) * 1.5;
+      return "background:rgba(" + cor + "," + forca.toFixed(2) + ")";
+    };
+
+    const cab = '<div class="cruz-linha cruz-cab"><div class="cruz-nome"></div>' +
+      cols.map(c => '<div class="cruz-col">' + c.label.split(" ")[0] + "</div>").join("") +
+      '<div class="cruz-col">n</div></div>';
+
+    box.innerHTML = cab + linhas.map(l =>
+      '<div class="cruz-linha"><div class="cruz-nome" title="' + l.especialidade + '">' +
+      l.especialidade + "</div>" +
+      cols.map(c => {
+        const v = l[c.key];
+        return '<div class="cruz-cel tabular" style="' + tom(v) + '" title="' +
+          l.especialidade + " · " + c.label + '">' +
+          (v == null ? "—" : fmt(v, 2)) + "</div>";
+      }).join("") +
+      '<div class="cruz-cel cruz-n tabular">' + (l.n || 0) + "</div></div>").join("");
   }
 
-
-
-  /* ---------- Histórico de indicadores ---------- */
-
-  /* "48h48" e "55h" são texto no CSV. Para comparar mês a mês viram minutos,
-     e voltam a texto na hora de mostrar — assim a variação de tempo sai certa
-     em vez de comparar strings. */
   function minutosDeTempo(txt) {
     const m = String(txt || "").trim().match(/^(\d+)h(\d+)?$/i);
     if (!m) return null;
@@ -744,274 +704,10 @@
     { id: "resolucao_ia_pct", label: "Resolução com IA",  casas: 0, suf: "%", fonte: "zendesk", campo: "resolucao_ia_pct",      melhor: "cima" }
   ];
 
-  /** Valor realizado de um indicador num mês, já como número comparável. */
-  function valorReal(ind, mes) {
-    if (ind.fonte === "nps") {
-      const h = (S.nps.historico_nps || []).find(x => x.mes === mes);
-      return h ? h.nps : null;
-    }
-    const linha = zenMes(mes);
-    if (!linha) return null;
-    const bruto = linha[ind.campo];
-    return ind.tempo ? minutosDeTempo(bruto) : num(bruto);
-  }
-  /** Meta cadastrada, no mesmo formato numérico do realizado. */
-  function valorMeta(ind, mes) {
-    const o = objetivo(ind.id);
-    const bruto = o && o.metas ? o.metas[mes] : undefined;
-    if (bruto === undefined || bruto === null) return null;
-    return ind.tempo ? minutosDeTempo(bruto) : num(bruto);
-  }
   const mostrar = (ind, v) =>
     v === null || v === undefined ? "—"
     : ind.tempo ? tempoDeMinutos(v)
     : fmt(v, ind.casas) + (ind.suf || "");
-
-  /** Todos os meses que a grade precisa cobrir: realizados + metas futuras. */
-  function mesesDaGrade() {
-    const set = new Set(mesesDisponiveis());
-    (S.metas.objetivos || []).forEach(o => Object.keys(o.metas || {}).forEach(m => set.add(m)));
-    return Array.from(set).sort();
-  }
-
-  function gradeHistorico() {
-    const meses = mesesDaGrade();
-    // Mes passado sem medicao e lacuna, nao projecao: mostrar a meta ali faria
-    // julho parecer que teve 24% de resolucao com IA, quando nao foi medido.
-    const ultimoReal = meses.filter(m => INDICADORES.some(i => valorReal(i, m) !== null)).pop() || "";
-    const head = $("#hist-head");
-    head.innerHTML = '<th class="rot">Indicador</th>' +
-      meses.map(m => {
-        const real = INDICADORES.some(i => valorReal(i, m) !== null);
-        return '<th class="num' + (real ? "" : " futuro") + '">' + mesCurto(m) +
-               '<span class="ano">' + m.slice(2, 4) + "</span></th>";
-      }).join("");
-
-    const corpo = $("#tbl-historico tbody"); corpo.innerHTML = "";
-    INDICADORES.forEach(ind => {
-      const tr = el("tr");
-      tr.appendChild(el("td", "rot strong", ind.label));
-      let anterior = null;
-      meses.forEach(mes => {
-        const real = valorReal(ind, mes);
-        const meta = valorMeta(ind, mes);
-        const td = el("td", "num");
-
-        if (real !== null) {
-          let delta = "";
-          if (anterior !== null && anterior !== 0) {
-            const p = (real - anterior) / Math.abs(anterior) * 100;
-            const bom = ind.melhor === "baixo" ? p < 0 : p > 0;
-            delta = '<span class="var ' + (bom ? "up" : "down") + '">' +
-                    (p >= 0 ? "+" : "−") + fmt(Math.abs(p), 1) + "%</span>";
-          }
-          const doNotion = ind.fonte === "nps" &&
-            (S.nps.meses_do_notion || []).includes(mes);
-          td.className = "num real" + (doNotion ? " notion" : "");
-          td.innerHTML = '<b class="tabular">' + mostrar(ind, real) + "</b>" + delta;
-          if (doNotion) td.title = "Apurado à mão, antes de o NPS entrar no Databricks";
-          anterior = real;
-        } else if (meta !== null && mes > ultimoReal) {
-          td.className = "num futuro";
-          td.innerHTML = '<span class="tabular">' + mostrar(ind, meta) + "</span>";
-          td.title = "Meta de " + mesLabel(mes).toLowerCase();
-        } else {
-          td.className = "num vazio";
-          td.textContent = "—";
-        }
-        tr.appendChild(td);
-      });
-      corpo.appendChild(tr);
-    });
-  }
-
-  function gradeSemanal() {
-    const sem = zenSemanal(S.mes);
-    const sub = $("#wow-sub");
-    const head = $("#wow-head"), corpo = $("#tbl-wow tbody");
-    if (!sem.length) {
-      if (sub) sub.textContent = "Sem semanas preenchidas para " + mesLabel(S.mes).toLowerCase() + ".";
-      head.innerHTML = ""; corpo.innerHTML = "";
-      return;
-    }
-    if (sub) sub.textContent = "Indicadores de Zendesk semana a semana em " +
-      mesLabel(S.mes).toLowerCase() + ", com a variação contra a semana anterior";
-
-    head.innerHTML = '<th class="rot">Indicador</th>' +
-      sem.map(r => '<th class="num">W' + r.semana +
-        (r.periodo ? '<span class="ano">' + r.periodo.replace(/ de \w+/i, "") + "</span>" : "") + "</th>").join("");
-
-    corpo.innerHTML = "";
-    INDICADORES.filter(i => i.fonte === "zendesk").forEach(ind => {
-      const tr = el("tr");
-      tr.appendChild(el("td", "rot strong", ind.label));
-      let anterior = null;
-      sem.forEach(r => {
-        const bruto = r[ind.campo];
-        const v = ind.tempo ? minutosDeTempo(bruto) : num(bruto);
-        const td = el("td", "num" + (v === null ? " vazio" : " real"));
-        if (v === null) td.textContent = "—";
-        else {
-          let delta = "";
-          if (anterior !== null && anterior !== 0) {
-            const p = (v - anterior) / Math.abs(anterior) * 100;
-            const bom = ind.melhor === "baixo" ? p < 0 : p > 0;
-            delta = '<span class="var ' + (bom ? "up" : "down") + '">' +
-                    (p >= 0 ? "+" : "−") + fmt(Math.abs(p), 1) + "%</span>";
-          }
-          td.innerHTML = '<b class="tabular">' + mostrar(ind, v) + "</b>" + delta;
-          anterior = v;
-        }
-        tr.appendChild(td);
-      });
-      corpo.appendChild(tr);
-    });
-  }
-
-
-  /* ---------- Ocorrências ---------- */
-
-  const ocMes = mes => (S.oc && S.oc.meses) ? (S.oc.meses[mes || S.mes] || null) : null;
-  /** Horas viram "3,1 dias" quando passam de um dia — ninguém lê 175,3h. */
-  const emDias = h => h === null || h === undefined ? "—"
-    : h < 24 ? fmt(h, 1) + "h" : fmt(h / 24, 1) + " dias";
-
-  function ocorrencias() {
-    // o clique no gráfico mensal manda; sem clique, segue o mês do painel
-    const m = (S.ocMes && S.oc && S.oc.meses[S.ocMes]) || ocMes(), vazio = !m;
-    $("#oc-mes").textContent = mesLabel(S.mes) + " de " + S.mes.slice(0, 4);
-    conta($("#oc-total"), vazio ? null : m.total, 0);
-    $("#oc-desc").textContent = vazio
-      ? "Sem ocorrências registradas neste mês."
-      : "Abertas na Comunidade, sem contar Captação.";
-
-    $("#oc-fatos").innerHTML = vazio ? "" : [
-      ["Finalizadas", m.finalizadas, C.positive],
-      ["Em aberto", m.em_aberto, C.amber],
-      ["Canceladas", m.canceladas, null]
-    ].map(function (f) {
-      return '<div><div class="fact-value tabular">' +
-        (f[2] ? '<span class="dot" style="background:' + f[2] + '"></span>' : "") + f[1] +
-        '</div><div class="fact-label">' + f[0] + "</div></div>";
-    }).join("");
-
-    $("#oc-sla").textContent = vazio ? "—" : emDias(m.sla_mediano_h);
-    $("#oc-sla").style.color = vazio ? "" : m.sla_mediano_h > 168 ? C.negative
-                                          : m.sla_mediano_h > 72 ? "#96700B" : "#009131";
-    $("#oc-sla-cap").innerHTML = vazio ? "" :
-      "mediano sobre as <b>" + m.finalizadas + " finalizadas</b> · média de <b>" +
-      emDias(m.sla_medio_h) + "</b>" +
-      (m.sla_max_h > m.sla_mediano_h * 2
-        ? ", puxada por um caso de <b>" + emDias(m.sla_max_h) + "</b>" : "") +
-      (m.em_aberto ? ". As <b>" + m.em_aberto + " em aberto</b> não entram: nelas ainda não há encerramento para medir." : "");
-
-    listaOc("#oc-departamentos", m && m.por_departamento, n => n.replace("Comunidade - ", ""));
-    listaOc("#oc-tipos", m && m.por_tipo, n => n, 5);
-
-    grafOcSemana(m);
-    grafOcMensal();
-    grafOcClasse();
-    tabelaOc(m);
-  }
-
-  /** Barrinhas proporcionais — mesmo padrão da lista de especialidades. */
-  function listaOc(alvo, mapa, nome, limite) {
-    const box = $(alvo);
-    const itens = Object.entries(mapa || {}).slice(0, limite || 99);
-    if (!itens.length) { box.innerHTML = '<div class="empty">Sem dados no mês.</div>'; return; }
-    const maior = Math.max.apply(null, itens.map(x => x[1].total)) || 1;
-    box.innerHTML = itens.map(function (x) {
-      const v = x[1];
-      // a barra e o total; a parte cheia mostra quanto ja foi encerrado
-      const pctFin = v.total ? v.finalizadas / v.total * 100 : 0;
-      return '<div class="oc-linha"><div class="oc-topo"><span>' + nome(x[0]) + "</span>" +
-        '<b class="tabular">' + v.total + "</b></div>" +
-        '<div class="oc-barra" style="width:' + (v.total / maior * 100) + '%">' +
-        '<i style="width:' + pctFin + '%"></i></div>' +
-        '<div class="oc-pe">' + v.finalizadas + " finalizadas" +
-        (v.em_aberto ? " · " + v.em_aberto + " em aberto" : "") +
-        (v.sla_mediano_h === undefined ? "" : " · SLA " + emDias(v.sla_mediano_h)) +
-        "</div></div>";
-    }).join("");
-  }
-
-  function grafOcSemana(m) {
-    const sem = (m && m.semanas) || [];
-    grafico("chart-oc-semana", {
-      data: { labels: sem.map(s => s.label), datasets: [
-        { type: "bar", label: "Finalizadas", data: sem.map(s => s.finalizadas),
-          backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 40,
-          stack: "oc", yAxisID: "y" },
-        { type: "bar", label: "Em aberto", data: sem.map(s => s.em_aberto),
-          backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 40,
-          stack: "oc", yAxisID: "y" },
-        { type: "line", label: "SLA mediano (dias)",
-          data: sem.map(s => s.sla_mediano_dias === undefined ? null : s.sla_mediano_dias),
-          borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
-          pointRadius: 4, pointBackgroundColor: C.pink, pointBorderColor: "#fff", pointBorderWidth: 2,
-          spanGaps: true, yAxisID: "y1", rotulo: { casas: 1, cor: C.pink, abaixo: true } } ] },
-      options: opcoes({ onClick: (e, el) => aoClicarMesOc(el, meses),
-        plugins: { legend: legenda() },
-        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
-                  y1: { beginAtZero: true, position: "right", grid: { display: false },
-                        title: { display: true, text: "dias", font: { size: 10 } } },
-                  x: { grid: { display: false } } } }) });
-  }
-
-  function grafOcMensal() {
-    const meses = Object.keys((S.oc && S.oc.meses) || {}).sort();
-    const dados = meses.map(k => S.oc.meses[k]);
-    grafico("chart-oc-mensal", {
-      data: { labels: meses.map(mesCurto), datasets: [
-        { type: "bar", label: "Finalizadas", data: dados.map(d => d.finalizadas),
-          backgroundColor: meses.map(k => k === (S.ocMes || S.mes) ? C.pink : C.blue),
-          borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
-        { type: "bar", label: "Em aberto", data: dados.map(d => d.em_aberto),
-          backgroundColor: meses.map(k => k === (S.ocMes || S.mes) ? "#F79AC4" : C.amber),
-          borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
-        { type: "line", label: "SLA mediano (dias)",
-          data: dados.map(d => d.sla_mediano_dias === undefined ? null : d.sla_mediano_dias),
-          borderColor: C.teal, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
-          pointRadius: 3.5, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y1" } ] },
-      options: opcoes({ plugins: { legend: legenda() },
-        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
-                  y1: { beginAtZero: true, position: "right", grid: { display: false },
-                        title: { display: true, text: "dias", font: { size: 10 } } },
-                  x: { grid: { display: false } } } }) });
-
-    const box = $("#oc-leitura");
-    const comSla = meses.filter(k => S.oc.meses[k].sla_mediano_dias !== undefined);
-    if (comSla.length < 2 || !ocMes()) { box.innerHTML = ""; return; }
-    const ini = S.oc.meses[comSla[0]], fim = ocMes();
-    const dif = fim.sla_mediano_dias - ini.sla_mediano_dias;
-    const pico = comSla.map(k => S.oc.meses[k]).sort((a, b) => b.finalizadas - a.finalizadas)[0];
-    box.innerHTML = '<span class="rot">Leitura</span><span>' +
-      "O SLA mediano saiu de <b>" + fmt(ini.sla_mediano_dias, 1) + " dias</b> em " +
-      ini.label.toLowerCase() + " para <b>" + fmt(fim.sla_mediano_dias, 1) + " dias</b> em " +
-      fim.label.toLowerCase() + (dif <= 0 ? " — encurtou " : " — alongou ") +
-      fmt(Math.abs(dif), 1) + " dias. O maior volume da série foi <b>" + pico.label +
-      "</b>, com " + pico.total + " ocorrências." +
-      (fim.em_aberto ? " Em " + fim.label.toLowerCase() + ", <b>" + fim.em_aberto +
-        " das " + fim.total + "</b> seguem em aberto." : "") + "</span>";
-  }
-
-  function tabelaOc(m) {
-    const corpo = $("#tbl-oc tbody"), sem = (m && m.semanas) || [];
-    $("#oc-det-sub").textContent = sem.length
-      ? "Semanas de " + mesLabel(S.mes).toLowerCase() + ", pela data de abertura da ocorrência"
-      : "Sem semanas para " + mesLabel(S.mes).toLowerCase() + ".";
-    corpo.innerHTML = sem.map(s =>
-      '<tr><td class="rot strong">' + s.label + "</td>" +
-      '<td class="num real"><b class="tabular">' + s.total + "</b></td>" +
-      '<td class="num"><span class="tabular">' + s.finalizadas + "</span></td>" +
-      '<td class="num"><span class="tabular">' + (s.em_aberto || "—") + "</span></td>" +
-      '<td class="num real"><b class="tabular">' + emDias(s.sla_mediano_h) + "</b></td>" +
-      '<td class="num"><span class="tabular">' + emDias(s.sla_medio_h) + "</span></td>" +
-      '<td class="num"><span class="tabular">' + emDias(s.sla_max_h) + "</span></td></tr>").join("");
-    $("#oc-nota").textContent = S.oc
-      ? S.oc.recorte + " · " + S.oc.fonte + " · só ocorrências já encerradas"
-      : "";
-  }
 
   /* ---------- Evolução no tempo ---------- */
 
@@ -1042,7 +738,6 @@
   /* Linhas com poucos pontos ficam ilegíveis se todas levarem rótulo em cada
      ponto — o valor vai só no último, que é onde a leitura importa. */
   const CORES_SERIE = [C.blue, C.teal, C.pink, C.amber, "#7B3FF2", "#00913B", "#B8115C", "#0E7C86"];
-
 
   /* No Notion a "Leitura" de cada evolução era escrita à mão todo mês. Aqui
      ela sai dos próprios números: quem mais subiu, quem mais caiu e quem
@@ -1091,7 +786,6 @@
     box.innerHTML = partes.length
       ? '<span class="rot">Leitura</span><span>' + partes.join(" ") + "</span>" : "";
   }
-
 
   /** Escala colada nos dados: com faixa fixa as linhas se espremem num canto
       e os rótulos de fim de linha brigam por espaço. */
@@ -1196,69 +890,6 @@
       datasets.map(d => ({ nome: d.label, valores: d.data })), 1, "");
   }
 
-  function destaques() {
-    const box = $("#insights"); box.innerHTML = "";
-    if (!temNps()) {
-      box.appendChild(el("li", "", "Sem respostas de NPS em " + recorteLabel() + " — nada a destacar ainda."));
-      return;
-    }
-    const mes = S.mes, k = dados().kpi;
-    const perg = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
-    const esp = especialidades().relevantes;
-    const firmes = doNotion() ? esp : esp.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
-    const melhor = [...firmes].sort((a,b) => b.nps - a.nps)[0];
-    const pior = [...firmes].sort((a,b) => a.nps - b.nps)[0];
-    const meta = metaDoMes("nps", mes);
-    const itens = [];
-
-    if (meta && S.semana === null) {   // a meta é do mês, não da semana
-      const dif = k.nps_geral - meta;
-      itens.push({ t: dif >= 0 ? "up" : "down",
-        txt: dif >= 0
-          ? "O índice está <b>" + fmt(dif,1) + " pontos acima</b> da meta do mês."
-          : "O índice está <b>" + fmt(Math.abs(dif),1) + " pontos abaixo</b> da meta do mês." });
-    }
-    if (perg.length) itens.push({ t: "",
-      txt: "A diferença entre a melhor e a pior dimensão é de <b>" +
-           fmt(perg[0].media - perg[perg.length-1].media, 2) + " ponto</b>." });
-    if (melhor && pior && melhor !== pior) itens.push({ t: "",
-      txt: "<b>" + melhor.especialidade + "</b> lidera com NPS " + fmt(melhor.nps,1) +
-           "; <b>" + pior.especialidade + "</b> fica em " + fmt(pior.nps,1) + "." });
-    const pctDetr = k.detratores / (k.promotores + k.neutros + k.detratores) * 100;
-    itens.push({ t: pctDetr > 15 ? "down" : "",
-      txt: "Detratores são <b>" + fmt(pctDetr,1) + "%</b> da base — cada ponto percentual reduzido aqui vale cerca de um ponto de NPS." });
-
-    itens.forEach(i => box.appendChild(el("li", i.t, i.txt)));
-  }
-
-  /* ---------- ESPECIALIDADES ---------- */
-  function espIndicadores() {
-    const { relevantes, pequenas } = especialidades();
-    // "Melhor" e "pior" viram frase de diretoria — 100,0 tirado de 7 respostas
-    // não sustenta isso. Os destaques exigem uma amostra bem maior que a lista.
-    const firmes = doNotion() ? relevantes : relevantes.filter(e => (e.n ?? 0) >= MIN_DESTAQUE);
-    const melhor = [...firmes].sort((a,b) => b.nps - a.nps)[0];
-    const pior   = [...firmes].sort((a,b) => a.nps - b.nps)[0];
-    const maior  = [...relevantes].sort((a,b) => b.pct_amostra - a.pct_amostra)[0];
-    // meses do Notion nao guardaram o tamanho da amostra
-    const comN = e => e.especialidade + (e.n ? " · " + e.n + " respostas" : "");
-
-    const cards = [
-      { rot: "Melhor NPS", val: melhor ? melhor.nps : null, casas: 1,
-        nota: melhor ? comN(melhor) : "sem amostra suficiente" },
-      { rot: "Pior NPS", val: pior ? pior.nps : null, casas: 1,
-        nota: pior ? comN(pior) : "sem amostra suficiente" }
-    ];
-    const box = $("#esp-stats"); box.innerHTML = "";
-    cards.forEach(c => {
-      const d = el("div", "metric",
-        '<div class="metric-label">' + c.rot + '</div><div class="metric-value tabular">—</div>' +
-        '<div class="metric-note">' + c.nota + "</div>");
-      box.appendChild(d);
-      conta(d.querySelector(".metric-value"), c.val, c.casas, c.suf);
-    });
-  }
-
   function espLista() {
     const { relevantes, pequenas } = especialidades();
     const lista = [...relevantes].sort((a,b) =>
@@ -1289,7 +920,7 @@
 
   function selecionar(nome) {
     S.espSel = S.espSel === nome ? null : nome;
-    espLista(); espDetalhe(); tabelaSatisfacao();
+    espLista(); espDetalhe(); cruzamento();
   }
 
   function espDetalhe() {
@@ -1320,76 +951,21 @@
       }).join("") + "</div>";
   }
 
-  function tabelaSatisfacao() {
-    const head = $("#sat-head"), body = $("#tbl-satisfacao tbody");
-    const cols = [{ k: "especialidade", l: "Especialidade", txt: true }, { k: "n", l: "Respostas", casas: 0 }]
-      .concat(DIMENSOES.map(d => ({ k: d.key, l: d.label, casas: 2 })));
-
-    head.innerHTML = cols.map(c => {
-      const ord = S.satOrdem.col === c.k;
-      return '<th class="sortable ' + (c.txt ? "" : "num ") + (ord ? "sorted" : "") + '" data-col="' + c.k + '">' +
-        c.l + '<span class="arr">' + (ord ? (S.satOrdem.dir === 1 ? "▲" : "▼") : "▲") + "</span></th>";
-    }).join("");
-    head.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
-      const col = th.dataset.col;
-      if (S.satOrdem.col === col) S.satOrdem.dir *= -1;
-      else { S.satOrdem.col = col; S.satOrdem.dir = col === "especialidade" ? 1 : -1; }
-      tabelaSatisfacao();
-    }));
-
-    const linhas = [...(dados().satisfacao_por_especialidade || [])].sort((a,b) => {
-      const va = a[S.satOrdem.col], vb = b[S.satOrdem.col];
-      if (typeof va === "string") return S.satOrdem.dir * va.localeCompare(vb);
-      return S.satOrdem.dir * ((va ?? -Infinity) - (vb ?? -Infinity));
-    });
-
-    // faixa observada na tabela inteira, para o heatmap ter contraste real
-    const todos = linhas.flatMap(r => DIMENSOES.map(d => r[d.key]))
-                        .filter(v => v !== null && v !== undefined);
-    const menor = Math.min(...todos), maior = Math.max(...todos);
-    const fundo = v => {
-      if (v === null || v === undefined || maior === menor) return "";
-      const t = (v - menor) / (maior - menor);          // 0 = pior, 1 = melhor
-      // curva puxada para o extremo: a faixa real e estreita (3,1 a 5,0) e um
-      // gradiente linear deixava quase tudo branco
-      const forca = Math.pow(Math.abs(t - .5) * 2, .7);
-      return t >= .5
-        ? "background:rgba(0,195,197," + (forca * .42).toFixed(3) + ")"
-        : "background:rgba(233,59,90," + (forca * .34).toFixed(3) + ")";
-    };
-
-    body.innerHTML = "";
-    linhas.forEach(r => {
-      const tr = el("tr", S.espSel === r.especialidade ? "on" : "",
-        '<td class="strong">' + r.especialidade + "</td>" +
-        '<td class="num" style="color:var(--gray-body)">' + r.n + "</td>" +
-        DIMENSOES.map(d => '<td class="num heat" style="' + fundo(r[d.key]) + '">' +
-          '<span class="score ' + classeNota(r[d.key]) + '">' +
-          fmt(r[d.key], 2) + "</span></td>").join(""));
-      tr.style.cursor = "pointer";
-      tr.addEventListener("click", () => selecionar(r.especialidade));
-      body.appendChild(tr);
-    });
-  }
-
-  /* ---------- Suporte ---------- */
-
-  /* Os seis indicadores da aba, na ordem pedida: a primeira linha é tempo e
-     resolução, a segunda é satisfação. `melhor` diz para que lado é bom, o
-     que muda a cor da variação. */
+  /* A ordem e a da reuniao de area: primeiro os tempos, depois a satisfacao.
+     `cor` sumiu de proposito — todas as linhas de cartao sao azuis. */
   const IND_SUPORTE = [
-    { id: "fcr_pct",          campo: "fcr_pct",               rotulo: "FCR",
-      nota: "Resolvido no primeiro contato", casas: 1, suf: "%", melhor: "cima", cor: "#00C3C5" },
     { id: "tma",              campo: "tma_primeira_resposta", rotulo: "TMA",
-      nota: "Tempo até a primeira resposta", tempo: true,      melhor: "baixo", cor: "#004474" },
+      nota: "Tempo até a primeira resposta", tempo: true,      melhor: "baixo" },
     { id: "tmr",              campo: "tmr",                   rotulo: "TMR",
-      nota: "Tempo até o encerramento", tempo: true,           melhor: "baixo", cor: "#4A4A68" },
+      nota: "Tempo até o encerramento", tempo: true,           melhor: "baixo" },
+    { id: "fcr_pct",          campo: "fcr_pct",               rotulo: "FCR",
+      nota: "Resolvido no primeiro contato", casas: 1, suf: "%", melhor: "cima" },
     { id: "csat_humano",      campo: "csat_humano",           rotulo: "CSAT humano",
-      nota: "Escala de 0 a 5", casas: 2, suf: "", melhor: "cima", cor: "#004474" },
+      nota: "Escala de 1 a 5", casas: 2, suf: "", melhor: "cima" },
     { id: "csat_ia",          campo: "csat_ia",               rotulo: "CSAT IA",
-      nota: "Escala de 0 a 5", casas: 2, suf: "", melhor: "cima", cor: "#00C3C5" },
+      nota: "Escala de 1 a 5", casas: 2, suf: "", melhor: "cima" },
     { id: "resolucao_ia_pct", campo: "resolucao_ia_pct",      rotulo: "Resolução com IA",
-      nota: "Sem intervenção humana", casas: 0, suf: "%", melhor: "cima", cor: "#ED1E79" }
+      nota: "Sem intervenção humana", casas: 0, suf: "%", melhor: "cima" }
   ];
 
   /** Lê o valor de um indicador numa linha do CSV, já como número comparável. */
@@ -1397,11 +973,6 @@
     if (!linha) return null;
     return ind.tempo ? minutosDeTempo(linha[ind.campo]) : num(linha[ind.campo]);
   }
-  const mostrarSup = (ind, v) =>
-    v === null || v === undefined ? "—"
-    : ind.tempo ? tempoDeMinutos(v)
-    : fmt(v, ind.casas) + (ind.suf || "");
-
   /** Meta do indicador no mês, quando existe objetivo cadastrado. */
   function metaSup(ind, mes) {
     const o = objetivo(ind.id);
@@ -1411,11 +982,81 @@
     return ind.tempo ? minutosDeTempo(bruto) : num(bruto);
   }
 
+  const mostrarSup = (ind, v) =>
+    v === null || v === undefined ? "—"
+    : ind.tempo ? tempoDeMinutos(v)
+    : fmt(v, ind.casas) + (ind.suf || "");
+
+/* =====================================================================
+     CARD FLUTUANTE DA SEMANA
+     Todo grafico mensal do painel abre o mesmo card: clicou num mes, o
+     detalhe daquele mes aparece por cima, com os botoes dos outros meses ao
+     lado. Antes o semanal era um quadro fixo la embaixo e o clique so rolava
+     a pagina ate ele — dava para perder de vista o que tinha sido clicado.
+     ===================================================================== */
+
+  let POP = null;   // { titulo, meses, mes, sub, nota, config }
+
+  function abrirPop(cfg) {
+    POP = cfg;
+    if (!POP.mes || !POP.meses.includes(POP.mes)) {
+      POP.mes = POP.meses.includes(S.mes) ? S.mes : POP.meses[POP.meses.length - 1];
+    }
+    const painel = $("#pop-semana");
+    if (!painel) return;
+    painel.classList.add("aberto");
+    painel.setAttribute("aria-hidden", "false");
+    document.body.classList.add("sem-rolagem");
+    desenharPop();
+  }
+
+  function fecharPop() {
+    const painel = $("#pop-semana");
+    if (!painel) return;
+    painel.classList.remove("aberto");
+    painel.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("sem-rolagem");
+  }
+
+  function desenharPop() {
+    if (!POP) return;
+    $("#pop-titulo").textContent = POP.titulo;
+    $("#pop-sub").innerHTML = POP.sub ? POP.sub(POP.mes) : "";
+    $("#pop-nota").innerHTML = POP.nota ? POP.nota(POP.mes) : "";
+
+    const seg = $("#pop-meses");
+    seg.innerHTML = POP.meses.map(m =>
+      '<button class="' + (m === POP.mes ? "active" : "") + '" data-mes="' + m + '">' +
+      mesCurto(m) + "</button>").join("");
+    $$("#pop-meses button").forEach(b => b.addEventListener("click", () => {
+      POP.mes = b.dataset.mes;
+      desenharPop();
+    }));
+
+    /* O canvas e recriado a cada abertura: o Chart.js guarda o tamanho de
+       quando o grafico nasceu, e um card fechado tem altura zero. */
+    const caixa = $("#chart-pop").parentElement;
+    caixa.innerHTML = '<canvas id="chart-pop"></canvas>';
+    delete S.charts["chart-pop"];
+    grafico("chart-pop", POP.config(POP.mes));
+  }
+
+  function ligarPop() {
+    const painel = $("#pop-semana");
+    if (!painel) return;
+    painel.querySelectorAll("[data-fechar-pop]").forEach(el =>
+      el.addEventListener("click", fecharPop));
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && painel.classList.contains("aberto")) fecharPop();
+    });
+  }
+
+  /* =====================================================================
+     SUPORTE
+     ===================================================================== */
+
   function sac() {
     const mensal = zenMensal();
-    const meses = mensal.map(r => r.mes);
-
-    // o mês lido é o selecionado no topo, se tiver dado; senão o último cheio
     const preenchidos = mensal.filter(r => IND_SUPORTE.some(i => valorSup(i, r) !== null));
     const escolhido = preenchidos.findIndex(r => r.mes === S.mes);
     const pos = escolhido >= 0 ? escolhido : preenchidos.length - 1;
@@ -1424,17 +1065,25 @@
     $("#sac-ref").innerHTML = !atual ? "Nenhum mês preenchido ainda"
       : "Números de " + (atual.mes_label || mesLabel(atual.mes)) +
         (anterior ? " · variação contra " + (anterior.mes_label || mesLabel(anterior.mes)).toLowerCase() : "") +
-        (escolhido < 0 ? " · " + mesLabel(S.mes).toLowerCase() + " ainda não foi preenchido" : "");
+        (escolhido < 0 ? " · " + mesLabel(S.mes).toLowerCase() + " ainda não foi preenchido" : "") +
+        " · clique em qualquer gráfico para abrir a semana";
 
     cartoesSuporte(mensal, atual, anterior);
     grafCsat(mensal);
     grafFcr(mensal);
-    seletorMesSemana();
-    grafSemanal();
-    historicoSuporte(mensal);
   }
 
-  /** Os seis cartões: número grande e, logo abaixo, a evolução do indicador. */
+  /** Meses que tem quebra semanal preenchida no CSV do Zendesk. */
+  function mesesComSemana() {
+    return Array.from(new Set(
+      S.zendesk.filter(r => (num(r.semana) ?? 0) > 0).map(r => r.mes))).sort();
+  }
+
+  /* Os seis cartoes: numero grande e a evolucao logo abaixo.
+     Todas as linhas em azul de propósito — a cor aqui nao carrega informacao,
+     e seis cores diferentes so fariam o olho procurar um significado que nao
+     existe. O que a cor marca e a meta: cinza claro, tracejada, igual em
+     todos. */
   function cartoesSuporte(mensal, atual, anterior) {
     [["#sac-linha-1", 0, 3], ["#sac-linha-2", 3, 6]].forEach(([alvo, de, ate]) => {
       const box = $(alvo);
@@ -1447,48 +1096,100 @@
           delta = '<span class="delta ' + (bom ? "up" : "down") + '">' +
                   (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
         }
-        return '<div class="card sup-card">' +
+        const meta = atual ? metaSup(ind, atual.mes) : null;
+        return '<div class="card sup-card" data-ind="' + ind.id + '">' +
           '<div class="metric-label">' + ind.rotulo + "</div>" +
           '<div class="sup-num tabular">' + mostrarSup(ind, v) + delta + "</div>" +
-          '<div class="metric-note">' + ind.nota + "</div>" +
-          '<div class="sup-spark" title="Clique num mês para ver as semanas">' +
+          '<div class="metric-note">' + ind.nota +
+          (meta === null ? "" : " · meta " + mostrarSup(ind, meta)) + "</div>" +
+          '<div class="sup-spark" title="Clique para ver as semanas">' +
           '<canvas id="spark-' + ind.id + '"></canvas></div>' +
           "</div>";
       }).join("");
     });
 
-    // as evoluções só podem ser desenhadas depois que os canvas existem no DOM
     IND_SUPORTE.forEach(ind => {
-      const dados = mensal.map(r => valorSup(ind, r));
+      const meses = mensal.map(r => r.mes);
+      const serie = mensal.map(r => valorSup(ind, r));
+      const meta = meses.map(m => metaSup(ind, m));
       grafico("spark-" + ind.id, {
         type: "line",
-        data: { labels: mensal.map(r => mesCurto(r.mes)), datasets: [{
-          data: dados, borderColor: ind.cor, backgroundColor: "transparent",
-          borderWidth: 2, tension: .35, spanGaps: true,
-          pointRadius: mensal.map(r => atual && r.mes === atual.mes ? 4 : 2.5),
-          pointBackgroundColor: mensal.map(r => atual && r.mes === atual.mes ? C.pink : ind.cor),
-          pointBorderWidth: 0
-        }] },
+        data: { labels: meses.map(mesCurto), datasets: [
+          { label: ind.rotulo, data: serie, borderColor: C.blue, backgroundColor: C.blueFill,
+            fill: true, borderWidth: 2.2, tension: .35, spanGaps: true,
+            pointRadius: meses.map(m => atual && m === atual.mes ? 4.5 : 3),
+            pointBackgroundColor: meses.map(m => atual && m === atual.mes ? C.pink : C.blue),
+            pointBorderColor: "#fff", pointBorderWidth: 1.5,
+            rotulo: { casas: ind.casas ?? 1, cor: C.blue, tempo: !!ind.tempo, sufixo: ind.suf || "" } },
+          { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderDash: [4, 3],
+            borderWidth: 1.5, backgroundColor: "transparent", tension: .35,
+            pointRadius: 0, spanGaps: true,
+            rotulo: { casas: ind.casas ?? 1, cor: C.cinzaMeta, tempo: !!ind.tempo,
+                      sufixo: ind.suf || "", soUltimo: true } } ] },
         options: opcoes({
-          // o mesmo clique dos graficos grandes: qualquer ponto mensal do
-          // painel leva ao detalhe semanal daquele mes
-          onClick: (e, els) => aoClicarMes(e, els, mensal.map(r => r.mes)),
+          onClick: () => popSuporte(ind),
+          layout: { padding: { top: 14, right: 30, bottom: 2 } },
           plugins: { legend: { display: false }, tooltip: { callbacks: {
-            label: c => mostrarSup(ind, c.parsed.y) } } },
-          scales: { y: { display: false, grace: "18%" }, x: { grid: { display: false },
-                    ticks: { font: { size: 9 }, color: C.text } } }
+            label: c => c.dataset.label + ": " + mostrarSup(ind, c.parsed.y) } } },
+          scales: { y: { display: false, grace: "26%" },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 }, color: C.text } } }
         })
       });
     });
+
+    // o card inteiro e clicavel, nao so o grafico
+    $$(".sup-card[data-ind]").forEach(card => card.addEventListener("click", () => {
+      const ind = IND_SUPORTE.find(i => i.id === card.dataset.ind);
+      if (ind) popSuporte(ind);
+    }));
   }
 
-  /** CSAT: humano, IA, a média dos dois e a meta tracejada. */
+  /** O semanal de um indicador de suporte, sem meta: semana nao tem meta. */
+  function popSuporte(ind) {
+    const meses = mesesComSemana();
+    if (!meses.length) return;
+    abrirPop({
+      titulo: ind.rotulo + " semana a semana",
+      meses: meses,
+      mes: S.sacMes,
+      sub: m => "Realizado de " + mesLabel(m).toLowerCase() + " · " + ind.nota +
+        ". A meta é mensal, então não aparece aqui.",
+      nota: m => {
+        const sem = zenSemanal(m);
+        const vals = sem.map(r => valorSup(ind, r)).filter(v => v !== null);
+        if (vals.length < 2) return "";
+        const dif = vals[vals.length - 1] - vals[0];
+        const bom = ind.melhor === "baixo" ? dif < 0 : dif > 0;
+        return "Da primeira à última semana: <b>" + mostrarSup(ind, vals[0]) + "</b> para <b>" +
+          mostrarSup(ind, vals[vals.length - 1]) + "</b> — " +
+          (bom ? "no sentido certo." : "no sentido contrário ao da meta.");
+      },
+      config: m => {
+        const sem = zenSemanal(m);
+        return { type: "line",
+          data: { labels: sem.map(r => "S" + r.semana + (r.periodo ? " · " + r.periodo.replace(/ de \w+/i, "") : "")),
+            datasets: [{ label: ind.rotulo, data: sem.map(r => valorSup(ind, r)),
+              borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
+              borderWidth: 2.6, tension: .3, pointRadius: 5, pointBackgroundColor: C.blue,
+              pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
+              rotulo: { casas: ind.casas ?? 1, cor: C.blue, tempo: !!ind.tempo, sufixo: ind.suf || "" } }] },
+          options: opcoes({ layout: { padding: { top: 18 } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: {
+              label: c => mostrarSup(ind, c.parsed.y) } } },
+            scales: { y: { grace: "22%", grid: { color: C.grid },
+                           ticks: { callback: v => ind.tempo ? tempoDeMinutos(v) : fmt(v, ind.casas ?? 1) + (ind.suf || "") } },
+                      x: { grid: { display: false } } } }) };
+      }
+    });
+  }
+
+  /** CSAT: humano, IA, a media dos dois e a meta tracejada. Escala de 1 a 5. */
   function grafCsat(mensal) {
     const meses = mensal.map(r => r.mes);
     const humano = mensal.map(r => num(r.csat_humano));
     const ia = mensal.map(r => num(r.csat_ia));
-    // "geral" só faz sentido onde os dois existem; com um lado só seria o
-    // próprio número disfarçado de média
+    // "geral" so faz sentido onde os dois existem; com um lado so seria o
+    // proprio numero disfarcado de media
     const geral = mensal.map((r, i) =>
       humano[i] !== null && ia[i] !== null ? Math.round((humano[i] + ia[i]) / 2 * 100) / 100 : null);
     const meta = meses.map(m => metaSup({ id: "csat_humano" }, m));
@@ -1498,41 +1199,47 @@
         { label: "Humano", data: humano, borderColor: C.blue, backgroundColor: "transparent",
           borderWidth: 2.4, tension: .3, pointRadius: 4, pointBackgroundColor: C.blue,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 2, cor: C.blue } },
+          rotulo: { casas: 2, cor: C.blue, soUltimo: true } },
         { label: "IA", data: ia, borderColor: C.teal, backgroundColor: "transparent",
           borderWidth: 2.4, tension: .3, pointRadius: 4, pointBackgroundColor: C.teal,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 2, cor: "#009193", abaixo: true } },
+          rotulo: { casas: 2, cor: "#009193", soUltimo: true } },
         { label: "Geral", data: geral, borderColor: C.pink, backgroundColor: "transparent",
           borderWidth: 2.8, tension: .3, pointRadius: 5, pointBackgroundColor: C.pink,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 2, cor: C.pink } },
-        { label: "Meta", data: meta, borderColor: C.text, borderDash: [5, 4], borderWidth: 1.6,
-          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true } ] },
+          rotulo: { casas: 2, cor: C.pink, soUltimo: true } },
+        { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderDash: [5, 4], borderWidth: 1.8,
+          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true,
+          rotulo: { casas: 2, cor: C.cinzaMeta, soUltimo: true } } ] },
       options: opcoes({
-        onClick: (e, els) => aoClicarMes(e, els, meses),
+        onClick: (e, els) => popDoMes(els, meses, "csat_humano"),
+        layout: { padding: { right: 52 } },
         plugins: { legend: legenda() },
-        scales: { y: { min: 0, max: 5, grid: { color: C.grid }, ticks: { stepSize: 1 } },
+        // escala de 1 a 5: e a escala da pergunta, e comecar em zero achata
+        // toda a variacao que interessa no topo
+        scales: { y: { min: 1, max: 5, grid: { color: C.grid }, ticks: { stepSize: 1 } },
                   x: { grid: { display: false } } }
       })
     });
   }
 
-  /** FCR: realizado e meta tracejada. */
+  /** FCR: realizado e meta tracejada, com o numero da meta na ponta. */
   function grafFcr(mensal) {
     const meses = mensal.map(r => r.mes);
     grafico("chart-fcr", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
         { label: "Realizado", data: mensal.map(r => num(r.fcr_pct)),
-          borderColor: C.teal, backgroundColor: C.tealFill, fill: true, borderWidth: 2.6,
-          tension: .3, pointRadius: 4.5, pointBackgroundColor: C.teal,
+          borderColor: C.blue, backgroundColor: C.blueFill, fill: true, borderWidth: 2.6,
+          tension: .3, pointRadius: 4.5, pointBackgroundColor: C.blue,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 1, sufixo: "%", cor: "#00696B" } },
+          rotulo: { casas: 1, sufixo: "%", cor: C.blue } },
         { label: "Meta", data: meses.map(m => metaSup({ id: "fcr_pct" }, m)),
-          borderColor: C.text, borderDash: [5, 4], borderWidth: 1.6,
-          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true } ] },
+          borderColor: C.cinzaMeta, borderDash: [5, 4], borderWidth: 1.8,
+          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true,
+          rotulo: { casas: 0, sufixo: "%", cor: C.cinzaMeta } } ] },
       options: opcoes({
-        onClick: (e, els) => aoClicarMes(e, els, meses),
+        onClick: (e, els) => popDoMes(els, meses, "fcr_pct"),
+        layout: { padding: { right: 20 } },
         plugins: { legend: legenda(), tooltip: { callbacks: {
           label: c => c.dataset.label + ": " + fmt(c.parsed.y, 1) + "%" } } },
         scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } },
@@ -1541,180 +1248,404 @@
     });
   }
 
-  /* Clicar num ponto do gráfico mensal troca o mês do bloco semanal. É o que
-     liga os dois: o mensal responde "como estamos" e o semanal, "por quê". */
-  function aoClicarMes(evento, elementos, meses) {
-    if (!elementos.length) return;
+  /** Clique num mes de um grafico grande do Suporte -> card flutuante. */
+  function popDoMes(elementos, meses, idIndicador) {
+    if (!elementos || !elementos.length) return;
     const mes = meses[elementos[0].index];
-    if (!mes) return;
+    const ind = IND_SUPORTE.find(i => i.id === idIndicador);
+    if (!mes || !ind) return;
     S.sacMes = mes;
-    seletorMesSemana();
-    grafSemanal();
-    $("#chart-wow").scrollIntoView({ behavior: "smooth", block: "center" });
+    popSuporte(ind);
   }
 
-  /** Botões de mês acima do gráfico semanal, só com os meses que têm semanas. */
-  function seletorMesSemana() {
-    const comSemanas = Array.from(new Set(
-      S.zendesk.filter(r => (num(r.semana) ?? 0) > 0).map(r => r.mes))).sort();
-    // So escolhe sozinho na primeira vez. Se o usuario clicou num mes que nao
-    // tem semanas, mantemos a escolha dele e o grafico explica a ausencia —
-    // voltar para outro mes calado pareceria que o clique nao funcionou.
-    if (!S.sacMes) {
-      S.sacMes = comSemanas.includes(S.mes) ? S.mes : (comSemanas[comSemanas.length - 1] || null);
+/* =====================================================================
+     OCORRÊNCIAS
+     Tudo em linha, mes a mes, e todo mes clicavel: o detalhe da semana abre
+     no card flutuante. A evolucao mensal que existia aqui saiu — dizia o
+     mesmo que estes graficos, com barras empilhadas que ninguem comparava.
+     ===================================================================== */
+
+  /** Horas viram "3,1 dias" quando passam de um dia — ninguém lê 175,3h. */
+  const emDias = h => h === null || h === undefined ? "—"
+    : h < 24 ? fmt(h, 1) + "h" : fmt(h / 24, 1) + " dias";
+
+  /* Meses em que vale desenhar as duas classes: antes disso o campo motivo
+     quase nao era preenchido e as linhas cairiam a zero sem motivo real. */
+  function ocMesesClassificados() {
+    const meses = Object.keys((S.oc && S.oc.meses) || {}).sort();
+    return meses.filter(k => {
+      const c = (S.oc.meses[k].por_classe) || {};
+      const total = (c.total && c.total.total) || 0;
+      const sem = (c.sem_classificacao && c.sem_classificacao.total) || 0;
+      return total > 0 && (total - sem) / total >= 0.8;
+    });
+  }
+
+  const OC_MESES = 12;   // um ano de serie; antes disso o volume era de outra operacao
+
+  function ocMesesSerie() {
+    return Object.keys((S.oc && S.oc.meses) || {}).sort().slice(-OC_MESES);
+  }
+
+  function ocorrencias() {
+    if (!S.oc) return;
+    const mes = (S.ocMes && S.oc.meses[S.ocMes]) ? S.ocMes : S.mes;
+    const m = S.oc.meses[mes] || null, vazio = !m;
+
+    $("#oc-mes").textContent = mesLabel(mes) + " de " + mes.slice(0, 4);
+    conta($("#oc-total"), vazio ? null : m.total, 0);
+    $("#oc-desc").textContent = vazio
+      ? "Sem ocorrências registradas neste mês."
+      : "Abertas na Comunidade, sem contar Captação.";
+
+    $("#oc-fatos").innerHTML = vazio ? "" : [
+      ["Finalizadas", m.finalizadas, C.positive],
+      ["Em aberto", m.em_aberto, C.amber],
+      ["Canceladas", m.canceladas, null]
+    ].map(f => '<div><div class="fact-value tabular">' +
+      (f[2] ? '<span class="dot" style="background:' + f[2] + '"></span>' : "") + f[1] +
+      '</div><div class="fact-label">' + f[0] + "</div></div>").join("");
+
+    $("#oc-sla").textContent = vazio ? "—" : emDias(m.sla_mediano_h);
+    $("#oc-sla").style.color = vazio ? "" : m.sla_mediano_h > 168 ? C.negative
+                                          : m.sla_mediano_h > 72 ? "#96700B" : "#009131";
+    $("#oc-sla-cap").innerHTML = vazio ? "" :
+      "mediano sobre as <b>" + m.finalizadas + " finalizadas</b> · média de <b>" +
+      emDias(m.sla_medio_h) + "</b>" +
+      (m.sla_max_h > m.sla_mediano_h * 2
+        ? ", puxada por um caso de <b>" + emDias(m.sla_max_h) + "</b>" : "") +
+      (m.em_aberto ? ". As <b>" + m.em_aberto + " em aberto</b> não entram: nelas ainda não há encerramento para medir." : "");
+
+    seletorOcVista();
+    grafOcClasse();
+    grafOcPorChave("chart-oc-vol-dep", "por_departamento", "total", 5, false);
+    grafOcPorChave("chart-oc-sla-dep", "por_departamento", "sla_mediano_dias", 5, true);
+    grafOcPorChave("chart-oc-vol-tipo", "por_tipo", "total", 6, false);
+    grafOcPorChave("chart-oc-sla-tipo", "por_tipo", "sla_mediano_dias", 6, true);
+  }
+
+  /* Comportamental, tecnica, a soma das duas e os tres estados do ticket.
+     A soma nao e o total do mes: boa parte das ocorrencias vem de
+     departamentos que nao preenchem motivo. Por isso "Soma" e uma linha
+     propria, e o total aparece separado. */
+  function seletorOcVista() {
+    $$("#seg-oc-vista button").forEach(b => {
+      b.classList.toggle("active", b.dataset.vista === S.ocVista);
+      if (b.dataset.ligado) return;
+      b.dataset.ligado = "1";
+      b.addEventListener("click", () => {
+        S.ocVista = b.dataset.vista;
+        seletorOcVista();
+        grafOcClasse();
+      });
+    });
+  }
+
+  function grafOcClasse() {
+    const meses = ocMesesClassificados();
+    const sub = $("#oc-classe-sub");
+    if (!meses.length) {
+      if (sub) sub.textContent = "Nenhum mês tem motivo preenchido o bastante para separar as classes.";
+      grafico("chart-oc-classe", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      return;
     }
-    const seg = $("#seg-sac-mes");
-    seg.innerHTML = comSemanas.map(m =>
-      '<button class="' + (m === S.sacMes ? "active" : "") + '" data-mes="' + m + '">' +
-      mesCurto(m) + "</button>").join("");
-    $$("#seg-sac-mes button").forEach(b => b.addEventListener("click", () => {
-      S.sacMes = b.dataset.mes;
-      seletorMesSemana();
-      grafSemanal();
+    if (sub) sub.innerHTML = (S.ocVista === "situacao"
+        ? "Em que estado terminou cada mês · "
+        : "Comportamental, técnica e a soma das duas · ") +
+      "<b>clique num mês</b> para abrir as semanas. " +
+      "A série começa em " + mesLabel(meses[0]).toLowerCase() + " de " + meses[0].slice(0, 4) +
+      ", quando o motivo passou a ser preenchido.";
+
+    const classe = (m, k) => {
+      const c = (S.oc.meses[m].por_classe) || {};
+      return c[k] ? c[k].total : null;
+    };
+    const soma = m => {
+      const a = classe(m, "comportamental"), b = classe(m, "tecnica");
+      return a === null && b === null ? null : (a || 0) + (b || 0);
+    };
+    const estado = (m, campo) => {
+      const b = S.oc.meses[m];
+      return b && b[campo] !== undefined ? b[campo] : null;
+    };
+
+    const linha = (rot, dados, cor, forte) => ({
+      label: rot, data: dados, borderColor: cor, backgroundColor: "transparent",
+      borderWidth: forte ? 2.8 : 2, tension: .3,
+      pointRadius: meses.map(m => m === (S.ocMes || S.mes) ? 6 : 3.5),
+      pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 1.5,
+      spanGaps: true, rotulo: { casas: 0, cor: cor, soUltimo: true }
+    });
+
+    /* Duas vistas no mesmo card em vez de seis linhas juntas: a soma das
+       classes e o total de finalizadas costumam correr quase coladas, e
+       sobrepostas nao dizem nada — separadas, cada uma responde a sua
+       pergunta. */
+    const vista = S.ocVista === "situacao" ? "situacao" : "classe";
+    const series = vista === "classe"
+      ? [linha("Comportamental", meses.map(m => classe(m, "comportamental")), C.pink),
+         linha("Técnica", meses.map(m => classe(m, "tecnica")), C.teal),
+         linha("Soma das duas", meses.map(soma), C.blue, true)]
+      : [linha("Abertas no mês", meses.map(m => estado(m, "total")), C.blue, true),
+         linha("Finalizadas", meses.map(m => estado(m, "finalizadas")), C.positive),
+         linha("Em aberto", meses.map(m => estado(m, "em_aberto")), C.amber),
+         linha("Canceladas", meses.map(m => estado(m, "canceladas")), C.cinzaMeta)];
+
+    grafico("chart-oc-classe", { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: series },
+      options: opcoes({ onClick: (e, el) => popOcorrencias(el, meses),
+        layout: { padding: { right: 46 } },
+        plugins: { legend: legenda(),
+          tooltip: { callbacks: { afterBody: itens => {
+            const m = meses[itens[0].dataIndex], c = (S.oc.meses[m].por_classe) || {};
+            const sem = c.sem_classificacao ? c.sem_classificacao.total : 0;
+            return sem ? sem + " sem motivo preenchido" : "";
+          } } } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  x: { grid: { display: false } } } }) });
+
+    const leg = $("#oc-classe-legenda");
+    const cfg = (S.oc && S.oc.classificacao) || null;
+    if (leg) leg.innerHTML = !cfg ? "" :
+      '<p class="nota-p">' + (cfg.por_que_existe || "") + "</p>" +
+      Object.keys(cfg.classes).map(k => {
+        const b = cfg.classes[k];
+        return '<div class="nota-classe"><b>' + b.rotulo + "</b> — " + b.definicao +
+          '<div class="nota-motivos">' + b.motivos.join(" · ") + "</div></div>";
+      }).join("") +
+      '<p class="nota-p">Para mudar, edite <code>data/classificacao_ocorrencias.json</code>. ' +
+      "Nada dessa divisão está escrito no código.</p>";
+  }
+
+  /** Uma linha por departamento (ou tipo), mes a mes — volume ou SLA. */
+  function grafOcPorChave(idCanvas, chave, campo, quantos, ehSla) {
+    const meses = ocMesesSerie();
+    const bloco = m => (S.oc.meses[m] || {})[chave] || {};
+
+    // ranking pelo volume acumulado: as linhas do grafico sao sempre as mesmas
+    const soma = {};
+    meses.forEach(m => Object.entries(bloco(m)).forEach(([nome, v]) => {
+      soma[nome] = (soma[nome] || 0) + (v.total || 0);
+    }));
+    const nomes = Object.keys(soma).sort((a, b) => soma[b] - soma[a]).slice(0, quantos);
+
+    const curto = n => n.replace("Comunidade - ", "").replace("Comunidade", "Geral");
+    grafico(idCanvas, { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: nomes.map((nome, i) => ({
+        label: curto(nome),
+        data: meses.map(m => { const v = bloco(m)[nome]; return v ? (v[campo] ?? null) : null; }),
+        borderColor: CORES_SERIE[i % CORES_SERIE.length], backgroundColor: "transparent",
+        borderWidth: 2.2, tension: .3,
+        pointRadius: meses.map(m => m === (S.ocMes || S.mes) ? 5 : 3),
+        pointBackgroundColor: CORES_SERIE[i % CORES_SERIE.length],
+        pointBorderColor: "#fff", pointBorderWidth: 1.5, spanGaps: true,
+        rotulo: { casas: ehSla ? 1 : 0, cor: CORES_SERIE[i % CORES_SERIE.length], soUltimo: true }
+      })) },
+      options: opcoes({ onClick: (e, el) => popOcorrencias(el, meses),
+        layout: { padding: { right: 46 } },
+        plugins: { legend: legenda(10), tooltip: { callbacks: {
+          label: c => c.dataset.label + ": " + (c.parsed.y === null ? "—"
+                    : ehSla ? fmt(c.parsed.y, 1) + " dias" : fmt(c.parsed.y, 0)) } } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid },
+                       title: ehSla ? { display: true, text: "dias", font: { size: 10 } } : undefined },
+                  x: { grid: { display: false } } } }) });
+  }
+
+  /** Clique num mes de qualquer grafico de ocorrencia -> semanas daquele mes. */
+  function popOcorrencias(elementos, meses) {
+    if (!elementos || !elementos.length) return;
+    const mes = meses[elementos[0].index];
+    if (!mes || !S.oc.meses[mes]) return;
+    S.ocMes = mes;
+    ocorrencias();
+    const comSemanas = meses.filter(m => ((S.oc.meses[m] || {}).semanas || []).length);
+    abrirPop({
+      titulo: "Ocorrências semana a semana",
+      meses: comSemanas,
+      mes: mes,
+      sub: m => "Semanas de " + mesLabel(m).toLowerCase() + ", pela data de abertura da ocorrência",
+      nota: m => {
+        const sem = (S.oc.meses[m] || {}).semanas || [];
+        const abertas = sem.reduce((a, x) => a + x.em_aberto, 0);
+        return abertas ? "<b>" + abertas + "</b> ocorrências do mês seguem em aberto — elas não entram no SLA."
+                       : "";
+      },
+      config: m => {
+        const sem = (S.oc.meses[m] || {}).semanas || [];
+        const classe = (x, k) => (x.por_classe && x.por_classe[k]) ? x.por_classe[k].total : null;
+        return { data: { labels: sem.map(x => x.label), datasets: [
+            { type: "bar", label: "Finalizadas", data: sem.map(x => x.finalizadas),
+              backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y",
+              rotulo: { casas: 0, cor: "#fff", abaixo: true } },
+            { type: "bar", label: "Em aberto", data: sem.map(x => x.em_aberto),
+              backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y" },
+            { type: "bar", label: "Canceladas", data: sem.map(x => x.canceladas),
+              backgroundColor: C.cinzaMeta, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y" },
+            { type: "line", label: "Comportamental", data: sem.map(x => classe(x, "comportamental")),
+              borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
+              pointRadius: 4, pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y",
+              rotulo: { casas: 0, cor: C.pink } },
+            { type: "line", label: "Técnica", data: sem.map(x => classe(x, "tecnica")),
+              borderColor: C.teal, backgroundColor: "transparent", borderWidth: 2, tension: .3,
+              pointRadius: 4, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y",
+              rotulo: { casas: 0, cor: "#009193", abaixo: true } },
+            { type: "line", label: "SLA mediano (dias)",
+              data: sem.map(x => x.sla_mediano_dias === undefined ? null : x.sla_mediano_dias),
+              borderColor: C.chumbo, backgroundColor: "transparent", borderWidth: 2.4, tension: .3,
+              pointRadius: 4, pointBackgroundColor: C.chumbo, pointBorderColor: "#fff",
+              pointBorderWidth: 2, spanGaps: true, yAxisID: "y1",
+              rotulo: { casas: 1, cor: C.chumbo } } ] },
+          options: opcoes({ layout: { padding: { top: 18 } },
+            plugins: { legend: legenda(10) },
+            scales: { y: { beginAtZero: true, stacked: true, grid: { color: C.grid } },
+                      y1: { beginAtZero: true, position: "right", grid: { display: false },
+                            title: { display: true, text: "dias", font: { size: 10 } } },
+                      x: { stacked: true, grid: { display: false } } } }) };
+      }
+    });
+  }
+
+  /* =====================================================================
+     ANÁLISE DE TICKETS  (subtópico de Suporte)
+     Os mesmos tickets das Ocorrencias, lidos como fila: cartoes no formato
+     dos de FCR e CSAT, e a distribuicao por assunto em linha.
+     ===================================================================== */
+
+  const IND_TICKET = [
+    { id: "tk_total",  rotulo: "Tickets abertos", nota: "Volume do mês na Comunidade",
+      melhor: "baixo", casas: 0, valor: m => m.total },
+    { id: "tk_fin",    rotulo: "Finalizados", nota: "Encerrados de fato",
+      melhor: "cima", casas: 0, valor: m => m.finalizadas },
+    { id: "tk_aberto", rotulo: "Em aberto", nota: "Criados ou em progresso, ainda na fila",
+      melhor: "baixo", casas: 0, valor: m => m.em_aberto },
+    { id: "tk_taxa",   rotulo: "Taxa de finalização", nota: "Finalizados sobre o total do mês",
+      melhor: "cima", casas: 1, suf: "%", valor: m => m.total ? 100 * m.finalizadas / m.total : null },
+    { id: "tk_sla",    rotulo: "SLA mediano", nota: "Dias entre abertura e encerramento",
+      melhor: "baixo", casas: 1, suf: " d", valor: m => m.sla_mediano_dias ?? null },
+    { id: "tk_pico",   rotulo: "Caso mais longo", nota: "Maior tempo até encerrar no mês",
+      melhor: "baixo", casas: 1, suf: " d", valor: m => m.sla_max_h === undefined ? null : m.sla_max_h / 24 }
+  ];
+
+  // qual numero a distribuicao por assunto mostra
+  const IND_ASSUNTO = [
+    { id: "total", rotulo: "Abertos", campo: "total", casas: 0 },
+    { id: "finalizadas", rotulo: "Finalizados", campo: "finalizadas", casas: 0 },
+    { id: "em_aberto", rotulo: "Em aberto", campo: "em_aberto", casas: 0 },
+    { id: "sla", rotulo: "SLA (dias)", campo: "sla_mediano_dias", casas: 1 }
+  ];
+
+  function tickets() {
+    if (!S.oc) return;
+    const meses = ocMesesSerie();
+    if (!meses.length) return;
+    const atual = (S.tkMes && S.oc.meses[S.tkMes]) ? S.tkMes
+                : (meses.includes(S.mes) ? S.mes : meses[meses.length - 1]);
+    S.tkMes = atual;
+
+    const ref = $("#tk-ref");
+    if (ref) ref.innerHTML = "Os mesmos tickets da aba Ocorrências, lidos como fila de atendimento — " +
+      "Comunidade, sem Captação. Mês de referência: <b>" + mesLabel(atual).toLowerCase() +
+      " de " + atual.slice(0, 4) + "</b>. Clique em qualquer gráfico para abrir a semana.";
+
+    cartoesTicket(meses, atual);
+    seletorIndAssunto();
+    grafTkAssunto();
+  }
+
+  function cartoesTicket(meses, atual) {
+    const bloco = m => S.oc.meses[m];
+    const idx = meses.indexOf(atual);
+    const anterior = idx > 0 ? bloco(meses[idx - 1]) : null;
+
+    [["#tk-linha-1", 0, 3], ["#tk-linha-2", 3, 6]].forEach(([alvo, ini, fim]) => {
+      const box = $(alvo);
+      if (!box) return;
+      box.innerHTML = IND_TICKET.slice(ini, fim).map(ind => {
+        const v = ind.valor(bloco(atual));
+        const ant = anterior ? ind.valor(anterior) : null;
+        let delta = "";
+        if (v !== null && ant !== null && ant !== 0) {
+          const pct = (v - ant) / Math.abs(ant) * 100;
+          const bom = ind.melhor === "baixo" ? pct < 0 : pct > 0;
+          delta = '<span class="delta ' + (bom ? "up" : "down") + '">' +
+                  (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
+        }
+        return '<div class="card sup-card">' +
+          '<div class="metric-label">' + ind.rotulo + "</div>" +
+          '<div class="sup-num tabular">' +
+          (v === null ? "—" : fmt(v, ind.casas) + (ind.suf || "")) + delta + "</div>" +
+          '<div class="metric-note">' + ind.nota + "</div>" +
+          '<div class="sup-spark" title="Clique para ver as semanas">' +
+          '<canvas id="spark-' + ind.id + '"></canvas></div></div>';
+      }).join("");
+    });
+
+    IND_TICKET.forEach(ind => {
+      const serie = meses.map(m => ind.valor(bloco(m)));
+      grafico("spark-" + ind.id, { type: "line",
+        data: { labels: meses.map(mesCurto), datasets: [{
+          data: serie, borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
+          borderWidth: 2.2, tension: .3, spanGaps: true,
+          pointRadius: meses.map(m => m === atual ? 4.5 : 3),
+          pointBackgroundColor: meses.map(m => m === atual ? C.pink : C.blue),
+          pointBorderColor: "#fff", pointBorderWidth: 1.5,
+          rotulo: { casas: ind.casas, cor: C.blue, sufixo: ind.suf || "" } }] },
+        options: opcoes({ onClick: (e, el) => popOcorrencias(el, meses),
+          layout: { padding: { top: 14, bottom: 2 } },
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: c => c.parsed.y === null ? "sem dado"
+                                     : fmt(c.parsed.y, ind.casas) + (ind.suf || "") } } },
+          scales: { y: { display: false, grace: "26%" },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 }, color: C.text } } } }) });
+    });
+  }
+
+  function seletorIndAssunto() {
+    const seg = $("#seg-tk-ind");
+    if (!seg) return;
+    if (!S.tkInd) S.tkInd = "total";
+    seg.innerHTML = IND_ASSUNTO.map(i =>
+      '<button class="' + (i.id === S.tkInd ? "active" : "") + '" data-ind="' + i.id + '">' +
+      i.rotulo + "</button>").join("");
+    $$("#seg-tk-ind button").forEach(b => b.addEventListener("click", () => {
+      S.tkInd = b.dataset.ind;
+      seletorIndAssunto();
+      grafTkAssunto();
     }));
   }
 
-  /** FCR e CSAT semana a semana do mês escolhido. */
-  function grafSemanal() {
-    const sem = zenSemanal(S.sacMes);
-    const sub = $("#sac-sem-sub");
-    if (!sem.length) {
-      const outros = Array.from(new Set(
-        S.zendesk.filter(r => (num(r.semana) ?? 0) > 0).map(r => r.mes))).sort();
-      if (sub) sub.textContent = !S.sacMes ? "Nenhum mês tem detalhamento semanal ainda."
-        : "Sem semanas preenchidas para " + mesLabel(S.sacMes).toLowerCase() + "." +
-          (outros.length ? " Há detalhamento em " +
-            outros.map(m => mesLabel(m).toLowerCase()).join(", ") + "." : "");
-      grafico("chart-wow", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
-      return;
-    }
-    if (sub) sub.textContent = "FCR e CSAT humano de " + mesLabel(S.sacMes).toLowerCase() +
-      " · clique num ponto dos gráficos acima para trocar de mês";
+  /** Distribuicao por assunto: uma linha por tipo de ticket, mes a mes. */
+  function grafTkAssunto() {
+    const meses = ocMesesSerie();
+    const ind = IND_ASSUNTO.find(i => i.id === S.tkInd) || IND_ASSUNTO[0];
+    const bloco = m => (S.oc.meses[m] || {}).por_tipo || {};
 
-    grafico("chart-wow", {
-      data: { labels: sem.map(r => "S" + r.semana + (r.periodo ? " · " + r.periodo.replace(/ de \w+/i, "") : "")),
-        datasets: [
-          { type: "bar", label: "FCR", data: sem.map(r => num(r.fcr_pct)),
-            backgroundColor: C.tealFill, borderColor: C.teal, borderWidth: 1.5,
-            borderRadius: 4, maxBarThickness: 46, yAxisID: "y",
-            rotulo: { casas: 1, sufixo: "%", cor: "#00696B", abaixo: true } },
-          { type: "line", label: "CSAT humano", data: sem.map(r => num(r.csat_humano)),
-            borderColor: C.blue, backgroundColor: "transparent", tension: .3, borderWidth: 2.6,
-            pointRadius: 4.5, pointBackgroundColor: C.blue, pointBorderColor: "#fff",
-            pointBorderWidth: 2, yAxisID: "y1", spanGaps: true,
-            rotulo: { casas: 2, cor: C.blue } } ] },
-      options: opcoes({ plugins: { legend: legenda() },
-        scales: { y: { min: 0, max: 100, grid: { color: C.grid }, ticks: { callback: v => v + "%" },
-                       title: { display: true, text: "FCR", font: { size: 10 } } },
-                  y1: { min: 0, max: 5, position: "right", grid: { display: false },
-                        title: { display: true, text: "CSAT", font: { size: 10 } } },
-                  x: { grid: { display: false } } } })
-    });
+    const soma = {};
+    meses.forEach(m => Object.entries(bloco(m)).forEach(([nome, v]) =>
+      soma[nome] = (soma[nome] || 0) + (v.total || 0)));
+    const nomes = Object.keys(soma).sort((a, b) => soma[b] - soma[a]).slice(0, 7);
+
+    const sub = $("#tk-assunto-sub");
+    if (sub) sub.innerHTML = ind.rotulo + " de cada assunto, mês a mês · <b>clique num mês</b> " +
+      "para abrir as semanas. Os " + nomes.length + " assuntos de maior volume no período.";
+
+    grafico("chart-tk-assunto", { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: nomes.map((nome, i) => ({
+        label: nome,
+        data: meses.map(m => { const v = bloco(m)[nome]; return v ? (v[ind.campo] ?? null) : null; }),
+        borderColor: CORES_SERIE[i % CORES_SERIE.length], backgroundColor: "transparent",
+        borderWidth: 2.2, tension: .3,
+        pointRadius: meses.map(m => m === S.tkMes ? 5 : 3),
+        pointBackgroundColor: CORES_SERIE[i % CORES_SERIE.length],
+        pointBorderColor: "#fff", pointBorderWidth: 1.5, spanGaps: true,
+        rotulo: { casas: ind.casas, cor: CORES_SERIE[i % CORES_SERIE.length], soUltimo: true }
+      })) },
+      options: opcoes({ onClick: (e, el) => popOcorrencias(el, meses),
+        layout: { padding: { right: 46 } },
+        plugins: { legend: legenda(10) },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  x: { grid: { display: false } } } }) });
   }
-
-  /** Tabela mês a mês com a variação, no mesmo padrão da grade histórica. */
-  function historicoSuporte(mensal) {
-    $("#sac-hist-head").innerHTML = '<th class="rot">Indicador</th>' +
-      mensal.map(r => '<th class="num">' + mesCurto(r.mes) +
-        '<span class="ano">' + r.mes.slice(2, 4) + "</span></th>").join("");
-
-    const corpo = $("#tbl-zendesk tbody"); corpo.innerHTML = "";
-    IND_SUPORTE.forEach(ind => {
-      const tr = el("tr");
-      tr.appendChild(el("td", "rot strong", ind.rotulo));
-      let anterior = null;
-      mensal.forEach(r => {
-        const v = valorSup(ind, r);
-        const td = el("td", "num" + (v === null ? " vazio" : " real"));
-        if (v === null) td.textContent = "—";
-        else {
-          let delta = "";
-          if (anterior !== null && anterior !== 0) {
-            const pct = (v - anterior) / Math.abs(anterior) * 100;
-            const bom = ind.melhor === "baixo" ? pct < 0 : pct > 0;
-            delta = '<span class="var ' + (bom ? "up" : "down") + '">' +
-                    (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
-          }
-          td.innerHTML = '<b class="tabular">' + mostrarSup(ind, v) + "</b>" + delta;
-          anterior = v;
-        }
-        tr.appendChild(td);
-      });
-      corpo.appendChild(tr);
-    });
-  }
-
-  /* ---------- METAS ---------- */
-  function metas() {
-    const mes = S.mes;
-    const box = $("#goal-cards"); box.innerHTML = "";
-
-    (S.metas.objetivos || []).forEach(o => {
-      const st = status(o, mes);
-      const ok = st.att !== null && st.att >= 100;
-      box.appendChild(el("div", "card goal",
-        '<div class="goal-tag">Meta ' + mesCurto(mes).toLowerCase() + ": " + mostrarObjetivo(o, st.meta) + "</div>" +
-        '<div class="goal-desc">' + o.descricao + "</div>" +
-        '<div class="goal-num tabular">' + mostrarObjetivo(o, st.real) + "</div>" +
-        (st.defasada ? '<div class="goal-warn">Acima do alvo de dezembro — meta a revisar</div>' : "") +
-        '<div class="goal-foot"><span>Real vs. meta</span>' +
-          '<div class="goal-att tabular ' + (st.defasada ? "stale" : ok ? "ok" : "off") + '">' + st.texto + "</div></div>"));
-    });
-
-    const objs = S.metas.objetivos || [];
-    const meses = Array.from(new Set(objs.flatMap(o => Object.keys(o.metas || {})))).sort();
-    const cores = [C.blue, C.teal, C.pink, C.amber];
-    const ds = [];
-    objs.forEach((o, i) => {
-      ds.push({ label: o.label, data: meses.map(m => { const r = realizado(o, m); return r === null ? null : Math.round(r / o.alvo_final * 100); }),
-        borderColor: cores[i % 4], backgroundColor: "transparent", borderWidth: 2.4, tension: .3,
-        pointRadius: 4, pointBackgroundColor: cores[i % 4], rotulo: { casas: 0, sufixo: "%", cor: cores[i % 4] } });
-      ds.push({ label: o.label + " (meta)", data: meses.map(m => { const v = o.metas[m]; return v === undefined ? null : Math.round(v / o.alvo_final * 100); }),
-        borderColor: cores[i % 4], backgroundColor: "transparent", borderWidth: 1.3, borderDash: [4,4],
-        tension: .3, pointRadius: 0, spanGaps: true });
-    });
-    grafico("chart-meta", { type: "line", data: { labels: meses.map(mesCurto), datasets: ds },
-      options: opcoes({ plugins: { legend: legenda(10, true), tooltip: { callbacks: { label: c => c.dataset.label + ": " + c.parsed.y + "% do alvo" } } },
-        scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } }, x: { grid: { display: false } } } }) });
-
-    const gaps = $("#meta-gaps"); gaps.innerHTML = "";
-    objs.forEach(o => {
-      const real = realizado(o, mes);
-      // Em TMA e TMR o alvo_final e texto ("8h", "11h30") e menor e melhor.
-      // Sem converter, real / alvo_final dava NaN%.
-      const tempo = o.unidade === "tempo";
-      const alvo = tempo ? minutosDeTempo(o.alvo_final) : o.alvo_final;
-      const pct = (real === null || !alvo) ? null
-        : Math.round((tempo ? alvo / real : real / alvo) * 100);
-      // "falta" e sempre a distancia ate o alvo, no sentido que melhora
-      const falta = real === null || alvo === null ? null
-        : (tempo ? real - alvo : alvo - real);
-      gaps.appendChild(el("div", "gap-row",
-        '<div class="gap-top"><span class="gap-name">' + o.label + "</span>" +
-          '<span class="gap-pct tabular" style="color:' + (pct >= 100 ? "#009131" : pct >= 80 ? C.blue : "#96700B") + '">' +
-          (pct === null ? "—" : pct + "%") + "</span></div>" +
-        '<div class="gap-note">' +
-          (falta === null ? "sem dado no mês"
-            : falta <= 0 ? "alvo de dezembro já atingido"
-            : tempo
-              ? "faltam " + tempoDeMinutos(falta) + " para o alvo de " + o.alvo_final
-              : "faltam " + fmt(falta, o.casas) + (o.unidade === "%" ? " pontos percentuais" : " pontos") +
-                " para o alvo de " + fmt(o.alvo_final, 0) + unidade(o)) + "</div>"));
-    });
-  }
-
-  /* ---------- Chart.js ---------- */
-
-  /* Escreve o valor em cima de cada ponto/barra. Escrito à mão em vez de
-     puxar o chartjs-plugin-datalabels: são três posicionamentos (ponto de
-     linha, ponto de radar, fim de barra) e nenhuma das opções da biblioteca
-     seria usada. Cada dataset liga com `rotulo: { casas, sufixo }`. */
-
-  /* =====================================================================
-     ONBOARDING
-     Tudo aqui e semanal: a operacao acompanha ativacao semana a semana, e o
-     mes esconderia justamente a variacao que interessa.
-     ===================================================================== */
 
   const ONB_SEMANAS = 12;   // um trimestre — mais que isso e o eixo vira risco
 
@@ -1855,10 +1786,14 @@
     const lista = onbSemanas(), hoje = (S.onb.hoje || {});
     const det = hoje.detalhe_assistido || {};
     const sub = $("#onb-assistido-sub");
-    if (sub) sub.innerHTML = "Cadastros que ainda dependem da operação para andar — hoje são <b>" +
+    /* Nao existe marcador de "onboarding assistido" no cadastro. O que da para
+       medir e quem esta parado num status que so anda com alguem da operacao.
+       O numero definitivo vem da planilha do Gabi, ainda nao conectada. */
+    if (sub) sub.innerHTML = "Cadastros parados num status que só anda com alguém da operação — hoje são <b>" +
       (hoje.em_onboarding_assistido ?? 0) + "</b>: " +
       [["Em validação", det.UNDER_REVIEW], ["Em revisão manual", det.PENDING_REVIEW],
-       ["Incompleto", det.INCOMPLETE]].filter(x => x[1]).map(x => x[1] + " " + x[0].toLowerCase()).join(", ") + ".";
+       ["Incompleto", det.INCOMPLETE]].filter(x => x[1]).map(x => x[1] + " " + x[0].toLowerCase()).join(", ") +
+      '. <span class="pendente">Aproximação — o número oficial virá da planilha do Gabi.</span>';
 
     grafico("chart-onb-assistido", { type: "bar",
       data: { labels: onbEixo(lista), datasets: [{
@@ -1873,92 +1808,6 @@
           } } } },
         scales: { y: { beginAtZero: true, grid: { color: C.grid } },
                   x: { grid: { display: false } } } }) });
-  }
-
-  /* =====================================================================
-     OCORRÊNCIAS · comportamental × técnica
-     A classe nao vem do ticket: vem de data/classificacao_ocorrencias.json,
-     que traduz o motivo. O painel mostra essa traducao aberta, para quem le
-     poder discordar dela.
-     ===================================================================== */
-
-  const OC_CLASSES = [
-    ["comportamental", "Comportamental", "#ED1E79"],
-    ["tecnica", "Técnica", "#00C3C5"],
-    ["total", "Total", "#004474"]
-  ];
-
-  /** Meses em que vale desenhar as duas classes: antes disso o campo motivo
-      quase nao era preenchido e as linhas cairiam a zero sem motivo real. */
-  function ocMesesClassificados() {
-    const meses = Object.keys((S.oc && S.oc.meses) || {}).sort();
-    return meses.filter(k => {
-      const c = (S.oc.meses[k].por_classe) || {};
-      const total = (c.total && c.total.total) || 0;
-      const sem = (c.sem_classificacao && c.sem_classificacao.total) || 0;
-      return total > 0 && (total - sem) / total >= 0.8;
-    });
-  }
-
-  function grafOcClasse() {
-    const meses = ocMesesClassificados();
-    const sub = $("#oc-classe-sub");
-    if (!meses.length) {
-      if (sub) sub.textContent = "Nenhum mês tem motivo preenchido o bastante para separar as classes.";
-      grafico("chart-oc-classe", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
-      return;
-    }
-    if (sub) sub.innerHTML = "Mensal, pela data de abertura · <b>clique num mês</b> para abrir as semanas dele. " +
-      "A partir de " + mesLabel(meses[0]).toLowerCase() + " de " + meses[0].slice(0, 4) +
-      ", quando o motivo passou a ser preenchido.";
-
-    const valor = (mes, chave) => {
-      const c = (S.oc.meses[mes].por_classe) || {};
-      return c[chave] ? c[chave].total : null;
-    };
-    grafico("chart-oc-classe", { type: "line",
-      data: { labels: meses.map(mesCurto), datasets: OC_CLASSES.map(([chave, rot, cor]) => ({
-        label: rot, data: meses.map(m => valor(m, chave)), borderColor: cor,
-        backgroundColor: chave === "total" ? C.blueFill : "transparent",
-        fill: chave === "total", borderWidth: chave === "total" ? 2.6 : 2.2, tension: .3,
-        pointRadius: meses.map(m => m === (S.ocMes || S.mes) ? 6 : 4),
-        pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 2,
-        spanGaps: true, rotulo: { casas: 0, cor: cor, soUltimo: true } })) },
-      options: opcoes({ onClick: (e, el) => aoClicarMesOc(el, meses),
-        layout: { padding: { right: 44 } },
-        plugins: { legend: legenda(),
-          tooltip: { callbacks: { afterBody: itens => {
-            const m = meses[itens[0].dataIndex], c = (S.oc.meses[m].por_classe) || {};
-            const sem = c.sem_classificacao ? c.sem_classificacao.total : 0;
-            return sem ? sem + " sem motivo preenchido" : "";
-          } } } },
-        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
-                  x: { grid: { display: false } } } }) });
-
-    const leg = $("#oc-classe-legenda");
-    const cfg = (S.oc && S.oc.classificacao) || null;
-    if (leg) leg.innerHTML = !cfg ? "" :
-      '<p class="nota-p">' + (cfg.por_que_existe || "") + "</p>" +
-      Object.keys(cfg.classes).map(k => {
-        const b = cfg.classes[k];
-        return '<div class="nota-classe"><b>' + b.rotulo + "</b> — " + b.definicao +
-          '<div class="nota-motivos">' + b.motivos.join(" · ") + "</div></div>";
-      }).join("") +
-      '<p class="nota-p">Para mudar, edite <code>data/classificacao_ocorrencias.json</code>. ' +
-      "Nada dessa divisão está escrito no código.</p>";
-  }
-
-  function aoClicarMesOc(elementos, meses) {
-    if (!elementos || !elementos.length) return;
-    const mes = meses[elementos[0].index];
-    if (!mes) return;
-    S.ocMes = mes;
-    const m = S.oc.meses[mes];
-    grafOcSemana(m);
-    tabelaOc(m);
-    grafOcClasse();
-    grafOcMensal();
-    $("#chart-oc-semana").scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   /* =====================================================================
@@ -2066,8 +1915,6 @@
 
   const ALVOS_COMENTARIO = [
     ["chart-historico", null],
-    ["chart-radar", null],
-    ["chart-perguntas", null],
     ["chart-evo-dim", null],
     ["chart-evo-esp", null]
   ];
@@ -2094,151 +1941,6 @@
     });
   }
 
-
-  /* =====================================================================
-     ANÁLISE DE TICKETS  (subtópico de Suporte)
-     Mesma leitura dos cartões de FCR e CSAT: número grande do mês, evolução
-     logo abaixo, clique num mês para abrir as semanas. A fonte é a mesma das
-     Ocorrências — são os mesmos tickets, vistos pelo lado da operação.
-     ===================================================================== */
-
-  const IND_TICKET = [
-    { id: "tk_total",   rotulo: "Tickets abertos",   nota: "Volume do mês na Comunidade",
-      cor: "#004474", melhor: "baixo", casas: 0,
-      valor: m => m.total },
-    { id: "tk_fin",     rotulo: "Finalizados",       nota: "Encerrados de fato",
-      cor: "#00C643", melhor: "cima", casas: 0,
-      valor: m => m.finalizadas },
-    { id: "tk_aberto",  rotulo: "Em aberto",         nota: "Criados ou em progresso, ainda na fila",
-      cor: "#EDBB3B", melhor: "baixo", casas: 0,
-      valor: m => m.em_aberto },
-    { id: "tk_taxa",    rotulo: "Taxa de finalização", nota: "Finalizados sobre o total do mês",
-      cor: "#00C3C5", melhor: "cima", casas: 1, suf: "%",
-      valor: m => m.total ? 100 * m.finalizadas / m.total : null },
-    { id: "tk_sla",     rotulo: "SLA mediano",       nota: "Dias entre abertura e encerramento",
-      cor: "#ED1E79", melhor: "baixo", casas: 1, suf: " d",
-      valor: m => m.sla_mediano_dias ?? null },
-    { id: "tk_pico",    rotulo: "Caso mais longo",   nota: "Maior tempo até encerrar no mês",
-      cor: "#4A4A68", melhor: "baixo", casas: 1, suf: " d",
-      valor: m => m.sla_max_h === undefined ? null : m.sla_max_h / 24 }
-  ];
-
-  /** Meses de ticket em ordem, já com o bloco pronto para os indicadores. */
-  function tkMeses() {
-    const todos = Object.keys((S.oc && S.oc.meses) || {}).sort();
-    return todos.slice(-12);
-  }
-
-  function tickets() {
-    if (!S.oc) return;
-    const meses = tkMeses();
-    if (!meses.length) return;
-    const atual = S.tkMes && S.oc.meses[S.tkMes] ? S.tkMes : (meses.includes(S.mes) ? S.mes : meses[meses.length - 1]);
-    S.tkMes = atual;
-
-    const ref = $("#tk-ref");
-    if (ref) ref.innerHTML = "Os mesmos tickets da aba Ocorrências, lidos como fila de atendimento — " +
-      "Comunidade, sem Captação. Mês de referência: <b>" + mesLabel(atual).toLowerCase() +
-      " de " + atual.slice(0, 4) + "</b>.";
-
-    cartoesTicket(meses, atual);
-    seletorTkMes(meses);
-    grafTkSemana();
-  }
-
-  function cartoesTicket(meses, atual) {
-    const bloco = m => S.oc.meses[m];
-    const idx = meses.indexOf(atual);
-    const anterior = idx > 0 ? bloco(meses[idx - 1]) : null;
-
-    [["#tk-linha-1", 0, 3], ["#tk-linha-2", 3, 6]].forEach(([alvo, ini, fim]) => {
-      const box = $(alvo);
-      if (!box) return;
-      box.innerHTML = IND_TICKET.slice(ini, fim).map(ind => {
-        const v = ind.valor(bloco(atual));
-        const ant = anterior ? ind.valor(anterior) : null;
-        let delta = "";
-        if (v !== null && ant !== null && ant !== 0) {
-          const pct = (v - ant) / Math.abs(ant) * 100;
-          const bom = ind.melhor === "baixo" ? pct < 0 : pct > 0;
-          delta = '<span class="delta ' + (bom ? "up" : "down") + '">' +
-                  (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
-        }
-        return '<div class="card sup-card">' +
-          '<div class="metric-label">' + ind.rotulo + "</div>" +
-          '<div class="sup-num tabular">' +
-          (v === null ? "—" : fmt(v, ind.casas) + (ind.suf || "")) + delta + "</div>" +
-          '<div class="metric-note">' + ind.nota + "</div>" +
-          '<div class="sup-spark" title="Clique num mês para ver as semanas">' +
-          '<canvas id="spark-' + ind.id + '"></canvas></div></div>';
-      }).join("");
-    });
-
-    IND_TICKET.forEach(ind => {
-      const serie = meses.map(m => ind.valor(bloco(m)));
-      grafico("spark-" + ind.id, { type: "line",
-        data: { labels: meses.map(mesCurto), datasets: [{
-          data: serie, borderColor: ind.cor, backgroundColor: "transparent",
-          borderWidth: 2, tension: .3, spanGaps: true,
-          pointRadius: meses.map(m => m === atual ? 4 : 2),
-          pointBackgroundColor: meses.map(m => m === atual ? C.pink : ind.cor) }] },
-        options: opcoes({ onClick: (e, el) => aoClicarMesTicket(el, meses),
-          plugins: { legend: { display: false },
-            tooltip: { callbacks: { label: c => c.parsed.y === null ? "sem dado"
-                                     : fmt(c.parsed.y, ind.casas) + (ind.suf || "") } } },
-          scales: { y: { display: false }, x: { display: false } } }) });
-    });
-  }
-
-  function aoClicarMesTicket(elementos, meses) {
-    if (!elementos || !elementos.length) return;
-    const mes = meses[elementos[0].index];
-    if (!mes) return;
-    S.tkMes = mes;
-    tickets();
-    $("#chart-tk-semana").scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  function seletorTkMes(meses) {
-    const seg = $("#seg-tk-mes");
-    if (!seg) return;
-    const comSemanas = meses.filter(m => ((S.oc.meses[m].semanas) || []).length);
-    seg.innerHTML = comSemanas.slice(-6).map(m =>
-      '<button class="' + (m === S.tkMes ? "active" : "") + '" data-mes="' + m + '">' +
-      mesCurto(m) + "</button>").join("");
-    $$("#seg-tk-mes button").forEach(b => b.addEventListener("click", () => {
-      S.tkMes = b.dataset.mes;
-      tickets();
-    }));
-  }
-
-  function grafTkSemana() {
-    const bloco = S.oc.meses[S.tkMes] || {};
-    const sem = bloco.semanas || [];
-    const sub = $("#tk-sem-sub");
-    if (sub) sub.textContent = sem.length
-      ? "Semanas de " + mesLabel(S.tkMes).toLowerCase() + ", pela data de abertura"
-      : "Sem semanas para " + mesLabel(S.tkMes).toLowerCase() + ".";
-
-    grafico("chart-tk-semana", {
-      data: { labels: sem.map(x => x.label), datasets: [
-        { type: "bar", label: "Finalizados", data: sem.map(x => x.finalizadas),
-          backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 40, stack: "tk", yAxisID: "y",
-          rotulo: { casas: 0, cor: "#fff", abaixo: true } },
-        { type: "bar", label: "Em aberto", data: sem.map(x => x.em_aberto),
-          backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 40, stack: "tk", yAxisID: "y" },
-        { type: "line", label: "SLA mediano (dias)",
-          data: sem.map(x => x.sla_mediano_dias === undefined ? null : x.sla_mediano_dias),
-          borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
-          pointRadius: 4, pointBackgroundColor: C.pink, pointBorderColor: "#fff", pointBorderWidth: 2,
-          spanGaps: true, yAxisID: "y1", rotulo: { casas: 1, cor: C.pink } } ] },
-      options: opcoes({ plugins: { legend: legenda() },
-        scales: { y: { beginAtZero: true, stacked: true, grid: { color: C.grid } },
-                  y1: { beginAtZero: true, position: "right", grid: { display: false },
-                        title: { display: true, text: "dias", font: { size: 10 } } },
-                  x: { stacked: true, grid: { display: false } } } }) });
-  }
-
   const ROTULOS = {
     id: "rotulos",
     afterDatasetsDraw(chart) {
@@ -2263,7 +1965,8 @@
           const v = ds.data[j];
           if (v === null || v === undefined) return;
           if (cfg.soUltimo && j !== ultimo) return;
-          const txt = fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
+          const txt = cfg.tempo ? tempoDeMinutos(v)
+                    : fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
           ctx.fillStyle = cor;
 
           if (cfg.soUltimo) {
@@ -2365,12 +2068,8 @@
     desenharMes();
     botoesDeComentario();
     painelDeComentarios();
+    ligarPop();
 
-    $$("#seg-hist button").forEach(b => b.addEventListener("click", () => {
-      $$("#seg-hist button").forEach(x => x.classList.toggle("active", x === b));
-      S.histModo = b.dataset.series;
-      grafHistorico(S.histModo);
-    }));
     $$("#seg-esp button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-esp button").forEach(x => x.classList.toggle("active", x === b));
       S.espOrdem = b.dataset.sort;
@@ -2384,12 +2083,6 @@
       S.evoEsp = b.dataset.eixo;
       grafEvolucaoEspecialidades();
     }));
-    const tSat = $("#toggle-sat"), wSat = $("#sat-wrap");
-    if (tSat && wSat) tSat.addEventListener("click", () => {
-      const aberto = !wSat.hidden;
-      wSat.hidden = aberto;
-      tSat.textContent = aberto ? "Ver tabela" : "Ocultar tabela";
-    });
   }
 
   init().catch(err => {

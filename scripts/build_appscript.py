@@ -43,6 +43,7 @@ DADOS = {
     "zendesk": "data/zendesk_semanal.csv",
     "onboarding": "data/onboarding.json",
     "comentarios": "data/comentarios.json",
+    "focos": "data/focos.json",
 }
 
 

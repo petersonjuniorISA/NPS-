@@ -375,7 +375,7 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 
 /* ---------------- Gráficos ---------------- */
 .chart { position: relative; width: 100%; }
-.h200 { height: 200px; } .h240 { height: 240px; } .h260 { height: 260px; } .h300 { height: 300px; } .h280 { height: 280px; } .h320 { height: 320px; }
+.h200 { height: 200px; } .h240 { height: 240px; } .h260 { height: 260px; } .h300 { height: 300px; } .h280 { height: 280px; } .h320 { height: 320px; } .h340 { height: 340px; }
 
 /* ---------------- Tabelas ---------------- */
 .table-scroll { overflow-x: auto; }
@@ -589,7 +589,11 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 }
 .sup-num .delta { font-family: var(--sans); font-size: 12px; font-weight: 600; }
 /* a evolucao fica colada no rodape do cartao, para os seis alinharem entre si */
-.sup-spark { height: 74px; margin-top: auto; padding-top: var(--md); position: relative; cursor: pointer; }
+/* o dobro da altura de antes: com os numeros nos pontos, 74px nao dava
+   espaco para o rotulo e a linha ao mesmo tempo */
+.sup-card { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.sup-card:hover { box-shadow: 0 6px 28px rgba(0,68,116,.13); transform: translateY(-1px); }
+.sup-spark { height: 150px; margin-top: auto; padding-top: var(--md); position: relative; cursor: pointer; }
 
 /* ---------------------------------------------------------------------------
    Comentários do NPS
@@ -693,3 +697,98 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   font: 400 12.5px/1 "Open Sans", sans-serif; cursor: pointer;
 }
 .com-select:focus { outline: none; border-color: var(--teal, #00C3C5); box-shadow: 0 0 0 3px rgba(0,195,197,.12); }
+
+/* ---------------------------------------------------------------------------
+   Focos do mês — texto escrito à mão, não indicador
+--------------------------------------------------------------------------- */
+.focos { list-style: none; margin: 4px 0 0; padding: 0; }
+.foco {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 13px 0; border-bottom: 1px solid var(--gray-inactive, #E8EAED);
+  font-size: 13px; line-height: 1.5; color: var(--featured, #202020);
+}
+.foco:last-child { border-bottom: 0; }
+.foco-marca {
+  flex: 0 0 auto; width: 7px; height: 7px; margin-top: 6px; border-radius: 50%;
+  background: var(--gray-disabled, #C8C9CC);
+}
+.foco.fazendo .foco-marca { background: var(--teal, #00C3C5); }
+.foco.feito   .foco-marca { background: var(--positive, #00C643); }
+.foco.risco   .foco-marca { background: var(--negative, #E93B5A); }
+.foco-dono {
+  display: inline-block; margin-left: 8px; vertical-align: 1px;
+  font: 700 9.5px/1 "Open Sans", sans-serif; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--blue-dark, #004474); background: var(--blue-dark-soft, #E6EDF1);
+  padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Especialidade × dimensão — matriz de calor
+--------------------------------------------------------------------------- */
+.cruz-wrap { overflow-x: auto; margin-top: 4px; }
+.cruz { min-width: 620px; }
+.cruz-linha {
+  display: grid; grid-template-columns: 186px repeat(6, 1fr) 52px;
+  gap: 3px; margin-bottom: 3px; align-items: stretch;
+}
+.cruz-cab { margin-bottom: 6px; }
+.cruz-cab .cruz-col {
+  font: 700 9.5px/1.2 "Open Sans", sans-serif; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--gray-body, #666E80); text-align: center; align-self: end; padding-bottom: 4px;
+}
+.cruz-nome {
+  font-size: 12px; color: var(--featured, #202020); padding-right: 10px;
+  display: flex; align-items: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cruz-cel {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 34px; border-radius: 6px; font-size: 12.5px;
+  color: var(--featured, #202020);
+}
+.cruz-n { background: transparent; color: var(--gray-body, #666E80); font-size: 11.5px; }
+@media (max-width: 780px) { .cruz-linha { grid-template-columns: 120px repeat(6, 1fr) 40px; } }
+
+
+/* ---------------------------------------------------------------------------
+   Card flutuante da semana
+   Clicou num mês de qualquer gráfico mensal, o detalhe aparece por cima —
+   sem tirar da vista o gráfico que originou o clique.
+--------------------------------------------------------------------------- */
+.pop { position: fixed; inset: 0; z-index: 95; display: none; }
+.pop.aberto { display: block; }
+.pop-fundo { position: absolute; inset: 0; background: rgba(0, 25, 45, .42); }
+.pop-card {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(980px, calc(100vw - 48px)); max-height: calc(100vh - 64px);
+  overflow-y: auto; background: #fff; border-radius: 16px; padding: 22px 24px 24px;
+  box-shadow: 0 24px 64px rgba(0, 68, 116, .26);
+  animation: pop-entra .16s ease-out;
+}
+@keyframes pop-entra { from { transform: translate(-50%, -48%); opacity: .5; } }
+
+.pop-cab {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.pop-titulo { font: 600 19px/1.2 "Titillium Web", sans-serif; color: var(--featured, #202020); }
+.pop-sub { margin-top: 4px; font-size: 12.5px; line-height: 1.5; color: var(--gray-body, #666E80); max-width: 62ch; }
+.pop-acoes { display: flex; align-items: center; gap: 10px; }
+.pop-nota {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gray-inactive, #E8EAED);
+  font-size: 12.5px; line-height: 1.5; color: var(--gray-body, #666E80);
+}
+.pop-nota:empty { display: none; }
+.pop-nota b { color: var(--blue-dark, #004474); }
+
+@media (max-width: 700px) {
+  .pop-card { width: calc(100vw - 20px); padding: 18px 16px; }
+  .pop-acoes { width: 100%; justify-content: space-between; }
+}
+
+/* marca o que ainda não veio da fonte definitiva */
+.pendente {
+  display: inline-block; margin-left: 4px;
+  font-size: 11px; color: var(--caution, #ED7B3B);
+  border-bottom: 1px dashed var(--caution, #ED7B3B);
+}

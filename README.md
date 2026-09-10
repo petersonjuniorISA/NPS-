@@ -23,11 +23,10 @@ O painel tem quatro fontes de dados, com níveis de automação diferentes:
    GitHub. O painel lê esse arquivo — ninguém precisa preencher nada.
 
    Essa tarefa só roda com a máquina ligada e o usuário logado (ver seção
-   "Conectar no Databricks" abaixo pra saber por quê). Existe também um
-   workflow do GitHub Actions (`.github/workflows/update-nps-data.yml`) já
-   pronto, pra caso o time de dados libere um Personal Access Token no
-   futuro — aí a automação passa a rodar na nuvem em vez de na máquina
-   local.
+   "Conectar no Databricks" abaixo pra saber por quê). Havia um workflow do
+   GitHub Actions fazendo a mesma coisa na segunda-feira; ele foi removido
+   porque disputava com a tarefa de sexta e sobrescrevia o arquivo com dados
+   de outro momento.
 
 2. **Zendesk + narrativa semanal — preenchido à mão num arquivo do
    próprio repositório.** Esses números hoje não vêm do Databricks, então
@@ -374,6 +373,38 @@ entra numa classe", justamente para quem lê poder discordar dela.
 > existentes, não veio de uma definição da área. Vale uma revisão do ISA
 > Experience antes de levar o gráfico ao board.
 
+### 10. Focos do mês
+
+O quadro "Focos do mês" na aba de NPS é texto, não indicador: é o que a área
+escolheu atacar naquele mês. Ele sai de `data/focos.json`:
+
+```json
+"2026-08": {
+  "subtitulo": "Escolhas de agosto, revisadas na reunião de área",
+  "itens": [
+    { "texto": "...", "dono": "Suporte", "estado": "fazendo" }
+  ]
+}
+```
+
+`estado` aceita `fazendo`, `feito`, `risco` ou vazio — muda só a cor do ponto.
+Se o mês aberto no painel não tiver bloco próprio, o painel cai no mês em
+`padrao`.
+
+Esse quadro substituiu o de "Resolução com IA" que ficava aqui. Aquele era um
+indicador solto no meio do resumo, e indicador já tem lugar no farol e na aba
+de Suporte.
+
+### 11. O que abre ao clicar num mês
+
+Todo gráfico mensal do painel é clicável. Clicar num mês abre um **card
+flutuante** com a semana daquele mês, e os botões dos outros meses ficam no
+topo do card. Vale para os seis cartões de Suporte, para CSAT e FCR, para os
+gráficos de ocorrências e para a distribuição por assunto.
+
+No card flutuante não aparece meta: a meta é mensal, e desenhá-la sobre uma
+série semanal daria a impressão de que existe alvo por semana.
+
 ## Rodar localmente
 
 Não precisa de build — é HTML/CSS/JS puro. Basta servir a pasta com
@@ -388,7 +419,7 @@ E abrir `http://localhost:8000`.
 ## Estrutura
 
 ```
-index.html                          Painel — 8 abas
+index.html                          Painel — 4 abas
 css/styles.css                      Estilos (Design System ISA)
 js/app.js                           Carregamento e renderizacao
 js/config.js                        URL externa do CSV de Zendesk (opcional)
@@ -401,6 +432,7 @@ data/ocorrencias.json               Volume e SLA de tickets              <- fetc
 data/classificacao_ocorrencias.json Motivo -> comportamental / tecnica   (a mao)
 data/comentarios.json               Texto livre do i-NPS                 <- fetch_comentarios
 data/onboarding.json                Funil semanal de ativacao            <- fetch_onboarding
+data/focos.json                     Focos do mes, texto livre            (a mao)
 
 scripts/fetch_databricks.py         NPS oficial (Databricks SQL)
 scripts/fetch_metabase.py           Baixa o CSV de tickets e chama o build
@@ -415,6 +447,10 @@ scripts/salvar_chave_metabase.ps1   Guarda a chave do Metabase com DPAPI
 dist/appscript/painel.html          O que se cola no Apps Script
 ```
 
-As oito abas: Resumo executivo · NPS em detalhe · Especialidades · Suporte
-(com Analise de tickets) · Ocorrencias · Onboarding · Historico · Metas do
-semestre.
+As quatro abas: **NPS** · **Suporte** (com o subtopico Analise de tickets) ·
+**Ocorrencias** · **Onboarding**.
+
+Nao existem mais abas de Metas nem de Historico. A meta virou a linha
+tracejada cinza dentro de cada grafico que tem meta definida, e o historico
+virou o proprio formato: todo grafico do painel e de linha, mes a mes. O farol
+das metas do semestre continua, agora dentro da aba de NPS.
