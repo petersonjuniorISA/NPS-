@@ -290,57 +290,35 @@
   /* ---------- navegação ---------- */
   const PAGES = {
     nps:         { t: "NPS", s: "Onde estamos, o que puxa e o que os ISAs escreveram" },
-    sac:         { t: "Suporte", s: "FCR, tempos de atendimento, satisfação e análise de tickets" },
+    sac:         { t: "Suporte", s: "FCR, tempos de atendimento e satisfação" },
+    tickets:     { t: "Análise de tickets", s: "Os tickets da Comunidade lidos como fila de atendimento" },
     ocorrencias: { t: "Ocorrências", s: "Volume, classe e tempo de encerramento na Comunidade" },
     onboarding:  { t: "Onboarding", s: "Da inscrição ao primeiro plantão, semana a semana" }
   };
 
   function navegacao() {
     $$(".nav-item").forEach(btn => btn.addEventListener("click", () => irPara(btn.dataset.page)));
-    $$(".nav-sub-item").forEach(btn => btn.addEventListener("click", () =>
-      irPara(btn.dataset.page, btn.dataset.secao)));
+    $$(".nav-sub-item").forEach(btn =>
+      btn.addEventListener("click", () => irPara(btn.dataset.page)));
     const mt = $("#menu-toggle");
     if (mt) mt.addEventListener("click", () => $("#sidebar").classList.toggle("open"));
-    vigiarSecoes();
   }
 
-  /* Troca de aba. `secao` e o subtopico: a aba e a mesma, o que muda e onde a
-     pagina para. Ela nao vira aba propria de proposito — "Analise de tickets"
-     so faz sentido lido depois dos indicadores de suporte. */
-  function irPara(p, secao) {
+  /* Troca de aba. Analise de tickets e uma aba como as outras — o que muda e
+     que ela mora dentro do grupo do Suporte no menu, entao o grupo fica aberto
+     enquanto qualquer uma das duas estiver em cima. */
+  function irPara(p) {
     if (!PAGES[p]) return;
-    $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.page === p));
+    $$(".nav-item, .nav-sub-item").forEach(b => b.classList.toggle("active", b.dataset.page === p));
     $$(".page").forEach(x => x.classList.toggle("active", x.id === "page-" + p));
     $("#page-title").textContent = PAGES[p].t;
     $("#page-sub").textContent = PAGES[p].s;
     $("#sidebar").classList.remove("open");
-    // o grupo abre sozinho quando a aba dele esta em cima
-    $$(".nav-grupo").forEach(g => g.classList.toggle("aberto", !!g.querySelector('.nav-item[data-page="' + p + '"]')));
+    $$(".nav-grupo").forEach(g =>
+      g.classList.toggle("aberto", !!g.querySelector('[data-page="' + p + '"]')));
     S.pagina = p;
     graficosDa(p);
-
-    if (!secao) {
-      marcarSub(null);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    // o grafico precisa existir antes de a rolagem mirar nele
-    requestAnimationFrame(() => rolarAte(secao));
-  }
-
-  /* A barra do topo e fixa: `scrollIntoView` sozinho deixaria o titulo da
-     secao escondido embaixo dela. */
-  function rolarAte(id) {
-    const alvo = document.getElementById(id);
-    if (!alvo) return;
-    const topo = $(".topbar");
-    const folga = (topo ? topo.getBoundingClientRect().height : 0) + 16;
-    window.scrollTo({ top: alvo.getBoundingClientRect().top + window.scrollY - folga,
-                      behavior: "smooth" });
-  }
-
-  function marcarSub(btn) {
-    $$(".nav-sub-item").forEach(b => b.classList.toggle("active", b === btn));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /* Rolando pela pagina de Suporte, o subitem acende sozinho quando a secao
@@ -350,25 +328,6 @@
      Uma comparacao de posicao, e nao IntersectionObserver: a secao tem 1.500px
      de altura e o que interessa nao e ela estar visivel, e sim a leitura ja
      ter chegado nela. */
-  function vigiarSecoes() {
-    const alvo = document.getElementById("sec-tickets");
-    const btn = document.querySelector('.nav-sub-item[data-secao="sec-tickets"]');
-    if (!alvo || !btn) return;
-    let agendado = false;
-    const conferir = () => {
-      agendado = false;
-      const topo = $(".topbar");
-      const linha = (topo ? topo.getBoundingClientRect().height : 0) + 40;
-      btn.classList.toggle("active", S.pagina === "sac" &&
-        alvo.getBoundingClientRect().top <= linha);
-    };
-    window.addEventListener("scroll", () => {
-      if (agendado) return;
-      agendado = true;
-      requestAnimationFrame(conferir);
-    }, { passive: true });
-    conferir();
-  }
 
   function topo() {
     const d = new Date(S.nps.generated_at);
@@ -450,7 +409,8 @@
      próprios gráficos, e só quando está visível. */
   const GRAFICOS = {
     nps:         () => { grafHistorico(); grafEvolucaoDimensoes(); grafEvolucaoEspecialidades(); },
-    sac:         () => { sac(); tickets(); },
+    sac:         () => { sac(); },
+    tickets:     () => { tickets(); },
     ocorrencias: () => { ocorrencias(); },
     onboarding:  () => { onboarding(); }
   };
@@ -1509,13 +1469,15 @@
                   x: { grid: { display: false } } } }) });
   }
 
-  /** Clique num mes de qualquer grafico de ocorrencia -> semanas daquele mes. */
+  /** Clique num mes de qualquer grafico de ocorrencia -> semanas daquele mes.
+      Chamado das duas abas que leem essa base, entao so redesenha a que esta
+      na tela: redesenhar a oculta criaria graficos de tamanho zero. */
   function popOcorrencias(elementos, meses) {
     if (!elementos || !elementos.length) return;
     const mes = meses[elementos[0].index];
     if (!mes || !S.oc.meses[mes]) return;
-    S.ocMes = mes;
-    ocorrencias();
+    if (S.pagina === "tickets") { S.tkMes = mes; tickets(); }
+    else { S.ocMes = mes; ocorrencias(); }
     const comSemanas = meses.filter(m => ((S.oc.meses[m] || {}).semanas || []).length);
     abrirPop({
       titulo: "Ocorrências semana a semana",
@@ -1601,9 +1563,10 @@
     S.tkMes = atual;
 
     const ref = $("#tk-ref");
-    if (ref) ref.innerHTML = "Os mesmos tickets da aba Ocorrências, lidos como fila de atendimento — " +
-      "Comunidade, sem Captação. Mês de referência: <b>" + mesLabel(atual).toLowerCase() +
-      " de " + atual.slice(0, 4) + "</b>. Clique em qualquer gráfico para abrir a semana.";
+    if (ref) ref.innerHTML = "Mesma base da aba Ocorrências — Comunidade, sem Captação — só que " +
+      "lida como fila de atendimento: quanto entra, quanto sai e quanto tempo leva. " +
+      "Mês de referência: <b>" + mesLabel(atual).toLowerCase() + " de " + atual.slice(0, 4) +
+      "</b>. Clique em qualquer gráfico para abrir a semana.";
 
     cartoesTicket(meses, atual);
     seletorIndAssunto();

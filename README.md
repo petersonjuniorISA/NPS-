@@ -395,7 +395,20 @@ Esse quadro substituiu o de "Resolução com IA" que ficava aqui. Aquele era um
 indicador solto no meio do resumo, e indicador já tem lugar no farol e na aba
 de Suporte.
 
-### 11. O que abre ao clicar num mês
+### 11. Onde fica a Análise de tickets
+
+É uma aba própria, pendurada no Suporte dentro do menu: a seta ao lado de
+"Suporte" abre o subitem. O grupo fica aberto enquanto qualquer uma das duas
+abas estiver em cima.
+
+Ela lê `data/ocorrencias.json` — a mesma base das Ocorrências. A diferença é a
+pergunta: Ocorrências olha o que aconteceu (classe, departamento, tipo);
+Análise de tickets olha a fila (quanto entra, quanto sai, quanto tempo leva).
+
+Na barra lateral compacta (781–1140px, só ícones) a seta e o submenu somem —
+ali não cabe subitem escrito.
+
+### 12. O que abre ao clicar num mês
 
 Todo gráfico mensal do painel é clicável. Clicar num mês abre um **card
 flutuante** com a semana daquele mês, e os botões dos outros meses ficam no
@@ -419,7 +432,7 @@ E abrir `http://localhost:8000`.
 ## Estrutura
 
 ```
-index.html                          Painel — 4 abas
+index.html                          Painel — 4 itens de menu, 5 abas
 css/styles.css                      Estilos (Design System ISA)
 js/app.js                           Carregamento e renderizacao
 js/config.js                        URL externa do CSV de Zendesk (opcional)
@@ -447,8 +460,9 @@ scripts/salvar_chave_metabase.ps1   Guarda a chave do Metabase com DPAPI
 dist/appscript/painel.html          O que se cola no Apps Script
 ```
 
-As quatro abas: **NPS** · **Suporte** (com o subtopico Analise de tickets) ·
-**Ocorrencias** · **Onboarding**.
+O menu tem quatro itens: **NPS** · **Suporte** · **Ocorrencias** ·
+**Onboarding**. O Suporte tem uma seta que abre **Analise de tickets**, que e
+uma aba separada — mesma base das Ocorrencias, lida como fila de atendimento.
 
 Nao existem mais abas de Metas nem de Historico. A meta virou a linha
 tracejada cinza dentro de cada grafico que tem meta definida, e o historico
