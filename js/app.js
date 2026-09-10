@@ -296,20 +296,78 @@
   };
 
   function navegacao() {
-    $$(".nav-item").forEach(btn => btn.addEventListener("click", () => {
-      const p = btn.dataset.page;
-      $$(".nav-item").forEach(b => b.classList.toggle("active", b === btn));
-      $$(".page").forEach(s => s.classList.toggle("active", s.id === "page-" + p));
-      $("#page-title").textContent = PAGES[p].t;
-      $("#page-sub").textContent = PAGES[p].s;
-      $("#sidebar").classList.remove("open");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      S.pagina = p;
-      graficosDa(p);
-    }));
+    $$(".nav-item").forEach(btn => btn.addEventListener("click", () => irPara(btn.dataset.page)));
+    $$(".nav-sub-item").forEach(btn => btn.addEventListener("click", () =>
+      irPara(btn.dataset.page, btn.dataset.secao)));
     const mt = $("#menu-toggle");
     if (mt) mt.addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+    vigiarSecoes();
+  }
 
+  /* Troca de aba. `secao` e o subtopico: a aba e a mesma, o que muda e onde a
+     pagina para. Ela nao vira aba propria de proposito — "Analise de tickets"
+     so faz sentido lido depois dos indicadores de suporte. */
+  function irPara(p, secao) {
+    if (!PAGES[p]) return;
+    $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.page === p));
+    $$(".page").forEach(x => x.classList.toggle("active", x.id === "page-" + p));
+    $("#page-title").textContent = PAGES[p].t;
+    $("#page-sub").textContent = PAGES[p].s;
+    $("#sidebar").classList.remove("open");
+    // o grupo abre sozinho quando a aba dele esta em cima
+    $$(".nav-grupo").forEach(g => g.classList.toggle("aberto", !!g.querySelector('.nav-item[data-page="' + p + '"]')));
+    S.pagina = p;
+    graficosDa(p);
+
+    if (!secao) {
+      marcarSub(null);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    // o grafico precisa existir antes de a rolagem mirar nele
+    requestAnimationFrame(() => rolarAte(secao));
+  }
+
+  /* A barra do topo e fixa: `scrollIntoView` sozinho deixaria o titulo da
+     secao escondido embaixo dela. */
+  function rolarAte(id) {
+    const alvo = document.getElementById(id);
+    if (!alvo) return;
+    const topo = $(".topbar");
+    const folga = (topo ? topo.getBoundingClientRect().height : 0) + 16;
+    window.scrollTo({ top: alvo.getBoundingClientRect().top + window.scrollY - folga,
+                      behavior: "smooth" });
+  }
+
+  function marcarSub(btn) {
+    $$(".nav-sub-item").forEach(b => b.classList.toggle("active", b === btn));
+  }
+
+  /* Rolando pela pagina de Suporte, o subitem acende sozinho quando a secao
+     de tickets entra na tela — sem isso o menu mentiria sobre onde a pessoa
+     esta depois do primeiro scroll.
+
+     Uma comparacao de posicao, e nao IntersectionObserver: a secao tem 1.500px
+     de altura e o que interessa nao e ela estar visivel, e sim a leitura ja
+     ter chegado nela. */
+  function vigiarSecoes() {
+    const alvo = document.getElementById("sec-tickets");
+    const btn = document.querySelector('.nav-sub-item[data-secao="sec-tickets"]');
+    if (!alvo || !btn) return;
+    let agendado = false;
+    const conferir = () => {
+      agendado = false;
+      const topo = $(".topbar");
+      const linha = (topo ? topo.getBoundingClientRect().height : 0) + 40;
+      btn.classList.toggle("active", S.pagina === "sac" &&
+        alvo.getBoundingClientRect().top <= linha);
+    };
+    window.addEventListener("scroll", () => {
+      if (agendado) return;
+      agendado = true;
+      requestAnimationFrame(conferir);
+    }, { passive: true });
+    conferir();
   }
 
   function topo() {

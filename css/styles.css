@@ -123,6 +123,9 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   /* font-size 0 apaga o rotulo, que e um no de texto solto e nao tem seletor */
   .nav-item { justify-content: center; padding: 13px 0; font-size: 0; border-left-width: 3px; }
   .nav-item svg { width: 20px; height: 20px; }
+  /* na coluna de icones nao cabe subitem escrito: o grupo fica sempre fechado
+     e a Analise de tickets se alcanca rolando a propria pagina de Suporte */
+  .nav-seta, .nav-sub { display: none; }
   .nav-sep { margin: var(--sm) 14px; }
   .topbar-inner { padding-left: var(--lg); padding-right: var(--lg); }
 }
@@ -792,3 +795,48 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   font-size: 11px; color: var(--caution, #ED7B3B);
   border-bottom: 1px dashed var(--caution, #ED7B3B);
 }
+
+/* ---------------------------------------------------------------------------
+   Subtópico no menu
+   "Análise de tickets" não é aba própria: é uma parada dentro de Suporte.
+   O menu diz isso com o recuo e a seta, e o clique rola até lá.
+--------------------------------------------------------------------------- */
+.nav-grupo { display: flex; flex-direction: column; }
+.nav-rot { flex: 1 1 auto; }
+.nav-seta {
+  width: 14px !important; height: 14px !important; opacity: .55;
+  transition: transform .18s ease, opacity .15s;
+}
+.nav-grupo.aberto .nav-seta { transform: rotate(90deg); opacity: .9; }
+.nav-item:hover .nav-seta { opacity: 1; }
+
+/* fecha por altura para a transição existir; o overflow evita vazar no meio */
+.nav-sub {
+  display: grid; grid-template-rows: 0fr; overflow: hidden;
+  transition: grid-template-rows .2s ease;
+}
+.nav-grupo.aberto .nav-sub { grid-template-rows: 1fr; }
+.nav-sub > * { min-height: 0; }
+
+.nav-sub-item {
+  display: block; width: 100%; text-align: left;
+  padding: 9px var(--lg) 9px 52px;
+  border: none; background: none; cursor: pointer;
+  font-family: var(--sans); font-size: 13px; font-weight: 400;
+  color: rgba(255,255,255,.6);
+  border-left: 3px solid transparent;
+  transition: color .15s, background .15s, border-color .15s;
+  position: relative;
+}
+/* fiozinho de árvore, para o recuo ler como hierarquia e não como indentação solta */
+.nav-sub-item::before {
+  content: ""; position: absolute; left: 33px; top: 0; bottom: 0;
+  width: 1px; background: rgba(255,255,255,.16);
+}
+.nav-sub-item:hover { color: var(--white); background: rgba(255,255,255,.05); }
+.nav-sub-item.active {
+  color: var(--white); font-weight: 600;
+  background: rgba(255,255,255,.06);
+  border-left-color: var(--teal);
+}
+.nav-sub-item.active::before { background: var(--teal); width: 2px; left: 32px; }
