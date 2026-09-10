@@ -284,7 +284,7 @@
     resumo:         { t: "Resumo executivo",  s: "Onde estamos e qual o risco" },
     visao:          { t: "NPS em detalhe",    s: "Composição e evolução do índice" },
     especialidades: { t: "Especialidades",    s: "Onde a experiência é melhor e pior" },
-    sac:            { t: "SAC & Zendesk",     s: "Indicadores de atendimento e suporte" },
+    sac:            { t: "Suporte",           s: "FCR, tempos de atendimento e satisfação" },
     ocorrencias:    { t: "Ocorrências", s: "Volume e tempo de encerramento na Comunidade" },
     historico:      { t: "Histórico de indicadores", s: "Todos os indicadores, mês a mês e semana a semana" },
     metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" }
