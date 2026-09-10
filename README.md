@@ -321,13 +321,58 @@ Isso foi abandonado por dois motivos:
 
 ### Privacidade — o que é publicado
 
-Nada de dado pessoal. Foi conferido arquivo por arquivo em `data/`: não há nome
-de profissional, de paciente, CPF nem e-mail. O `build_ocorrencias.py` descarta
-tudo isso e guarda só contagem e estatística de SLA.
+Nenhum arquivo em `data/` carrega campo de identificação: não há nome, CPF,
+e-mail nem id de profissional. O `build_ocorrencias.py` e o
+`fetch_comentarios.py` descartam esses campos na origem — o primeiro guarda só
+contagem e SLA; o segundo guarda mês, nota, tema e o texto.
 
-O que existe é informação de negócio agregada — NPS, metas do semestre, SLA,
-volume de ocorrências. É por isso que o acesso restrito ao domínio importa,
-mesmo sem dado pessoal envolvido.
+**Uma ressalva sobre `data/comentarios.json`.** Ali há texto livre escrito pelos
+próprios ISAs. Ninguém está identificado pela estrutura do arquivo, mas o autor
+pode ter escrito um nome dentro do comentário ("a enfermeira Fulana me
+atendeu") — isso não dá para higienizar sem mutilar a resposta. É mais um
+motivo para o painel seguir restrito ao domínio `@isasaude.com`.
+
+O resto é informação de negócio agregada — NPS, metas do semestre, SLA, volume
+de ocorrências, funil de onboarding.
+
+### 8. Comentários do NPS e Onboarding (Metabase)
+
+As duas bases mais novas saem do mesmo Metabase das ocorrências, com a mesma
+chave — não precisa configurar nada além do que o passo 4 já pede.
+
+| Script | Sai em | De onde vem |
+|---|---|---|
+| `scripts/fetch_comentarios.py` | `data/comentarios.json` | banco **Survey**, coleção `distributions`, pesquisas `i-nps` e `inps-isas` |
+| `scripts/fetch_onboarding.py` | `data/onboarding.json` | banco **Professional History** (eventos `professional.created` / `.activated`) + **Professional** (status de hoje) |
+
+Os comentários não estão no Databricks: a tabela `fact_inps_response` guarda só
+as notas. O texto vive na pesquisa, onde cada nota é seguida de um "Quer
+comentar sobre essa resposta?". Por isso o botão **Exibir os comentários** que
+aparece embaixo de cada gráfico do NPS lê o Metabase, não o Databricks.
+
+O onboarding é todo semanal, com uma ressalva importante no gráfico de taxa de
+ativação: uma ativação leva ~30 dias, então as semanas mais recentes ainda não
+tiveram tempo de converter. Elas aparecem **pontilhadas** — não caíram, só não
+fecharam. A janela é configurável em `ONBOARDING_JANELA`.
+
+### 9. Comportamental × técnica nas ocorrências
+
+O ticket **não** tem esse campo. O que ele tem é o motivo (`reason`),
+preenchido nos departamentos de Treinamento, Onboarding e SAC ISAs a partir de
+abril de 2026. A tradução motivo → classe vive em
+`data/classificacao_ocorrencias.json` e em nenhum outro lugar:
+
+```json
+"comportamental": { "motivos": ["Conduta inadequada do profissional", "..."] }
+```
+
+Editar esse arquivo e rodar `py scripts/build_ocorrencias.py <csv>` refaz o
+gráfico inteiro. O painel mostra a divisão aberta, em "Como cada ocorrência
+entra numa classe", justamente para quem lê poder discordar dela.
+
+> **Pendência:** essa classificação foi proposta a partir dos motivos
+> existentes, não veio de uma definição da área. Vale uma revisão do ISA
+> Experience antes de levar o gráfico ao board.
 
 ## Rodar localmente
 
@@ -343,14 +388,33 @@ E abrir `http://localhost:8000`.
 ## Estrutura
 
 ```
-index.html                      Painel (5 páginas: visão geral, especialidades, SAC, metas, alavancas)
-css/styles.css                  Estilos (Design System ISA)
-js/app.js                       Lógica de carregamento e renderização
-js/config.js                    URL da planilha do Zendesk (preencher)
-data/nps.json                   Dados de NPS (gerado automaticamente)
-data/metas.json                 Metas SMART do semestre (editar à mão, raramente)
-assets/logo.png                 Logo da área exibido na barra lateral (opcional)
-data/zendesk_semanal.csv        Dados de Zendesk + narrativa (editar direto no GitHub)
-scripts/fetch_databricks.py     Script que busca e processa os dados do Databricks
-.github/workflows/update-nps-data.yml  Roda o script acima toda semana
+index.html                          Painel — 8 abas
+css/styles.css                      Estilos (Design System ISA)
+js/app.js                           Carregamento e renderizacao
+js/config.js                        URL externa do CSV de Zendesk (opcional)
+
+data/nps.json                       NPS, dimensoes e especialidades      <- fetch_databricks
+data/historico_nps.json             Mai/Jun/Jul de 2026, apurados no Notion (a mao)
+data/zendesk_semanal.csv            FCR, CSAT, TMA, TMR e narrativa      (a mao)
+data/metas.json                     Metas do semestre                    (a mao)
+data/ocorrencias.json               Volume e SLA de tickets              <- fetch_metabase
+data/classificacao_ocorrencias.json Motivo -> comportamental / tecnica   (a mao)
+data/comentarios.json               Texto livre do i-NPS                 <- fetch_comentarios
+data/onboarding.json                Funil semanal de ativacao            <- fetch_onboarding
+
+scripts/fetch_databricks.py         NPS oficial (Databricks SQL)
+scripts/fetch_metabase.py           Baixa o CSV de tickets e chama o build
+scripts/build_ocorrencias.py        CSV de tickets -> ocorrencias.json
+scripts/fetch_comentarios.py        Comentarios do i-NPS (Metabase / Survey)
+scripts/fetch_onboarding.py         Onboarding semanal (Metabase / Professional)
+scripts/build_appscript.py          Embute tudo num HTML so -> dist/appscript/
+scripts/bump_versao.py              Sobe o ?v= dos assets (evita cache velho)
+scripts/weekly_update.ps1           Orquestra tudo — roda toda sexta, 18h
+scripts/salvar_chave_metabase.ps1   Guarda a chave do Metabase com DPAPI
+
+dist/appscript/painel.html          O que se cola no Apps Script
 ```
+
+As oito abas: Resumo executivo · NPS em detalhe · Especialidades · Suporte
+(com Analise de tickets) · Ocorrencias · Onboarding · Historico · Metas do
+semestre.

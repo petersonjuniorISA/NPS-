@@ -41,6 +41,8 @@ DADOS = {
     "metas": "data/metas.json",
     "ocorrencias": "data/ocorrencias.json",
     "zendesk": "data/zendesk_semanal.csv",
+    "onboarding": "data/onboarding.json",
+    "comentarios": "data/comentarios.json",
 }
 
 

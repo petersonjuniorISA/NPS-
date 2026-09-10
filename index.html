@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=44">
+<link rel="stylesheet" href="css/styles.css?v=52">
 </head>
 <body>
 
@@ -42,6 +42,10 @@
     <button class="nav-item" data-page="ocorrencias" title="Ocorrências">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
       Ocorrências
+    </button>
+    <button class="nav-item" data-page="onboarding" title="Onboarding">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+      Onboarding
     </button>
     <button class="nav-item" data-page="historico" title="Histórico">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/></svg>
@@ -126,6 +130,27 @@
         </div>
       </div>
 
+<div class="grid grid-wide" style="margin-top:16px;">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">NPS por especialidade</div>
+              <div class="card-sub">Clique para ver o detalhamento</div>
+            </div>
+            <div class="seg" id="seg-esp">
+              <button class="active" data-sort="nps">NPS</button>
+              <button data-sort="amostra">Volume</button>
+            </div>
+          </div>
+          <div class="ranks" id="esp-ranks"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div class="card-title">Detalhamento</div></div>
+          <div id="esp-detail"></div>
+        </div>
+      </div>
+
       <div class="section-label" id="notes-label">Leitura do mês</div>
       <ul class="notes notes-largas" id="notes"></ul>
     </section>
@@ -137,10 +162,11 @@
           <div class="card-head">
             <div>
               <div class="card-title">Evolução do NPS</div>
-              <div class="card-sub">Realizado contra a meta de cada mês</div>
+              <div class="card-sub" id="sub-historico">Realizado contra a meta de cada mês</div>
             </div>
             <div class="seg" id="seg-hist">
               <button class="active" data-series="nps">NPS</button>
+              <button data-series="composicao">Composição</button>
               <button data-series="csat">Com CSAT</button>
             </div>
           </div>
@@ -194,26 +220,7 @@
     <section class="page" id="page-especialidades">
       <div class="grid grid-2" id="esp-stats"></div>
 
-      <div class="grid grid-wide" style="margin-top:16px;">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">NPS por especialidade</div>
-              <div class="card-sub">Clique para ver o detalhamento</div>
-            </div>
-            <div class="seg" id="seg-esp">
-              <button class="active" data-sort="nps">NPS</button>
-              <button data-sort="amostra">Volume</button>
-            </div>
-          </div>
-          <div class="ranks" id="esp-ranks"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><div class="card-title">Detalhamento</div></div>
-          <div id="esp-detail"></div>
-        </div>
-      </div>
+      
 
       <div class="card" style="margin-top:16px;">
         <div class="card-head">
@@ -287,6 +294,23 @@
         <div class="chart h280"><canvas id="chart-wow"></canvas></div>
       </div>
 
+      <div class="section-label" style="margin-top:28px;">Análise de tickets</div>
+      <p class="section-desc" id="tk-ref"></p>
+
+      <div class="grid grid-3" id="tk-linha-1"></div>
+      <div class="grid grid-3" style="margin-top:16px;" id="tk-linha-2"></div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Tickets semana a semana</div>
+            <div class="card-sub" id="tk-sem-sub"></div>
+          </div>
+          <div class="seg" id="seg-tk-mes"></div>
+        </div>
+        <div class="chart h280"><canvas id="chart-tk-semana"></canvas></div>
+      </div>
+
       <div class="card" style="margin-top:16px;">
         <div class="card-head">
           <div>
@@ -347,6 +371,20 @@
         </div>
       </div>
 
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Comportamental × técnica</div>
+            <div class="card-sub" id="oc-classe-sub">Clique num mês para abrir as semanas dele</div>
+          </div>
+        </div>
+        <div class="chart h280"><canvas id="chart-oc-classe"></canvas></div>
+        <details class="nota">
+          <summary>Como cada ocorrência entra numa classe</summary>
+          <div id="oc-classe-legenda"></div>
+        </details>
+      </div>
+
       <div class="grid grid-wide" style="margin-top:16px;">
         <div class="card">
           <div class="card-head">
@@ -399,6 +437,55 @@
     </section>
 
     <!-- ============ HISTORICO ============ -->
+    <section class="page" id="page-onboarding">
+      <div class="grid grid-4" id="onb-cartoes"></div>
+
+      <div class="grid grid-wide" style="margin-top:16px;">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Tempo médio de ativação</div>
+              <div class="card-sub">Dias entre o cadastro e a ativação, pela semana em que a ativação aconteceu</div>
+            </div>
+          </div>
+          <div class="chart h280"><canvas id="chart-onb-tempo"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Ativados e taxa de ativação</div>
+              <div class="card-sub">Barras: ativados na semana · Linha: % da turma que se cadastrou naquela semana e já ativou</div>
+            </div>
+          </div>
+          <div class="chart h280"><canvas id="chart-onb-ativacao"></canvas></div>
+          <div class="leitura" id="onb-leitura"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-wide" style="margin-top:16px;">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Temporários</div>
+              <div class="card-sub">Quantos de cada semana de cadastro seguem hoje como Temporário</div>
+            </div>
+          </div>
+          <div class="chart h280"><canvas id="chart-onb-temporarios"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">ISAs em onboarding assistido</div>
+              <div class="card-sub" id="onb-assistido-sub"></div>
+            </div>
+          </div>
+          <div class="chart h280"><canvas id="chart-onb-assistido"></canvas></div>
+        </div>
+      </div>
+    </section>
+
     <section class="page" id="page-historico">
       <div class="card">
         <div class="card-head">
@@ -444,7 +531,31 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=44"></script>
-<script src="js/app.js?v=44"></script>
+<script src="js/config.js?v=52"></script>
+<script src="js/app.js?v=52"></script>
+
+<div class="com-painel" id="com-painel" aria-hidden="true">
+  <div class="com-fundo" data-fechar></div>
+  <aside class="com-tela" role="dialog" aria-modal="true" aria-labelledby="com-titulo">
+    <header class="com-cab">
+      <div>
+        <div class="com-titulo" id="com-titulo">Comentários do NPS</div>
+        <div class="com-sub">O que os ISAs escreveram junto da nota, do mês mais recente para trás</div>
+      </div>
+      <button class="com-fechar" type="button" data-fechar aria-label="Fechar">&times;</button>
+    </header>
+    <div class="com-filtros">
+      <div class="seg" id="seg-com-classe">
+        <button class="active" data-classe="">Todos</button>
+        <button data-classe="promotor">Promotores</button>
+        <button data-classe="neutro">Neutros</button>
+        <button data-classe="detrator">Detratores</button>
+      </div>
+      <select id="com-tema" class="com-select" aria-label="Filtrar por tema"></select>
+    </div>
+    <div class="com-corpo" id="com-corpo"></div>
+  </aside>
+</div>
+
 </body>
 </html>

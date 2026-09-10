@@ -1,0 +1,41 @@
+{
+ "por_que_existe": "O ticket nao guarda se a ocorrencia e comportamental ou tecnica. O que ele guarda e o motivo (campo reason), preenchido nos departamentos de Treinamento, Onboarding e SAC ISAs. Este arquivo traduz motivo -> classe. Editar aqui muda o grafico inteiro; nada disso esta escrito no codigo.",
+ "quem_revisa": "ISA Experience",
+ "revisado_em": null,
+ "classes": {
+  "comportamental": {
+   "rotulo": "Comportamental",
+   "definicao": "Conduta, relacionamento e cumprimento de combinados.",
+   "motivos": [
+    "Conduta inadequada do profissional",
+    "Reclamação",
+    "Reclamações sobre atendimento da equipe administrativa",
+    "Insatisfação no Atendimento de enfermagem",
+    "Insatisfação no Atendimento da equipe multi disciplinar",
+    "Atraso do profissional",
+    "Dificuldade de comunicação",
+    "Furo de escala"
+   ]
+  },
+  "tecnica": {
+   "rotulo": "Técnica",
+   "definicao": "Execução do cuidado, protocolo e domínio do procedimento.",
+   "motivos": [
+    "Reciclagem",
+    "Desenvolver nova habilidade",
+    "Técnica profissional",
+    "Orientações",
+    "Dúvidas",
+    "Problemas com materiais e insumos",
+    "Problemas com medicação"
+   ]
+  }
+ },
+ "nao_classificados": {
+  "rotulo": "Sem classificação",
+  "observacao": "Motivos que nao entram em nenhuma das duas classes, e ocorrencias de departamentos que nao preenchem o campo motivo.",
+  "motivos": [
+   "Outro"
+  ]
+ }
+}

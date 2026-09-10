@@ -18,6 +18,7 @@
     amber: "#EDBB3B",
     positive: "#00C643",
     negative: "#E93B5A",
+    chumbo: "#4A4A68",
     grid: "#E8EAED",
     text: "#666E80"
   };
@@ -117,7 +118,9 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, sacMes: null, mes: null, semana: null, histCsat: false, evoDim: null, evoEsp: null, pagina: "resumo",
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null,
+              sacMes: null, ocMes: null, tkMes: null, comFiltro: null, mes: null, semana: null,
+              histModo: "nps", evoDim: null, evoEsp: null, pagina: "resumo",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -189,14 +192,17 @@
   }
 
   async function carregar() {
-    const [nps, metas, zen, oc] = await Promise.all([
+    const [nps, metas, zen, oc, onb, com] = await Promise.all([
       buscarJson("nps", "data/nps.json", null),
       buscarJson("metas", "data/metas.json", { objetivos: [] }),
       carregarZendesk(),
-      buscarJson("ocorrencias", "data/ocorrencias.json", null)
+      buscarJson("ocorrencias", "data/ocorrencias.json", null),
+      buscarJson("onboarding", "data/onboarding.json", null),
+      buscarJson("comentarios", "data/comentarios.json", null)
     ]);
     if (!nps) throw new Error("Não consegui carregar os dados de NPS.");
     S.nps = nps; S.metas = metas; S.zendesk = zen; S.oc = oc;
+    S.onb = onb; S.com = com;
   }
 
   async function carregarZendesk() {
@@ -287,6 +293,7 @@
     sac:            { t: "Suporte",           s: "FCR, tempos de atendimento e satisfação" },
     ocorrencias:    { t: "Ocorrências", s: "Volume e tempo de encerramento na Comunidade" },
     historico:      { t: "Histórico de indicadores", s: "Todos os indicadores, mês a mês e semana a semana" },
+    onboarding:     { t: "Onboarding", s: "Da inscrição ao primeiro plantão, semana a semana" },
     metas:          { t: "Metas do semestre", s: "Atingimento dos objetivos até dezembro" }
   };
 
@@ -387,10 +394,11 @@
      porque o tamanho em cache continua zero. Por isso cada aba só desenha os
      próprios gráficos, e só quando está visível. */
   const GRAFICOS = {
-    visao:          () => { grafHistorico(S.histCsat); grafRadar(); grafPerguntas(); grafEvolucaoDimensoes(); },
+    visao:          () => { grafHistorico(S.histModo); grafRadar(); grafPerguntas(); grafEvolucaoDimensoes(); },
     especialidades: () => { grafEvolucaoEspecialidades(); },
-    sac:            () => { sac(); },
+    sac:            () => { sac(); tickets(); },
     ocorrencias:    () => { ocorrencias(); },
+    onboarding:     () => { onboarding(); },
     metas:          () => { metas(); }
   };
   function graficosDa(pagina) {
@@ -598,7 +606,10 @@
     ].map(([rot, v]) => "<div>" + rot + " <b>" + v + "</b> (" + fmt(v / total * 100, 1) + "%)</div>").join("");
   }
 
-  function grafHistorico(comCsat) {
+  function grafHistorico(modo) {
+    // aceita o booleano antigo para nao quebrar chamadas existentes
+    if (modo === true) modo = "csat";
+    if (!modo) modo = "nps";
     const hist = S.nps.historico_nps || [];
     const objNps = objetivo("nps") || { metas: {} };
     const meses = Array.from(new Set([...hist.map(h => h.mes), ...Object.keys(objNps.metas || {})])).sort();
@@ -616,23 +627,60 @@
         pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
         pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : C.blue),
         pointBorderColor: "#fff", pointBorderWidth: 2,
-        rotulo: { casas: 1, cor: C.blue } },
-      { label: "Meta", data: meta, borderColor: C.text, borderDash: [5,4], borderWidth: 1.6,
-        backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true }
+        rotulo: { casas: 1, cor: C.blue, soUltimo: modo === "composicao" } }
     ];
-    if (comCsat) ds.push({ label: "CSAT humano", data: meses.map(m => csatMap[m] ?? null),
+    /* A meta so aparece quando o grafico e sobre o indice. Na composicao ela
+       disputaria espaco com quatro series novas sem acrescentar leitura. */
+    if (modo !== "composicao")
+      ds.push({ label: "Meta", data: meta, borderColor: C.text, borderDash: [5,4], borderWidth: 1.6,
+        backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true });
+    if (modo === "csat") ds.push({ label: "CSAT humano", data: meses.map(m => csatMap[m] ?? null),
       borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
       pointRadius: 3.5, pointBackgroundColor: C.pink, yAxisID: "y1", spanGaps: true });
 
+    /* Composicao: promotores, neutros, detratores e o volume de respostas, num
+       eixo proprio a direita. So os meses vindos do Databricks tem essa quebra —
+       nos apurados a mao sobrou apenas o indice, entao a linha simplesmente nao
+       comeca antes. */
+    if (modo === "composicao") {
+      const doMes = m => (S.nps.meses || {})[m];
+      const serie = campo => meses.map(m => {
+        const b = doMes(m);
+        return b && b.kpi && b.kpi[campo] !== null && b.kpi[campo] !== undefined ? b.kpi[campo] : null;
+      });
+      [["Promotores", "promotores", C.positive],
+       ["Neutros", "neutros", C.amber],
+       ["Detratores", "detratores", C.negative],
+       ["Respostas", "total_respostas", C.chumbo || "#4A4A68"]].forEach(([rot, campo, cor]) => {
+        ds.push({ label: rot, data: serie(campo), borderColor: cor,
+          backgroundColor: "transparent", borderWidth: rot === "Respostas" ? 2.4 : 2,
+          borderDash: rot === "Respostas" ? [4, 3] : undefined,
+          tension: .3, pointRadius: 3.5, pointBackgroundColor: cor,
+          yAxisID: "y1", spanGaps: true,
+          rotulo: { casas: 0, cor: cor, soUltimo: true } });
+      });
+    }
+
+    // o subtitulo acompanha o modo: falar em meta num grafico sem meta confunde
+    const sub = $("#sub-historico");
+    if (sub) sub.textContent = modo === "composicao"
+      ? "Índice, promotores, neutros, detratores e volume de respostas"
+      : modo === "csat" ? "NPS e CSAT humano mês a mês"
+      : "Realizado contra a meta de cada mês";
+
     grafico("chart-historico", { type: "line", data: { labels: meses.map(mesCurto), datasets: ds },
-      options: opcoes({ plugins: { legend: legenda(), tooltip: { callbacks: {
+      options: opcoes({ layout: { padding: { right: modo === "composicao" ? 44 : 8 } },
+        plugins: { legend: legenda(), tooltip: { callbacks: {
           // passar o mouse no ponto mostra a meta daquele mês junto do realizado
           afterBody: itens => {
             const m = meses[itens[0].dataIndex], alvo = objNps.metas[m];
             return alvo === undefined ? "" : "Meta de " + mesCurto(m).toLowerCase() + ": " + fmt(alvo, 1);
           } } } },
         scales: { y: { min: 0, max: 100, grid: { color: C.grid } },
-                  y1: comCsat ? { min: 0, max: 5, position: "right", grid: { display: false } } : { display: false },
+                  y1: modo === "csat" ? { min: 0, max: 5, position: "right", grid: { display: false } }
+                    : modo === "composicao" ? { min: 0, position: "right", grid: { display: false },
+                        title: { display: true, text: "respostas", font: { size: 10 } } }
+                    : { display: false },
                   x: { grid: { display: false } } } }) });
   }
 
@@ -829,7 +877,8 @@
     : h < 24 ? fmt(h, 1) + "h" : fmt(h / 24, 1) + " dias";
 
   function ocorrencias() {
-    const m = ocMes(), vazio = !m;
+    // o clique no gráfico mensal manda; sem clique, segue o mês do painel
+    const m = (S.ocMes && S.oc && S.oc.meses[S.ocMes]) || ocMes(), vazio = !m;
     $("#oc-mes").textContent = mesLabel(S.mes) + " de " + S.mes.slice(0, 4);
     conta($("#oc-total"), vazio ? null : m.total, 0);
     $("#oc-desc").textContent = vazio
@@ -861,6 +910,7 @@
 
     grafOcSemana(m);
     grafOcMensal();
+    grafOcClasse();
     tabelaOc(m);
   }
 
@@ -900,7 +950,8 @@
           borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
           pointRadius: 4, pointBackgroundColor: C.pink, pointBorderColor: "#fff", pointBorderWidth: 2,
           spanGaps: true, yAxisID: "y1", rotulo: { casas: 1, cor: C.pink, abaixo: true } } ] },
-      options: opcoes({ plugins: { legend: legenda() },
+      options: opcoes({ onClick: (e, el) => aoClicarMesOc(el, meses),
+        plugins: { legend: legenda() },
         scales: { y: { beginAtZero: true, grid: { color: C.grid } },
                   y1: { beginAtZero: true, position: "right", grid: { display: false },
                         title: { display: true, text: "dias", font: { size: 10 } } },
@@ -913,10 +964,10 @@
     grafico("chart-oc-mensal", {
       data: { labels: meses.map(mesCurto), datasets: [
         { type: "bar", label: "Finalizadas", data: dados.map(d => d.finalizadas),
-          backgroundColor: meses.map(k => k === S.mes ? C.pink : C.blue),
+          backgroundColor: meses.map(k => k === (S.ocMes || S.mes) ? C.pink : C.blue),
           borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
         { type: "bar", label: "Em aberto", data: dados.map(d => d.em_aberto),
-          backgroundColor: meses.map(k => k === S.mes ? "#F79AC4" : C.amber),
+          backgroundColor: meses.map(k => k === (S.ocMes || S.mes) ? "#F79AC4" : C.amber),
           borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
         { type: "line", label: "SLA mediano (dias)",
           data: dados.map(d => d.sla_mediano_dias === undefined ? null : d.sla_mediano_dias),
@@ -1658,6 +1709,536 @@
      puxar o chartjs-plugin-datalabels: são três posicionamentos (ponto de
      linha, ponto de radar, fim de barra) e nenhuma das opções da biblioteca
      seria usada. Cada dataset liga com `rotulo: { casas, sufixo }`. */
+
+  /* =====================================================================
+     ONBOARDING
+     Tudo aqui e semanal: a operacao acompanha ativacao semana a semana, e o
+     mes esconderia justamente a variacao que interessa.
+     ===================================================================== */
+
+  const ONB_SEMANAS = 12;   // um trimestre — mais que isso e o eixo vira risco
+
+  function onbSemanas() {
+    const todas = (S.onb && S.onb.semanas) || [];
+    return todas.slice(-ONB_SEMANAS);
+  }
+
+  /** Semanas cuja turma ainda pode ativar — a taxa delas sobe depois. */
+  function onbParciais(lista) {
+    return lista.filter(s => !s.coorte_fechada).length;
+  }
+
+  function onboarding() {
+    if (!S.onb) return;
+    cartoesOnb();
+    grafOnbTempo();
+    grafOnbAtivacao();
+    grafOnbTemporarios();
+    grafOnbAssistido();
+  }
+
+  function cartoesOnb() {
+    const lista = onbSemanas(), hoje = S.onb.hoje || {};
+    const fechadas = lista.filter(s => s.coorte_fechada);
+    const ultima = lista[lista.length - 1] || {};
+    const comTempo = lista.filter(s => s.tempo_medio_ativacao !== null);
+    const tempo = comTempo.length
+      ? comTempo.slice(-4).reduce((a, s) => a + s.tempo_medio_ativacao, 0) / Math.min(4, comTempo.length)
+      : null;
+    const taxa = fechadas.length ? fechadas[fechadas.length - 1].taxa_ativacao : null;
+
+    const cartoes = [
+      ["Tempo médio de ativação", tempo === null ? "—" : fmt(tempo, 1) + " d",
+       "média das últimas 4 semanas"],
+      ["Ativados na semana", ultima.ativados ?? "—", "semana de " + (ultima.label || "—")],
+      ["Taxa de ativação", taxa === null ? "—" : fmt(taxa, 1) + "%",
+       "última turma já fechada"],
+      ["Em onboarding assistido", hoje.em_onboarding_assistido ?? "—",
+       "cadastros parados aguardando a operação"]
+    ];
+    $("#onb-cartoes").innerHTML = cartoes.map(c =>
+      '<div class="card sup-card"><div class="metric-label">' + c[0] + "</div>" +
+      '<div class="sup-num tabular">' + c[1] + "</div>" +
+      '<div class="metric-note">' + c[2] + "</div></div>").join("");
+  }
+
+  /** Eixo x comum aos quatro gráficos, para as semanas baterem entre eles.
+      Só o dia de início: o intervalo inteiro cabe no tooltip. */
+  function onbEixo(lista) { return lista.map(s => s.label.split(" a ")[0]); }
+
+  /** Título do tooltip: aí sim a semana inteira, que é o que se lê devagar. */
+  function onbTitulo(lista) {
+    return itens => { const s = lista[itens[0].dataIndex]; return s ? "Semana de " + s.label : ""; };
+  }
+
+  function grafOnbTempo() {
+    const lista = onbSemanas();
+    grafico("chart-onb-tempo", { type: "line",
+      data: { labels: onbEixo(lista), datasets: [{
+        label: "Dias até ativar", data: lista.map(s => s.tempo_medio_ativacao),
+        borderColor: C.blue, backgroundColor: C.blueFill, fill: true, tension: .3,
+        borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: C.blue,
+        pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
+        rotulo: { casas: 1, cor: C.blue } }] },
+      options: opcoes({ plugins: { legend: { display: false },
+          tooltip: { callbacks: { title: onbTitulo(lista),
+                                  label: c => fmt(c.parsed.y, 1) + " dias em média" } } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid },
+                       title: { display: true, text: "dias", font: { size: 10 } } },
+                  x: { grid: { display: false } } } }) });
+  }
+
+  function grafOnbAtivacao() {
+    const lista = onbSemanas();
+    /* A taxa das semanas ainda abertas fica pontilhada: elas nao cairam, so
+       nao tiveram tempo de ativar todo mundo. */
+    grafico("chart-onb-ativacao", {
+      data: { labels: onbEixo(lista), datasets: [
+        { type: "bar", label: "Ativados", data: lista.map(s => s.ativados),
+          backgroundColor: C.teal, borderRadius: 4, maxBarThickness: 26, yAxisID: "y",
+          rotulo: { casas: 0, cor: C.blue } },
+        { type: "line", label: "Taxa de ativação (%)",
+          data: lista.map(s => s.taxa_ativacao),
+          borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
+          pointRadius: lista.map(s => s.coorte_fechada ? 4 : 3),
+          pointStyle: lista.map(s => s.coorte_fechada ? "circle" : "triangle"),
+          pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y1",
+          segment: { borderDash: ctx => lista[ctx.p1DataIndex] && !lista[ctx.p1DataIndex].coorte_fechada
+                                        ? [5, 4] : undefined } } ] },
+      options: opcoes({ plugins: { legend: legenda(),
+          tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
+            const s = lista[itens[0].dataIndex];
+            if (!s) return "";
+            const base = s.cadastros + " cadastros na semana";
+            return s.coorte_fechada ? base
+              : base + " — turma ainda dentro da janela de " +
+                (S.onb.janela_ativacao_dias || 30) + " dias, a taxa ainda sobe";
+          } } } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  y1: { beginAtZero: true, max: 100, position: "right", grid: { display: false },
+                        ticks: { callback: v => v + "%" } },
+                  x: { grid: { display: false } } } }) });
+
+    const box = $("#onb-leitura");
+    if (!box) return;
+    const fechadas = lista.filter(s => s.coorte_fechada && s.taxa_ativacao !== null);
+    if (fechadas.length < 2) { box.innerHTML = ""; return; }
+    const ini = fechadas[0], fim = fechadas[fechadas.length - 1];
+    const dif = fim.taxa_ativacao - ini.taxa_ativacao;
+    const abertas = onbParciais(lista);
+    box.innerHTML = '<span class="rot">Leitura</span><span>' +
+      "Entre as turmas já fechadas, a taxa de ativação saiu de <b>" + fmt(ini.taxa_ativacao, 1) +
+      "%</b> na semana de " + ini.label + " para <b>" + fmt(fim.taxa_ativacao, 1) + "%</b> em " +
+      fim.label + (dif >= 0 ? " — subiu " : " — caiu ") + fmt(Math.abs(dif), 1) + " ponto" +
+      (Math.abs(dif) >= 2 ? "s" : "") + "." +
+      (abertas ? " As <b>" + abertas + " semanas mais recentes</b> aparecem pontilhadas porque a turma ainda está dentro da janela de ativação." : "") +
+      "</span>";
+  }
+
+  function grafOnbTemporarios() {
+    const lista = onbSemanas();
+    grafico("chart-onb-temporarios", { type: "bar",
+      data: { labels: onbEixo(lista), datasets: [{
+        label: "Temporários hoje", data: lista.map(s => s.temporarios),
+        backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 26,
+        rotulo: { casas: 0, cor: C.featured || "#202020" } }] },
+      options: opcoes({ plugins: { legend: { display: false },
+          tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
+            const s = lista[itens[0].dataIndex];
+            return s ? "de " + s.cadastros + " cadastros dessa semana" : "";
+          } } } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  x: { grid: { display: false } } } }) });
+  }
+
+  function grafOnbAssistido() {
+    const lista = onbSemanas(), hoje = (S.onb.hoje || {});
+    const det = hoje.detalhe_assistido || {};
+    const sub = $("#onb-assistido-sub");
+    if (sub) sub.innerHTML = "Cadastros que ainda dependem da operação para andar — hoje são <b>" +
+      (hoje.em_onboarding_assistido ?? 0) + "</b>: " +
+      [["Em validação", det.UNDER_REVIEW], ["Em revisão manual", det.PENDING_REVIEW],
+       ["Incompleto", det.INCOMPLETE]].filter(x => x[1]).map(x => x[1] + " " + x[0].toLowerCase()).join(", ") + ".";
+
+    grafico("chart-onb-assistido", { type: "bar",
+      data: { labels: onbEixo(lista), datasets: [{
+        label: "Aguardando a operação", data: lista.map(s => s.assistido),
+        backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 26,
+        rotulo: { casas: 0, cor: C.blue } }] },
+      options: opcoes({ plugins: { legend: { display: false },
+          tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
+            const s = lista[itens[0].dataIndex];
+            return s && s.cadastros ? fmt(100 * s.assistido / s.cadastros, 0) +
+              "% dos " + s.cadastros + " cadastros da semana" : "";
+          } } } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  x: { grid: { display: false } } } }) });
+  }
+
+  /* =====================================================================
+     OCORRÊNCIAS · comportamental × técnica
+     A classe nao vem do ticket: vem de data/classificacao_ocorrencias.json,
+     que traduz o motivo. O painel mostra essa traducao aberta, para quem le
+     poder discordar dela.
+     ===================================================================== */
+
+  const OC_CLASSES = [
+    ["comportamental", "Comportamental", "#ED1E79"],
+    ["tecnica", "Técnica", "#00C3C5"],
+    ["total", "Total", "#004474"]
+  ];
+
+  /** Meses em que vale desenhar as duas classes: antes disso o campo motivo
+      quase nao era preenchido e as linhas cairiam a zero sem motivo real. */
+  function ocMesesClassificados() {
+    const meses = Object.keys((S.oc && S.oc.meses) || {}).sort();
+    return meses.filter(k => {
+      const c = (S.oc.meses[k].por_classe) || {};
+      const total = (c.total && c.total.total) || 0;
+      const sem = (c.sem_classificacao && c.sem_classificacao.total) || 0;
+      return total > 0 && (total - sem) / total >= 0.8;
+    });
+  }
+
+  function grafOcClasse() {
+    const meses = ocMesesClassificados();
+    const sub = $("#oc-classe-sub");
+    if (!meses.length) {
+      if (sub) sub.textContent = "Nenhum mês tem motivo preenchido o bastante para separar as classes.";
+      grafico("chart-oc-classe", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      return;
+    }
+    if (sub) sub.innerHTML = "Mensal, pela data de abertura · <b>clique num mês</b> para abrir as semanas dele. " +
+      "A partir de " + mesLabel(meses[0]).toLowerCase() + " de " + meses[0].slice(0, 4) +
+      ", quando o motivo passou a ser preenchido.";
+
+    const valor = (mes, chave) => {
+      const c = (S.oc.meses[mes].por_classe) || {};
+      return c[chave] ? c[chave].total : null;
+    };
+    grafico("chart-oc-classe", { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: OC_CLASSES.map(([chave, rot, cor]) => ({
+        label: rot, data: meses.map(m => valor(m, chave)), borderColor: cor,
+        backgroundColor: chave === "total" ? C.blueFill : "transparent",
+        fill: chave === "total", borderWidth: chave === "total" ? 2.6 : 2.2, tension: .3,
+        pointRadius: meses.map(m => m === (S.ocMes || S.mes) ? 6 : 4),
+        pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 2,
+        spanGaps: true, rotulo: { casas: 0, cor: cor, soUltimo: true } })) },
+      options: opcoes({ onClick: (e, el) => aoClicarMesOc(el, meses),
+        layout: { padding: { right: 44 } },
+        plugins: { legend: legenda(),
+          tooltip: { callbacks: { afterBody: itens => {
+            const m = meses[itens[0].dataIndex], c = (S.oc.meses[m].por_classe) || {};
+            const sem = c.sem_classificacao ? c.sem_classificacao.total : 0;
+            return sem ? sem + " sem motivo preenchido" : "";
+          } } } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                  x: { grid: { display: false } } } }) });
+
+    const leg = $("#oc-classe-legenda");
+    const cfg = (S.oc && S.oc.classificacao) || null;
+    if (leg) leg.innerHTML = !cfg ? "" :
+      '<p class="nota-p">' + (cfg.por_que_existe || "") + "</p>" +
+      Object.keys(cfg.classes).map(k => {
+        const b = cfg.classes[k];
+        return '<div class="nota-classe"><b>' + b.rotulo + "</b> — " + b.definicao +
+          '<div class="nota-motivos">' + b.motivos.join(" · ") + "</div></div>";
+      }).join("") +
+      '<p class="nota-p">Para mudar, edite <code>data/classificacao_ocorrencias.json</code>. ' +
+      "Nada dessa divisão está escrito no código.</p>";
+  }
+
+  function aoClicarMesOc(elementos, meses) {
+    if (!elementos || !elementos.length) return;
+    const mes = meses[elementos[0].index];
+    if (!mes) return;
+    S.ocMes = mes;
+    const m = S.oc.meses[mes];
+    grafOcSemana(m);
+    tabelaOc(m);
+    grafOcClasse();
+    grafOcMensal();
+    $("#chart-oc-semana").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  /* =====================================================================
+     COMENTÁRIOS DO NPS
+     Uma tela sobre o painel, organizada por mês. Cada gráfico abre a sua
+     fatia: o de dimensões abre o tema escolhido, os outros abrem tudo.
+     ===================================================================== */
+
+  function comentariosDe(filtro) {
+    const f = filtro || {};
+    return ((S.com && S.com.comentarios) || []).filter(c =>
+      (!f.tema || c.tema === f.tema) && (!f.classe || c.classe === f.classe));
+  }
+
+  function abrirComentarios(filtro) {
+    S.comFiltro = Object.assign({ classe: "" }, filtro || {});
+    montarFiltrosCom();
+    desenharComentarios();
+
+    const painel = $("#com-painel");
+    painel.classList.add("aberto");
+    painel.setAttribute("aria-hidden", "false");
+    document.body.classList.add("sem-rolagem");
+    $("#com-corpo").scrollTop = 0;
+  }
+
+  /** O seletor de tema só oferece temas que existem nos dados coletados. */
+  function montarFiltrosCom() {
+    const temas = (S.com && S.com.temas) || [];
+    const sel = $("#com-tema");
+    if (sel && sel.options.length !== temas.length + 1) {
+      sel.innerHTML = '<option value="">Todos os temas</option>' +
+        temas.map(t => '<option value="' + t + '">' + t + "</option>").join("");
+    }
+    if (sel) sel.value = S.comFiltro.tema || "";
+    $$("#seg-com-classe button").forEach(b =>
+      b.classList.toggle("active", (b.dataset.classe || "") === (S.comFiltro.classe || "")));
+  }
+
+  function desenharComentarios() {
+    const lista = comentariosDe(S.comFiltro);
+    const caixa = $("#com-corpo");
+    $("#com-titulo").textContent = S.comFiltro.tema
+      ? "Comentários · " + S.comFiltro.tema : "Comentários do NPS";
+
+    if (!S.com) {
+      caixa.innerHTML = '<div class="empty">Os comentários ainda não foram coletados. ' +
+        "Rode <code>py scripts/fetch_comentarios.py</code>.</div>";
+    } else if (!lista.length) {
+      caixa.innerHTML = '<div class="empty">Nenhum comentário para este recorte.</div>';
+    } else {
+      const meses = {};
+      lista.forEach(c => (meses[c.mes] = meses[c.mes] || []).push(c));
+      caixa.innerHTML = Object.keys(meses).sort().reverse().map(mes => {
+        const doMes = meses[mes];
+        const cont = { promotor: 0, neutro: 0, detrator: 0 };
+        doMes.forEach(c => { if (cont[c.classe] !== undefined) cont[c.classe]++; });
+        return '<div class="com-mes"><div class="com-mes-cab">' +
+          "<b>" + mesLabel(mes) + " de " + mes.slice(0, 4) + "</b>" +
+          '<span class="com-cont">' + doMes.length + " comentários · " +
+          cont.promotor + " promotores, " + cont.neutro + " neutros, " +
+          cont.detrator + " detratores</span></div>" +
+          doMes.map(c =>
+            '<div class="com-item ' + (c.classe || "") + '">' +
+            '<div class="com-meta"><span class="com-tag">' + c.tema + "</span>" +
+            (c.nps === null ? "" : '<span class="com-nota tabular">NPS ' + c.nps + "</span>") +
+            (c.nota_tema === null || c.nota_tema === undefined ? ""
+              : '<span class="com-nota tabular">nota ' + c.nota_tema + "</span>") +
+            "</div><p>" + escapar(c.texto) + "</p></div>").join("") +
+          "</div>";
+      }).join("");
+    }
+  }
+
+  function fecharComentarios() {
+    const painel = $("#com-painel");
+    painel.classList.remove("aberto");
+    painel.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("sem-rolagem");
+  }
+
+  /** Texto do respondente vai para o HTML como texto, nunca como marcação. */
+  function escapar(txt) {
+    return String(txt).replace(/[&<>"]/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  }
+
+  /** Prende um botão "Exibir os comentários" embaixo de cada gráfico do NPS. */
+  function botoesDeComentario() {
+    const quantos = (S.com && S.com.comentarios || []).length;
+    ALVOS_COMENTARIO.forEach(([id, tema]) => {
+      const canvas = document.getElementById(id);
+      if (!canvas) return;
+      const card = canvas.closest(".card");
+      if (!card || card.querySelector(".btn-com")) return;
+      const b = document.createElement("button");
+      b.className = "btn-com";
+      b.type = "button";
+      b.textContent = "Exibir os comentários";
+      b.title = quantos ? quantos + " comentários coletados" : "Comentários ainda não coletados";
+      b.addEventListener("click", () => abrirComentarios(tema ? { tema } : null));
+      card.appendChild(b);
+    });
+  }
+
+  const ALVOS_COMENTARIO = [
+    ["chart-historico", null],
+    ["chart-radar", null],
+    ["chart-perguntas", null],
+    ["chart-evo-dim", null],
+    ["chart-evo-esp", null]
+  ];
+
+  function painelDeComentarios() {
+    const painel = $("#com-painel");
+    if (!painel) return;
+    painel.querySelectorAll("[data-fechar]").forEach(el =>
+      el.addEventListener("click", fecharComentarios));
+    $$("#seg-com-classe button").forEach(b => b.addEventListener("click", () => {
+      S.comFiltro.classe = b.dataset.classe || "";
+      montarFiltrosCom();
+      desenharComentarios();
+      $("#com-corpo").scrollTop = 0;
+    }));
+    const sel = $("#com-tema");
+    if (sel) sel.addEventListener("change", () => {
+      S.comFiltro.tema = sel.value || null;
+      desenharComentarios();
+      $("#com-corpo").scrollTop = 0;
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && painel.classList.contains("aberto")) fecharComentarios();
+    });
+  }
+
+
+  /* =====================================================================
+     ANÁLISE DE TICKETS  (subtópico de Suporte)
+     Mesma leitura dos cartões de FCR e CSAT: número grande do mês, evolução
+     logo abaixo, clique num mês para abrir as semanas. A fonte é a mesma das
+     Ocorrências — são os mesmos tickets, vistos pelo lado da operação.
+     ===================================================================== */
+
+  const IND_TICKET = [
+    { id: "tk_total",   rotulo: "Tickets abertos",   nota: "Volume do mês na Comunidade",
+      cor: "#004474", melhor: "baixo", casas: 0,
+      valor: m => m.total },
+    { id: "tk_fin",     rotulo: "Finalizados",       nota: "Encerrados de fato",
+      cor: "#00C643", melhor: "cima", casas: 0,
+      valor: m => m.finalizadas },
+    { id: "tk_aberto",  rotulo: "Em aberto",         nota: "Criados ou em progresso, ainda na fila",
+      cor: "#EDBB3B", melhor: "baixo", casas: 0,
+      valor: m => m.em_aberto },
+    { id: "tk_taxa",    rotulo: "Taxa de finalização", nota: "Finalizados sobre o total do mês",
+      cor: "#00C3C5", melhor: "cima", casas: 1, suf: "%",
+      valor: m => m.total ? 100 * m.finalizadas / m.total : null },
+    { id: "tk_sla",     rotulo: "SLA mediano",       nota: "Dias entre abertura e encerramento",
+      cor: "#ED1E79", melhor: "baixo", casas: 1, suf: " d",
+      valor: m => m.sla_mediano_dias ?? null },
+    { id: "tk_pico",    rotulo: "Caso mais longo",   nota: "Maior tempo até encerrar no mês",
+      cor: "#4A4A68", melhor: "baixo", casas: 1, suf: " d",
+      valor: m => m.sla_max_h === undefined ? null : m.sla_max_h / 24 }
+  ];
+
+  /** Meses de ticket em ordem, já com o bloco pronto para os indicadores. */
+  function tkMeses() {
+    const todos = Object.keys((S.oc && S.oc.meses) || {}).sort();
+    return todos.slice(-12);
+  }
+
+  function tickets() {
+    if (!S.oc) return;
+    const meses = tkMeses();
+    if (!meses.length) return;
+    const atual = S.tkMes && S.oc.meses[S.tkMes] ? S.tkMes : (meses.includes(S.mes) ? S.mes : meses[meses.length - 1]);
+    S.tkMes = atual;
+
+    const ref = $("#tk-ref");
+    if (ref) ref.innerHTML = "Os mesmos tickets da aba Ocorrências, lidos como fila de atendimento — " +
+      "Comunidade, sem Captação. Mês de referência: <b>" + mesLabel(atual).toLowerCase() +
+      " de " + atual.slice(0, 4) + "</b>.";
+
+    cartoesTicket(meses, atual);
+    seletorTkMes(meses);
+    grafTkSemana();
+  }
+
+  function cartoesTicket(meses, atual) {
+    const bloco = m => S.oc.meses[m];
+    const idx = meses.indexOf(atual);
+    const anterior = idx > 0 ? bloco(meses[idx - 1]) : null;
+
+    [["#tk-linha-1", 0, 3], ["#tk-linha-2", 3, 6]].forEach(([alvo, ini, fim]) => {
+      const box = $(alvo);
+      if (!box) return;
+      box.innerHTML = IND_TICKET.slice(ini, fim).map(ind => {
+        const v = ind.valor(bloco(atual));
+        const ant = anterior ? ind.valor(anterior) : null;
+        let delta = "";
+        if (v !== null && ant !== null && ant !== 0) {
+          const pct = (v - ant) / Math.abs(ant) * 100;
+          const bom = ind.melhor === "baixo" ? pct < 0 : pct > 0;
+          delta = '<span class="delta ' + (bom ? "up" : "down") + '">' +
+                  (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
+        }
+        return '<div class="card sup-card">' +
+          '<div class="metric-label">' + ind.rotulo + "</div>" +
+          '<div class="sup-num tabular">' +
+          (v === null ? "—" : fmt(v, ind.casas) + (ind.suf || "")) + delta + "</div>" +
+          '<div class="metric-note">' + ind.nota + "</div>" +
+          '<div class="sup-spark" title="Clique num mês para ver as semanas">' +
+          '<canvas id="spark-' + ind.id + '"></canvas></div></div>';
+      }).join("");
+    });
+
+    IND_TICKET.forEach(ind => {
+      const serie = meses.map(m => ind.valor(bloco(m)));
+      grafico("spark-" + ind.id, { type: "line",
+        data: { labels: meses.map(mesCurto), datasets: [{
+          data: serie, borderColor: ind.cor, backgroundColor: "transparent",
+          borderWidth: 2, tension: .3, spanGaps: true,
+          pointRadius: meses.map(m => m === atual ? 4 : 2),
+          pointBackgroundColor: meses.map(m => m === atual ? C.pink : ind.cor) }] },
+        options: opcoes({ onClick: (e, el) => aoClicarMesTicket(el, meses),
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: c => c.parsed.y === null ? "sem dado"
+                                     : fmt(c.parsed.y, ind.casas) + (ind.suf || "") } } },
+          scales: { y: { display: false }, x: { display: false } } }) });
+    });
+  }
+
+  function aoClicarMesTicket(elementos, meses) {
+    if (!elementos || !elementos.length) return;
+    const mes = meses[elementos[0].index];
+    if (!mes) return;
+    S.tkMes = mes;
+    tickets();
+    $("#chart-tk-semana").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function seletorTkMes(meses) {
+    const seg = $("#seg-tk-mes");
+    if (!seg) return;
+    const comSemanas = meses.filter(m => ((S.oc.meses[m].semanas) || []).length);
+    seg.innerHTML = comSemanas.slice(-6).map(m =>
+      '<button class="' + (m === S.tkMes ? "active" : "") + '" data-mes="' + m + '">' +
+      mesCurto(m) + "</button>").join("");
+    $$("#seg-tk-mes button").forEach(b => b.addEventListener("click", () => {
+      S.tkMes = b.dataset.mes;
+      tickets();
+    }));
+  }
+
+  function grafTkSemana() {
+    const bloco = S.oc.meses[S.tkMes] || {};
+    const sem = bloco.semanas || [];
+    const sub = $("#tk-sem-sub");
+    if (sub) sub.textContent = sem.length
+      ? "Semanas de " + mesLabel(S.tkMes).toLowerCase() + ", pela data de abertura"
+      : "Sem semanas para " + mesLabel(S.tkMes).toLowerCase() + ".";
+
+    grafico("chart-tk-semana", {
+      data: { labels: sem.map(x => x.label), datasets: [
+        { type: "bar", label: "Finalizados", data: sem.map(x => x.finalizadas),
+          backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 40, stack: "tk", yAxisID: "y",
+          rotulo: { casas: 0, cor: "#fff", abaixo: true } },
+        { type: "bar", label: "Em aberto", data: sem.map(x => x.em_aberto),
+          backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 40, stack: "tk", yAxisID: "y" },
+        { type: "line", label: "SLA mediano (dias)",
+          data: sem.map(x => x.sla_mediano_dias === undefined ? null : x.sla_mediano_dias),
+          borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
+          pointRadius: 4, pointBackgroundColor: C.pink, pointBorderColor: "#fff", pointBorderWidth: 2,
+          spanGaps: true, yAxisID: "y1", rotulo: { casas: 1, cor: C.pink } } ] },
+      options: opcoes({ plugins: { legend: legenda() },
+        scales: { y: { beginAtZero: true, stacked: true, grid: { color: C.grid } },
+                  y1: { beginAtZero: true, position: "right", grid: { display: false },
+                        title: { display: true, text: "dias", font: { size: 10 } } },
+                  x: { stacked: true, grid: { display: false } } } }) });
+  }
+
   const ROTULOS = {
     id: "rotulos",
     afterDatasetsDraw(chart) {
@@ -1782,11 +2363,13 @@
     topo();
 
     desenharMes();
+    botoesDeComentario();
+    painelDeComentarios();
 
     $$("#seg-hist button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-hist button").forEach(x => x.classList.toggle("active", x === b));
-      S.histCsat = b.dataset.series === "csat";
-      grafHistorico(S.histCsat);
+      S.histModo = b.dataset.series;
+      grafHistorico(S.histModo);
     }));
     $$("#seg-esp button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-esp button").forEach(x => x.classList.toggle("active", x === b));

@@ -70,6 +70,22 @@ try {
         Write-Warning $falhas[-1]
     }
 
+    Write-Output "== Buscando comentarios do i-NPS no Metabase =="
+    # Os comentarios sao a leitura qualitativa do mesmo NPS; se falharem, o
+    # painel abre a tela vazia e o resto continua de pe.
+    & $python scripts\fetch_comentarios.py
+    if ($LASTEXITCODE -ne 0) {
+        $falhas += "comentarios do i-NPS (codigo $LASTEXITCODE)"
+        Write-Warning $falhas[-1]
+    }
+
+    Write-Output "== Buscando onboarding no Metabase =="
+    & $python scripts\fetch_onboarding.py
+    if ($LASTEXITCODE -ne 0) {
+        $falhas += "onboarding (codigo $LASTEXITCODE)"
+        Write-Warning $falhas[-1]
+    }
+
     Write-Output "== Empacotando para o Apps Script =="
     & $python scripts\build_appscript.py
     if ($LASTEXITCODE -ne 0) {

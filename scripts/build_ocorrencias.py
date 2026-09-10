@@ -29,6 +29,7 @@ from datetime import datetime, timedelta, timezone
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SAIDA = os.path.join(RAIZ, "data", "ocorrencias.json")
+CLASSES = os.path.join(RAIZ, "data", "classificacao_ocorrencias.json")
 
 # A área é "Comunidade". Captação é uma frente própria e o painel não a cobre.
 PREFIXOS = ("Comunidade", "Treinamento")
@@ -36,6 +37,20 @@ EXCLUIR = ("capta",)
 
 MESES_PT = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho",
             7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
+
+
+def carregar_classes():
+    """Motivo -> comportamental ou tecnica.
+
+    O ticket nao tem esse campo; quem decide e a area, no arquivo
+    data/classificacao_ocorrencias.json. Aqui so lemos a decisao."""
+    with io.open(CLASSES, encoding="utf-8") as f:
+        cfg = json.load(f)
+    mapa = {}
+    for chave, bloco in cfg["classes"].items():
+        for motivo in bloco["motivos"]:
+            mapa[motivo.strip().lower()] = chave
+    return cfg, mapa
 
 
 def ler(caminho):
@@ -78,6 +93,21 @@ def resumo(itens):
     return dados
 
 
+def por_classe(itens):
+    """Comportamental, tecnica e o total — as tres linhas do grafico principal.
+
+    O total nao e a soma das duas: a maior parte das ocorrencias vem de
+    departamentos que nao preenchem motivo, e some-las daria um numero que nao
+    bate com a operacao."""
+    saida = {}
+    for classe in ("comportamental", "tecnica", "sem_classificacao"):
+        recorte = [i for i in itens if i["classe"] == classe]
+        if recorte:
+            saida[classe] = resumo(recorte)
+    saida["total"] = resumo(itens)
+    return saida
+
+
 def por_chave(itens, chave):
     saida = {}
     for i in itens:
@@ -89,6 +119,7 @@ def main():
     if len(sys.argv) < 2:
         sys.exit("uso: py scripts/build_ocorrencias.py <export.csv>")
 
+    cfg_classes, mapa_classes = carregar_classes()
     brutos = ler(sys.argv[1])
     itens = []
     for l in brutos:
@@ -104,9 +135,13 @@ def main():
         horas = None
         if status == "Finalizado" and fechou and fechou >= abriu:
             horas = (fechou - abriu).total_seconds() / 3600.0
+        # o Metabase exporta o campo aninhado como "Metadata: Reason"
+        motivo = (l.get("Metadata: Reason") or l.get("Reason") or "").strip()
         itens.append({
             "departamento": l["Department: Description"].strip(),
             "tipo": (l.get("Type: Description") or "—").strip(),
+            "motivo": motivo or "—",
+            "classe": mapa_classes.get(motivo.lower(), "sem_classificacao"),
             "status": status,
             "mes": abriu.strftime("%Y-%m"),
             "inicio_semana": (abriu - timedelta(days=abriu.weekday())).strftime("%Y-%m-%d"),
@@ -127,9 +162,12 @@ def main():
             label=MESES_PT[int(mes[5:7])],
             por_departamento=por_chave(doMes, "departamento"),
             por_tipo=por_chave(doMes, "tipo"),
+            por_motivo=por_chave([i for i in doMes if i["motivo"] != "—"], "motivo"),
+            por_classe=por_classe(doMes),
             semanas=[
                 dict(resumo(v), inicio=k,
-                     label=datetime.strptime(k, "%Y-%m-%d").strftime("%d/%m"))
+                     label=datetime.strptime(k, "%Y-%m-%d").strftime("%d/%m"),
+                     por_classe=por_classe(v))
                 for k, v in sorted(semanas.items())
             ],
         )
@@ -141,11 +179,21 @@ def main():
         "somente_finalizadas": False,
         "observacao": ("Todos os status entram na contagem. O SLA é calculado só "
                        "sobre as finalizadas, porque só nelas o encerramento é real."),
+        "classificacao": {
+            "fonte": "data/classificacao_ocorrencias.json",
+            "por_que_existe": cfg_classes.get("por_que_existe"),
+            "revisado_em": cfg_classes.get("revisado_em"),
+            "classes": {k: {"rotulo": v["rotulo"], "definicao": v["definicao"],
+                            "motivos": v["motivos"]}
+                        for k, v in cfg_classes["classes"].items()},
+        },
         "meses": saida_meses,
     }
     with io.open(SAIDA, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
-    print("OK: %d ocorrências em %d meses -> %s" % (len(itens), len(saida_meses), SAIDA))
+    classificadas = len([i for i in itens if i["classe"] != "sem_classificacao"])
+    print("OK: %d ocorrências em %d meses (%d classificadas) -> %s"
+          % (len(itens), len(saida_meses), classificadas, SAIDA))
 
 
 if __name__ == "__main__":

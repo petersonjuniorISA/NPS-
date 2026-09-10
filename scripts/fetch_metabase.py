@@ -58,6 +58,9 @@ CAMPOS = {
     "status": 1751,         # status.description
     "aberto_em": 1734,      # createdAt
     "fechado_em": 1725,     # updatedAt
+    "motivo": 5661,         # reason — so vem preenchido em Treinamento,
+                            # Onboarding e SAC ISAs, e e a unica pista de
+                            # comportamental x tecnica que o ticket guarda
 }
 
 
@@ -105,7 +108,7 @@ def consulta_mbql():
         "query": {
             "source-table": TABELA_TICKETS,
             "fields": [campo(n) for n in ("departamento", "tipo", "status",
-                                          "aberto_em", "fechado_em")],
+                                          "aberto_em", "fechado_em", "motivo")],
             # so a Comunidade interessa; o resto do ticket system e de outras areas
             "filter": ["starts-with", campo("departamento"), "Comunidade"],
         },
