@@ -120,7 +120,7 @@
 
   /* ---------- estado ---------- */
   const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, zt: null,
-              sacMes: null, ocMes: null, ocVista: "classe", tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,   // semana segue nula: o painel e sempre mensal
+              sacMes: null, ocMes: null, ocVista: "classe", ocRecorte: null, tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,   // semana segue nula: o painel e sempre mensal
              
               evoDim: null, evoEsp: null, pagina: "nps",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
@@ -349,8 +349,8 @@
         "Só o índice geral, a nota por dimensão e o NPS por especialidade existem nesse mês.</span></div>"
       : "";
 
-    heroi(); farol(); leitura();
-    espLista(); espDetalhe(); cruzamento();
+    heroi(); farol();
+    espLista(); espDetalhe();
     graficosDa(S.pagina);
   }
 
@@ -549,60 +549,6 @@
     });
   }
 
-  function leitura() {
-    const box = $("#notes"); box.innerHTML = "";
-    $("#notes-label").textContent = "Destaques do mês";
-    const mes = S.mes, k = dados().kpi, itens = [];
-
-    const stNps = status(objetivo("nps") || { id: "nps", casas: 1 }, mes);
-    if (stNps.meta && temNps()) {
-      const dif = k.nps_geral - stNps.meta;
-      itens.push({ t: dif >= 0 ? "up" : "down",
-        txt: "O NPS fechou <b>" + fmt(k.nps_geral,1) + "</b> contra meta de <b>" + fmt(stNps.meta,1) + "</b> — " +
-             (dif >= 0 ? fmt(dif,1) + " pontos acima" : fmt(Math.abs(dif),1) + " pontos abaixo") +
-             ", ou " + stNps.att + "% do esperado para " + mesLabel(mes).toLowerCase() + "." });
-    }
-
-    /* Sem seletor de semana, a comparacao semanal e feita sozinha: as duas
-       ultimas semanas do mes. E o movimento mais recente que existe. */
-    const semanas = semanasNps();
-    const ultima = semanas[semanas.length - 1], penultima = semanas[semanas.length - 2];
-    if (ultima && penultima) {
-      const dif = ultima.nps - penultima.nps;
-      itens.push({ t: dif >= 0 ? "up" : "down",
-        txt: "Da semana " + penultima.semana + " para a " + ultima.semana + " o NPS " +
-             (dif >= 0 ? "subiu <b>" : "caiu <b>") + fmt(Math.abs(dif), 1) + " pontos</b> (" +
-             fmt(penultima.nps, 1) + " → " + fmt(ultima.nps, 1) + ")." });
-    }
-    if (ultima && ultima.respostas < MIN_SEMANA) itens.push({ t: "down",
-      txt: "A última semana teve só <b>" + ultima.respostas + " respostas</b> — serve de sinal, não de conclusão." });
-
-    const objs = S.metas.objetivos || [];
-    const sts = objs.map(o => ({ o, st: status(o, mes) }));
-    const validos = sts.filter(x => !x.st.defasada && x.st.att !== null);
-    const noAlvo = validos.filter(x => (x.st.att || 0) >= 100).length;
-    const defasados = sts.filter(x => x.st.defasada);
-    itens.push({ t: noAlvo === validos.length ? "up" : noAlvo === 0 ? "down" : "",
-      txt: "<b>" + noAlvo + " de " + validos.length + " objetivos</b> com meta vigente estão no alvo" +
-           (defasados.length
-             ? ". <b>" + defasados.map(x => x.o.label).join(" e ") + "</b> já " +
-               (defasados.length > 1 ? "passaram" : "passou") + " o alvo de dezembro — a meta precisa ser revista."
-             : ".") });
-
-    const perg = [...(dados().media_por_pergunta || [])].sort((a,b) => b.media - a.media);
-    if (perg.length) itens.push({ t: "",
-      txt: "<b>" + perg[0].pergunta + "</b> sustenta a nota (" + fmt(perg[0].media,2) + ") e <b>" +
-           perg[perg.length-1].pergunta + "</b> é o que mais puxa para baixo (" + fmt(perg[perg.length-1].media,2) + ")." });
-
-    const maior = [...especialidades().relevantes].sort((a,b) => (b.pct_amostra ?? 0) - (a.pct_amostra ?? 0))[0];
-    if (maior && maior.pct_amostra !== null && maior.pct_amostra !== undefined) itens.push({ t: "",
-      txt: "<b>" + maior.especialidade + "</b> concentra " + fmt(maior.pct_amostra,1) +
-           "% das respostas" +
-           (maior.taxa_resposta ? " (" + fmt(maior.taxa_resposta,1) + "% dos convites do grupo foram respondidos)" : "") +
-           " — o índice geral se move principalmente com esse grupo." });
-
-    itens.forEach(i => box.appendChild(el("li", i.t, i.txt)));
-  }
 
   /* Evolucao do NPS: indice, promotores, neutros, detratores, meta e o volume
      de respostas — tudo num grafico so, como o board le.
@@ -664,59 +610,6 @@
                   y1: { min: 0, position: "right", grid: { display: false },
                         title: { display: true, text: "respostas", font: { size: 10 } } },
                   x: { grid: { display: false } } } }) });
-  }
-
-  /* ---------- Especialidade x dimensao ----------
-     Matriz de calor. A tabela que existia aqui pedia comparacao de cabeca
-     entre 6 colunas de decimais; a cor resolve isso antes da leitura. */
-  function cruzamento() {
-    const box = $("#cruz"), sub = null;
-    const linhas = (dados().satisfacao_por_especialidade || [])
-      .filter(l => (l.n || 0) >= MIN_AMOSTRA)
-      .sort((a, b) => (b.n || 0) - (a.n || 0));
-
-    if (!linhas.length) {
-      box.innerHTML = '<div class="empty">Sem especialidade com ' + MIN_AMOSTRA +
-        " respostas ou mais em " + mesLabel(S.mes).toLowerCase() + ".</div>";
-      if (sub) sub.textContent = "";
-      return;
-    }
-
-    const cols = DIMENSOES.slice();
-    const todos = [];
-    linhas.forEach(l => cols.forEach(c => { const v = l[c.key]; if (v != null) todos.push(v); }));
-    const menor = Math.min.apply(null, todos), maior = Math.max.apply(null, todos);
-
-    if (sub) sub.innerHTML = "Nota media de cada dimensao dentro de cada especialidade, " +
-      "de <b>" + fmt(menor, 2) + "</b> a <b>" + fmt(maior, 2) + "</b>. " +
-      "Só entram especialidades com " + MIN_AMOSTRA + " respostas ou mais.";
-
-    /* A cor vai do rosa ao teal da marca, esticada entre o menor e o maior do
-       proprio mes: numa escala fixa de 0 a 5 tudo ficaria da mesma cor. */
-    const tom = v => {
-      if (v == null) return "background:var(--gray-inactive,#E8EAED)";
-      const t = maior === menor ? .5 : (v - menor) / (maior - menor);
-      const cor = t < .5
-        ? "237,30,121"          // rosa: abaixo da media do mes
-        : "0,195,197";          // teal: acima
-      const forca = .12 + Math.abs(t - .5) * 1.5;
-      return "background:rgba(" + cor + "," + forca.toFixed(2) + ")";
-    };
-
-    const cab = '<div class="cruz-linha cruz-cab"><div class="cruz-nome"></div>' +
-      cols.map(c => '<div class="cruz-col">' + c.label.split(" ")[0] + "</div>").join("") +
-      '<div class="cruz-col">n</div></div>';
-
-    box.innerHTML = cab + linhas.map(l =>
-      '<div class="cruz-linha"><div class="cruz-nome" title="' + l.especialidade + '">' +
-      l.especialidade + "</div>" +
-      cols.map(c => {
-        const v = l[c.key];
-        return '<div class="cruz-cel tabular" style="' + tom(v) + '" title="' +
-          l.especialidade + " · " + c.label + '">' +
-          (v == null ? "—" : fmt(v, 2)) + "</div>";
-      }).join("") +
-      '<div class="cruz-cel cruz-n tabular">' + (l.n || 0) + "</div></div>").join("");
   }
 
   function minutosDeTempo(txt) {
@@ -1235,7 +1128,7 @@
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
           rotulo: { casas: 2, cor: C.cinzaMeta, soUltimo: true } } ] },
       options: opcoes({
-        onClick: (e, els) => popDoMes(els, meses, "csat_humano"),
+        onClick: (e, els) => popDoMes(els, meses),
         layout: { padding: { right: 52 } },
         plugins: { legend: legenda() },
         // escala de 1 a 5: e a escala da pergunta, e comecar em zero achata
@@ -1261,7 +1154,7 @@
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
           rotulo: { casas: 0, sufixo: "%", cor: C.cinzaMeta } } ] },
       options: opcoes({
-        onClick: (e, els) => popDoMes(els, meses, "fcr_pct"),
+        onClick: (e, els) => popDoMes(els, meses),
         layout: { padding: { right: 20 } },
         plugins: { legend: legenda(), tooltip: { callbacks: {
           label: c => c.dataset.label + ": " + fmt(c.parsed.y, 1) + "%" } } },
@@ -1271,14 +1164,63 @@
     });
   }
 
-  /** Clique num mes de um grafico grande do Suporte -> card flutuante. */
-  function popDoMes(elementos, meses, idIndicador) {
+  /* Clique num mes dos graficos grandes de CSAT ou FCR. Ali o card flutuante
+     mostra os dois indicadores juntos — era o combinado: "grafico de linha com
+     semana a semana dos dois indicadores (FCR e CSAT)". Nos cartoes menores
+     continua um de cada vez, porque e o indicador daquele cartao que se quer
+     abrir. */
+  function popDoMes(elementos, meses) {
     if (!elementos || !elementos.length) return;
     const mes = meses[elementos[0].index];
-    const ind = IND_SUPORTE.find(i => i.id === idIndicador);
-    if (!mes || !ind) return;
+    if (!mes) return;
     S.sacMes = mes;
-    popSuporte(ind);
+    popFcrCsat();
+  }
+
+  function popFcrCsat() {
+    const comSemana = mesesComSemana();
+    if (!comSemana.length) return;
+    const fcr = IND_SUPORTE.find(i => i.id === "fcr_pct");
+    abrirPop({
+      titulo: "FCR e CSAT semana a semana",
+      meses: comSemana,
+      mes: S.sacMes,
+      sub: m => "Realizado de " + mesLabel(m).toLowerCase() +
+        " · a meta é mensal, então não aparece aqui",
+      nota: m => {
+        const sem = zenSemanal(m);
+        const vals = sem.map(r => num(r.fcr_pct)).filter(v => v !== null);
+        if (vals.length < 2) return "";
+        const dif = vals[vals.length - 1] - vals[0];
+        return "FCR da primeira à última semana: <b>" + fmt(vals[0], 1) + "%</b> para <b>" +
+          fmt(vals[vals.length - 1], 1) + "%</b> — " +
+          (dif >= 0 ? "no sentido da meta." : "no sentido contrário.");
+      },
+      config: m => {
+        const sem = zenSemanal(m);
+        return { data: { labels: sem.map(r => "S" + r.semana +
+              (r.periodo ? " · " + r.periodo.replace(/ de \w+/i, "") : "")),
+          datasets: [
+            { type: "line", label: "FCR (%)", data: sem.map(r => num(r.fcr_pct)),
+              borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
+              borderWidth: 2.6, tension: .3, pointRadius: 5, pointBackgroundColor: C.blue,
+              pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true, yAxisID: "y",
+              rotulo: { casas: 1, sufixo: "%", cor: C.blue } },
+            { type: "line", label: "CSAT humano", data: sem.map(r => num(r.csat_humano)),
+              borderColor: C.pink, backgroundColor: "transparent",
+              borderWidth: 2.6, tension: .3, pointRadius: 5, pointBackgroundColor: C.pink,
+              pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true, yAxisID: "y1",
+              rotulo: { casas: 2, cor: C.pink, abaixo: true } } ] },
+          options: opcoes({ layout: { padding: { top: 18 } },
+            plugins: { legend: legenda() },
+            scales: { y: { min: 0, max: 100, grid: { color: C.grid },
+                           ticks: { callback: v => v + "%" },
+                           title: { display: true, text: "FCR", font: { size: 10 } } },
+                      y1: { min: 1, max: 5, position: "right", grid: { display: false },
+                            title: { display: true, text: "CSAT", font: { size: 10 } } },
+                      x: { grid: { display: false } } } }) };
+      }
+    });
   }
 
 /* =====================================================================
@@ -1347,10 +1289,8 @@
 
     seletorOcVista();
     grafOcClasse();
-    grafOcPorChave("chart-oc-vol-dep", "por_departamento", "total", 5, false);
-    grafOcPorChave("chart-oc-sla-dep", "por_departamento", "sla_mediano_dias", 5, true);
-    grafOcPorChave("chart-oc-vol-tipo", "por_tipo", "total", 6, false);
-    grafOcPorChave("chart-oc-sla-tipo", "por_tipo", "sla_mediano_dias", 6, true);
+    seletorOcRecorte();
+    grafOcRecorte();
   }
 
   /* Comportamental, tecnica, a soma das duas e os tres estados do ticket.
@@ -1438,6 +1378,34 @@
       }).join("") +
       '<p class="nota-p">Para mudar, edite <code>data/classificacao_ocorrencias.json</code>. ' +
       "Nada dessa divisão está escrito no código.</p>";
+  }
+
+/* Volume e SLA lado a lado, pelo recorte escolhido. Antes eram quatro
+     gráficos — departamento e tipo, cada um com volume e SLA — e a tela
+     pedia comparação entre pares distantes. Dois com seletor dizem o mesmo
+     com metade da rolagem. */
+  function seletorOcRecorte() {
+    if (!S.ocRecorte) S.ocRecorte = "departamento";
+    const sub = $("#oc-recorte-sub");
+    if (sub) sub.innerHTML = "Ocorrências abertas e dias até encerrar, por " +
+      S.ocRecorte + " · <b>clique num mês</b> para abrir as semanas";
+    $$("#seg-oc-recorte button").forEach(b => {
+      b.classList.toggle("active", b.dataset.recorte === S.ocRecorte);
+      if (b.dataset.ligado) return;
+      b.dataset.ligado = "1";
+      b.addEventListener("click", () => {
+        S.ocRecorte = b.dataset.recorte;
+        seletorOcRecorte();
+        grafOcRecorte();
+      });
+    });
+  }
+
+  function grafOcRecorte() {
+    const chave = S.ocRecorte === "tipo" ? "por_tipo" : "por_departamento";
+    const quantos = S.ocRecorte === "tipo" ? 6 : 5;
+    grafOcPorChave("chart-oc-volume", chave, "total", quantos, false);
+    grafOcPorChave("chart-oc-sla", chave, "sla_mediano_dias", quantos, true);
   }
 
   /** Uma linha por departamento (ou tipo), mes a mes — volume ou SLA. */

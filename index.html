@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=95">
+<link rel="stylesheet" href="css/styles.css?v=96">
 </head>
 <body>
 
@@ -172,18 +172,6 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Especialidade × dimensão</div>
-            <div class="card-sub" id="cruz-sub">Escala de 0 a 5</div>
-          </div>
-        </div>
-        <div class="cruz-wrap"><div class="cruz" id="cruz"></div></div>
-      </div>
-
-      <div class="section-label" id="notes-label">Destaques do mês</div>
-      <ul class="notes notes-largas" id="notes"></ul>
     </section>
 
     
@@ -285,45 +273,20 @@
         </details>
       </div>
 
-      <div class="grid grid-2" style="margin-top:16px;">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Volume por departamento</div>
-            </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Volume e SLA</div>
+            <div class="card-sub" id="oc-recorte-sub"></div>
           </div>
-          <div class="chart h300"><canvas id="chart-oc-vol-dep"></canvas></div>
+          <div class="seg" id="seg-oc-recorte">
+            <button class="active" data-recorte="departamento">Departamento</button>
+            <button data-recorte="tipo">Tipo</button>
+          </div>
         </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">SLA por departamento</div>
-              <div class="card-sub">Dias até encerrar</div>
-            </div>
-          </div>
-          <div class="chart h300"><canvas id="chart-oc-sla-dep"></canvas></div>
-        </div>
-      </div>
-
-      <div class="grid grid-2" style="margin-top:16px;">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Volume por tipo</div>
-            </div>
-          </div>
-          <div class="chart h300"><canvas id="chart-oc-vol-tipo"></canvas></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">SLA por tipo</div>
-              <div class="card-sub">Dias até encerrar</div>
-            </div>
-          </div>
-          <div class="chart h300"><canvas id="chart-oc-sla-tipo"></canvas></div>
+        <div class="grid grid-2">
+          <div class="chart h300"><canvas id="chart-oc-volume"></canvas></div>
+          <div class="chart h300"><canvas id="chart-oc-sla"></canvas></div>
         </div>
       </div>
 
@@ -375,8 +338,8 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=95"></script>
-<script src="js/app.js?v=95"></script>
+<script src="js/config.js?v=96"></script>
+<script src="js/app.js?v=96"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>

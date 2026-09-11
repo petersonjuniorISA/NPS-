@@ -414,6 +414,24 @@ selecionado, para copiar com Ctrl+C.
 O quadro **Focos do mês** que ficava aqui saiu: era texto solto, e esse espaço
 rende mais mostrando as metas contra o realizado.
 
+### 10.1 O que cada aba tem — e por quê só isso
+
+A aba mostra o que foi combinado, e nada além. Duas coisas que eu tinha
+acrescentado por conta saíram na revisão: o cruzamento **especialidade ×
+dimensão** e o quadro de **destaques do mês** na aba de NPS.
+
+| Aba | Conteúdo |
+|---|---|
+| **NPS** | Resultado do mês · evolução (índice, promotores, neutros, detratores, respostas) · evolução por dimensão · evolução por especialidade · NPS e detalhamento por especialidade · metas editáveis. Os três gráficos têm "Exibir os comentários". |
+| **Suporte** | 6 cartões em duas linhas (TMA, TMR, FCR / CSAT humano, CSAT IA, Resolução com IA) · CSAT (humano, IA, geral, meta) · FCR (realizado, meta) |
+| **Análise de tickets** | Volume atendido (humano, IA, geral) · fila, SLA e distribuição por assunto |
+| **Ocorrências** | Comportamental × técnica (classe ou situação) · volume e SLA lado a lado, por departamento ou tipo |
+| **Onboarding** | Tempo médio de ativação · ativados e taxa · temporários |
+
+Clicar num mês de qualquer gráfico mensal abre o card flutuante com a semana.
+No Suporte, o clique nos gráficos grandes de CSAT e FCR abre os dois juntos —
+era o combinado: "gráfico de linha com semana a semana dos dois indicadores".
+
 ### 11. Onde fica a Análise de tickets
 
 É uma aba própria, pendurada no Suporte dentro do menu: a seta ao lado de
