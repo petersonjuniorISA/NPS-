@@ -70,6 +70,15 @@ try {
         Write-Warning $falhas[-1]
     }
 
+    Write-Output "== Buscando tickets no Zendesk =="
+    # Sem credencial o script avisa e sai com 0: a aba de tickets cai
+    # nos tickets da Comunidade e o resto do painel segue igual.
+    & $python scripts\fetch_zendesk.py
+    if ($LASTEXITCODE -ne 0) {
+        $falhas += "Zendesk (codigo $LASTEXITCODE)"
+        Write-Warning $falhas[-1]
+    }
+
     Write-Output "== Buscando comentarios do i-NPS no Metabase =="
     # Os comentarios sao a leitura qualitativa do mesmo NPS; se falharem, o
     # painel abre a tela vazia e o resto continua de pe.

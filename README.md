@@ -405,21 +405,47 @@ de Suporte.
 "Suporte" abre o subitem. O grupo fica aberto enquanto qualquer uma das duas
 abas estiver em cima.
 
-**A aba mistura duas fontes, e diz isso na tela:**
+**A aba escolhe a fonte sozinha.** Se `data/zendesk_tickets.json` existir e
+tiver meses, ela lê o Zendesk. Se não, cai nos tickets da Comunidade
+(`data/ocorrencias.json`), que já chegam pelo Metabase — assim a aba nunca
+fica vazia esperando credencial.
 
-| Bloco | Fonte | Como atualiza |
-|---|---|---|
-| Volume atendido (humano / IA / geral) | Zendesk | à mão, em `data/zendesk_semanal.csv` |
-| Fila da Comunidade (abertos, SLA, assuntos) | Metabase | automático, `fetch_metabase.py` |
+| Com Zendesk | Sem Zendesk |
+|---|---|
+| Humano / IA contados por ticket | Preenchidos à mão no CSV |
+| Assunto vem da tag do ticket | Assunto vem do tipo da ocorrência |
+| Semanal mostra Humano × IA | Semanal mostra Comportamental × Técnica |
 
-O segundo bloco lê `data/ocorrencias.json` — a mesma base das Ocorrências. A
-diferença é a pergunta: Ocorrências olha o que aconteceu (classe, departamento,
-tipo); aqui se olha a fila (quanto entra, quanto sai, quanto tempo leva).
+### Ligar o Zendesk
 
-> **Pendência:** o ticket de suporte do Zendesk não está no Metabase, só os da
-> Comunidade estão. Se o Zendesk entrar no Databricks (a conferir com o Akira),
-> o bloco de volume passa a ser automático e os dois blocos falam da mesma
-> operação.
+O Zendesk **não está no Metabase** (lá só existem os tickets da Comunidade,
+que são de operação de cuidado). A única porta é a API REST:
+
+```bash
+powershell -File scripts\salvar_chave_zendesk.ps1
+```
+
+Pede subdomínio, e-mail e token de API — o token se cria em *Zendesk > Admin
+Center > Apps e integrações > APIs > Tokens de API*. Fica cifrado com DPAPI em
+`~/.nps-isas/zendesk.json`, o mesmo esquema da chave do Metabase, e nunca vai
+para o Git.
+
+Depois disso, `scripts/fetch_zendesk.py` roda junto da atualização de sexta e
+grava `data/zendesk_tickets.json`. Sem credencial ele avisa e sai com 0 — não
+derruba o resto.
+
+> **Antes de confiar na divisão humano × IA, rode o diagnóstico:**
+>
+> ```bash
+> py scripts/fetch_zendesk.py --diagnostico
+> ```
+>
+> O ticket do Zendesk **não tem** um campo "foi a IA que atendeu". O que existe
+> são tags e canal, e cada conta usa os seus. O diagnóstico lista os canais,
+> status e tags que realmente aparecem, e diz que percentual a regra atual
+> classifica como IA. Se não bater com o que a operação sabe, ajuste
+> `data/classificacao_zendesk.json` — as tags padrão ali são os nomes comuns do
+> Zendesk (`ai_agent_solved`, `answer_bot_solved`), não os confirmados da ISA.
 
 Na barra lateral compacta (781–1140px, só ícones) a seta e o submenu somem —
 ali não cabe subitem escrito.
@@ -459,6 +485,8 @@ data/zendesk_semanal.csv            FCR, CSAT, TMA, TMR e narrativa      (a mao)
 data/metas.json                     Metas do semestre                    (a mao)
 data/ocorrencias.json               Volume e SLA de tickets              <- fetch_metabase
 data/classificacao_ocorrencias.json Motivo -> comportamental / tecnica   (a mao)
+data/zendesk_tickets.json           Tickets de suporte                   <- fetch_zendesk
+data/classificacao_zendesk.json     Tag/canal -> humano ou IA            (a mao)
 data/comentarios.json               Texto livre do i-NPS                 <- fetch_comentarios
 data/onboarding.json                Funil semanal de ativacao            <- fetch_onboarding
 data/focos.json                     Focos do mes, texto livre            (a mao)
@@ -468,6 +496,8 @@ scripts/fetch_metabase.py           Baixa o CSV de tickets e chama o build
 scripts/build_ocorrencias.py        CSV de tickets -> ocorrencias.json
 scripts/fetch_comentarios.py        Comentarios do i-NPS (Metabase / Survey)
 scripts/fetch_onboarding.py         Onboarding semanal (Metabase / Professional)
+scripts/fetch_zendesk.py            Tickets de suporte (API do Zendesk)
+scripts/salvar_chave_zendesk.ps1    Guarda a credencial do Zendesk com DPAPI
 scripts/build_appscript.py          Embute tudo num HTML so -> dist/appscript/
 scripts/bump_versao.py              Sobe o ?v= dos assets (evita cache velho)
 scripts/weekly_update.ps1           Orquestra tudo — roda toda sexta, 18h

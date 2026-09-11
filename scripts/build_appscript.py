@@ -44,6 +44,7 @@ DADOS = {
     "onboarding": "data/onboarding.json",
     "comentarios": "data/comentarios.json",
     "focos": "data/focos.json",
+    "zendesk_tickets": "data/zendesk_tickets.json",
 }
 
 
@@ -56,10 +57,22 @@ def compacta_json(texto):
     return json.dumps(json.loads(texto), ensure_ascii=False, separators=(",", ":"))
 
 
+# fontes que dependem de credencial e podem nao existir ainda: entram como
+# null e o painel escolhe outro caminho, em vez de o empacotamento quebrar
+OPCIONAIS = ("zendesk_tickets",)
+
+
 def montar_dados():
     """Monta o objeto window.DADOS. JSON vira objeto; CSV vira string."""
     partes = []
     for nome, arquivo in DADOS.items():
+        caminho = os.path.join(RAIZ, arquivo)
+        if not os.path.exists(caminho):
+            if nome not in OPCIONAIS:
+                raise SystemExit("ERRO: falta %s, que o painel precisa." % arquivo)
+            print("   (sem %s — o painel usa a fonte alternativa)" % arquivo)
+            partes.append('"%s":null' % nome)
+            continue
         bruto = ler(arquivo)
         valor = compacta_json(bruto) if arquivo.endswith(".json") else json.dumps(bruto, ensure_ascii=False)
         partes.append('"%s":%s' % (nome, valor))

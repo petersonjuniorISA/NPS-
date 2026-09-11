@@ -1,0 +1,49 @@
+{
+ "por_que_existe": "O Zendesk nao tem um campo 'foi a IA que atendeu'. O que existe sao tags, canal e a ausencia de responsavel humano. Este arquivo diz como o painel le esses sinais. Rode `py scripts/fetch_zendesk.py --diagnostico` para ver as tags e canais que realmente aparecem na conta antes de confiar nesta lista.",
+ "quem_revisa": "ISA Experience",
+ "revisado_em": null,
+
+ "ia": {
+  "rotulo": "IA",
+  "definicao": "Conversa resolvida pelo agente automatico, sem um atendente assumir.",
+  "tags": [
+   "ai_agent",
+   "ai_agent_solved",
+   "ai_agent_resolved",
+   "answer_bot_solved",
+   "autoreply",
+   "resolvido_por_ia",
+   "resolucao_ia"
+  ],
+  "canais": [
+   "ai_agent"
+  ],
+  "sem_responsavel_conta_como_ia": false
+ },
+
+ "assunto": {
+  "por_que_existe": "A distribuicao por assunto sai de uma tag. Aqui se diz quais tags sao de assunto — sem isso toda tag viraria uma linha do grafico.",
+  "campo": "tags",
+  "prefixo": null,
+  "ignorar": [
+   "ai_agent",
+   "ai_agent_solved",
+   "ai_agent_resolved",
+   "answer_bot_solved",
+   "autoreply",
+   "resolvido_por_ia",
+   "resolucao_ia",
+   "web",
+   "email",
+   "chat",
+   "messaging"
+  ]
+ },
+
+ "status": {
+  "por_que_existe": "Traducao dos status do Zendesk para as tres caixas que o painel usa.",
+  "finalizado": ["solved", "closed"],
+  "em_aberto": ["new", "open", "pending", "hold"],
+  "cancelado": []
+ }
+}

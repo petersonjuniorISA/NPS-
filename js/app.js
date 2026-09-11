@@ -119,7 +119,7 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, focos: null,
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, focos: null, zt: null,
               sacMes: null, ocMes: null, ocVista: "classe", tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,   // semana segue nula: o painel e sempre mensal
              
               evoDim: null, evoEsp: null, pagina: "nps",
@@ -168,18 +168,19 @@
   }
 
   async function carregar() {
-    const [nps, metas, zen, oc, onb, com, foc] = await Promise.all([
+    const [nps, metas, zen, oc, onb, com, foc, zt] = await Promise.all([
       buscarJson("nps", "data/nps.json", null),
       buscarJson("metas", "data/metas.json", { objetivos: [] }),
       carregarZendesk(),
       buscarJson("ocorrencias", "data/ocorrencias.json", null),
       buscarJson("onboarding", "data/onboarding.json", null),
       buscarJson("comentarios", "data/comentarios.json", null),
-      buscarJson("focos", "data/focos.json", null)
+      buscarJson("focos", "data/focos.json", null),
+      buscarJson("zendesk_tickets", "data/zendesk_tickets.json", null)
     ]);
     if (!nps) throw new Error("Não consegui carregar os dados de NPS.");
     S.nps = nps; S.metas = metas; S.zendesk = zen; S.oc = oc;
-    S.onb = onb; S.com = com; S.focos = foc;
+    S.onb = onb; S.com = com; S.focos = foc; S.zt = zt;
   }
 
   async function carregarZendesk() {
@@ -1234,6 +1235,11 @@
     return Object.keys((S.oc && S.oc.meses) || {}).sort().slice(-OC_MESES);
   }
 
+  /** Os meses da aba de tickets, que pode estar lendo outra base. */
+  function tkMesesSerie() {
+    return Object.keys(baseTickets().meses).sort().slice(-OC_MESES);
+  }
+
   function ocorrencias() {
     if (!S.oc) return;
     const mes = (S.ocMes && S.oc.meses[S.ocMes]) ? S.ocMes : S.mes;
@@ -1398,23 +1404,29 @@
   function popOcorrencias(elementos, meses) {
     if (!elementos || !elementos.length) return;
     const mes = meses[elementos[0].index];
-    if (!mes || !S.oc.meses[mes]) return;
+    const base = S.pagina === "tickets" ? baseTickets() : { meses: (S.oc && S.oc.meses) || {} };
+    if (!mes || !base.meses[mes]) return;
     if (S.pagina === "tickets") { S.tkMes = mes; tickets(); }
     else { S.ocMes = mes; ocorrencias(); }
-    const comSemanas = meses.filter(m => ((S.oc.meses[m] || {}).semanas || []).length);
+    const comSemanas = meses.filter(m => ((base.meses[m] || {}).semanas || []).length);
+    // as duas bases nao contam a mesma coisa, entao nem o nome nem as linhas
+    // podem ser os mesmos: o Zendesk sabe quem atendeu, a Comunidade sabe a
+    // classe da ocorrencia
+    const zendesk = base.fonte === "zendesk";
+    const nome = zendesk ? "tickets" : "ocorrências";
     abrirPop({
-      titulo: "Ocorrências semana a semana",
+      titulo: (zendesk ? "Tickets" : "Ocorrências") + " semana a semana",
       meses: comSemanas,
       mes: mes,
-      sub: m => "Semanas de " + mesLabel(m).toLowerCase() + ", pela data de abertura da ocorrência",
+      sub: m => "Semanas de " + mesLabel(m).toLowerCase(),
       nota: m => {
-        const sem = (S.oc.meses[m] || {}).semanas || [];
+        const sem = (base.meses[m] || {}).semanas || [];
         const abertas = sem.reduce((a, x) => a + x.em_aberto, 0);
-        return abertas ? "<b>" + abertas + "</b> ocorrências do mês seguem em aberto — elas não entram no SLA."
+        return abertas ? "<b>" + abertas + "</b> " + nome + " do mês seguem em aberto — não entram no SLA."
                        : "";
       },
       config: m => {
-        const sem = (S.oc.meses[m] || {}).semanas || [];
+        const sem = (base.meses[m] || {}).semanas || [];
         const classe = (x, k) => (x.por_classe && x.por_classe[k]) ? x.por_classe[k].total : null;
         return { data: { labels: sem.map(x => x.label), datasets: [
             { type: "bar", label: "Finalizadas", data: sem.map(x => x.finalizadas),
@@ -1424,14 +1436,23 @@
               backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y" },
             { type: "bar", label: "Canceladas", data: sem.map(x => x.canceladas),
               backgroundColor: C.cinzaMeta, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y" },
-            { type: "line", label: "Comportamental", data: sem.map(x => classe(x, "comportamental")),
-              borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
-              pointRadius: 4, pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y",
-              rotulo: { casas: 0, cor: C.pink } },
-            { type: "line", label: "Técnica", data: sem.map(x => classe(x, "tecnica")),
-              borderColor: C.teal, backgroundColor: "transparent", borderWidth: 2, tension: .3,
-              pointRadius: 4, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y",
-              rotulo: { casas: 0, cor: "#009193", abaixo: true } },
+            ...(zendesk
+              ? [{ type: "line", label: "Humano", data: sem.map(x => x.humano ?? null),
+                   borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
+                   pointRadius: 4, pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y",
+                   rotulo: { casas: 0, cor: C.pink } },
+                 { type: "line", label: "IA", data: sem.map(x => x.ia ?? null),
+                   borderColor: C.teal, backgroundColor: "transparent", borderWidth: 2, tension: .3,
+                   pointRadius: 4, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y",
+                   rotulo: { casas: 0, cor: "#009193", abaixo: true } }]
+              : [{ type: "line", label: "Comportamental", data: sem.map(x => classe(x, "comportamental")),
+                   borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
+                   pointRadius: 4, pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y",
+                   rotulo: { casas: 0, cor: C.pink } },
+                 { type: "line", label: "Técnica", data: sem.map(x => classe(x, "tecnica")),
+                   borderColor: C.teal, backgroundColor: "transparent", borderWidth: 2, tension: .3,
+                   pointRadius: 4, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y",
+                   rotulo: { casas: 0, cor: "#009193", abaixo: true } }]),
             { type: "line", label: "SLA mediano (dias)",
               data: sem.map(x => x.sla_mediano_dias === undefined ? null : x.sla_mediano_dias),
               borderColor: C.chumbo, backgroundColor: "transparent", borderWidth: 2.4, tension: .3,
@@ -1453,6 +1474,20 @@
      Os mesmos tickets das Ocorrencias, lidos como fila: cartoes no formato
      dos de FCR e CSAT, e a distribuicao por assunto em linha.
      ===================================================================== */
+
+/* ---------- De onde a Analise de tickets le ----------
+     O Zendesk e a fonte certa: e de la que vem o ticket de suporte. Mas ele
+     depende de credencial, e ate ela existir a aba nao pode ficar vazia —
+     entao ela cai nos tickets da Comunidade, que estao no Metabase e ja
+     chegam sozinhos. As duas bases tem o mesmo formato de propósito. */
+  function baseTickets() {
+    const zen = S.zt && S.zt.meses && Object.keys(S.zt.meses).length ? S.zt : null;
+    return zen
+      ? { meses: zen.meses, fonte: "zendesk", rotulo: "Zendesk",
+          temIa: true, chaveAssunto: "por_assunto", info: zen }
+      : { meses: (S.oc && S.oc.meses) || {}, fonte: "comunidade", rotulo: "Comunidade (Metabase)",
+          temIa: false, chaveAssunto: "por_tipo", info: S.oc };
+  }
 
   const IND_TICKET = [
     { id: "tk_total",  rotulo: "Tickets abertos", nota: "Volume do mês na Comunidade",
@@ -1478,20 +1513,23 @@
   ];
 
   function tickets() {
-    if (!S.oc) return;
-    const meses = ocMesesSerie();
+    const base = baseTickets();
+    const meses = tkMesesSerie();
     if (!meses.length) return;
-    const atual = (S.tkMes && S.oc.meses[S.tkMes]) ? S.tkMes
+    const atual = (S.tkMes && base.meses[S.tkMes]) ? S.tkMes
                 : (meses.includes(S.mes) ? S.mes : meses[meses.length - 1]);
     S.tkMes = atual;
 
 
-    const mensal = zenMensal();
-    const mesVol = mensal.some(r => r.mes === atual) ? atual
-                 : (mensal.length ? mensal[mensal.length - 1].mes : null);
-    cartoesVolume(mensal, mesVol);
+    if (base.temIa) cartoesVolumeZendesk(meses, atual, base);
+    else {
+      const mensal = zenMensal();
+      const mesVol = mensal.some(r => r.mes === atual) ? atual
+                   : (mensal.length ? mensal[mensal.length - 1].mes : null);
+      cartoesVolume(mensal, mesVol);
+    }
 
-    cartoesTicket(meses, atual);
+    cartoesTicket(meses, atual, base);
     seletorIndAssunto();
     grafTkAssunto();
   }
@@ -1574,6 +1612,63 @@
     }));
   }
 
+/* Com o Zendesk ligado, humano e IA sao contagem de ticket, nao numero
+     digitado: cada ticket ja chega marcado pela regra de
+     data/classificacao_zendesk.json. */
+  function cartoesVolumeZendesk(meses, atual, base) {
+    const box = $("#tk-volume");
+    if (!box) return;
+    const bloco = m => base.meses[m] || {};
+    const idx = meses.indexOf(atual);
+    const antes = idx > 0 ? bloco(meses[idx - 1]) : null;
+    const b = bloco(atual);
+
+    const linhas = [
+      { id: "vol_humano", rotulo: "Total humano", valor: m => m.humano ?? null,
+        nota: "Conversas que um atendente tocou" },
+      { id: "vol_ia", rotulo: "Total IA", valor: m => m.ia ?? null,
+        nota: "Conversas resolvidas pelo agente automático" },
+      { id: "vol_geral", rotulo: "Total geral", valor: m => m.total ?? null,
+        nota: "Humano + IA" }
+    ];
+
+    box.innerHTML = linhas.map(ind => {
+      const v = ind.valor(b), ant = antes ? ind.valor(antes) : null;
+      let delta = "";
+      if (v !== null && ant !== null && ant !== 0) {
+        const pct = (v - ant) / Math.abs(ant) * 100;
+        delta = '<span class="delta ' + (pct >= 0 ? "up" : "down") + '">' +
+                (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
+      }
+      let nota = ind.nota;
+      if (ind.id === "vol_geral" && v) nota = fmt(100 * (b.ia || 0) / v, 1) + "% resolvido pela IA";
+      return '<div class="card sup-card" data-volz="' + ind.id + '">' +
+        '<div class="metric-label">' + ind.rotulo + "</div>" +
+        '<div class="sup-num tabular">' + (v === null ? "—" : fmt(v, 0)) + delta + "</div>" +
+        '<div class="metric-note">' + nota + "</div>" +
+        '<div class="sup-spark"><canvas id="spark-' + ind.id + '"></canvas></div></div>';
+    }).join("");
+
+    linhas.forEach(ind => {
+      grafico("spark-" + ind.id, { type: "line",
+        data: { labels: meses.map(mesCurto), datasets: [{
+          label: ind.rotulo, data: meses.map(m => ind.valor(bloco(m))),
+          borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
+          borderWidth: 2.2, tension: .35, spanGaps: true,
+          pointRadius: meses.map(m => m === atual ? 4.5 : 3),
+          pointBackgroundColor: meses.map(m => m === atual ? C.pink : C.blue),
+          pointBorderColor: "#fff", pointBorderWidth: 1.5,
+          rotulo: { casas: 0, cor: C.blue } }] },
+        options: opcoes({ onClick: (e, el) => popOcorrencias(el, meses),
+          layout: { padding: { top: 14, bottom: 2 } },
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: c => c.parsed.y === null ? "sem dado"
+                                     : fmt(c.parsed.y, 0) + " conversas" } } },
+          scales: { y: { display: false, grace: "26%" },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 }, color: C.text } } } }) });
+    });
+  }
+
   /** Semana a semana do volume, no mesmo card flutuante do resto do painel. */
   function popVolume(ind) {
     const meses = mesesComSemana();
@@ -1603,8 +1698,8 @@
     });
   }
 
-  function cartoesTicket(meses, atual) {
-    const bloco = m => S.oc.meses[m];
+  function cartoesTicket(meses, atual, base) {
+    const bloco = m => base.meses[m];
     const idx = meses.indexOf(atual);
     const anterior = idx > 0 ? bloco(meses[idx - 1]) : null;
 
@@ -1667,9 +1762,10 @@
 
   /** Distribuicao por assunto: uma linha por tipo de ticket, mes a mes. */
   function grafTkAssunto() {
-    const meses = ocMesesSerie();
+    const base = baseTickets();
+    const meses = tkMesesSerie();
     const ind = IND_ASSUNTO.find(i => i.id === S.tkInd) || IND_ASSUNTO[0];
-    const bloco = m => (S.oc.meses[m] || {}).por_tipo || {};
+    const bloco = m => (base.meses[m] || {})[base.chaveAssunto] || {};
 
     const soma = {};
     meses.forEach(m => Object.entries(bloco(m)).forEach(([nome, v]) =>
