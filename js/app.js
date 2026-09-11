@@ -562,7 +562,7 @@
     if (!b) return;
     b.addEventListener("click", () => {
       editandoMetas = !editandoMetas;
-      b.textContent = editandoMetas ? "Concluir" : "Editar metas";
+      b.textContent = editandoMetas ? "Concluir" : "Editar";
       b.classList.toggle("ativo", editandoMetas);
       farol();
     });

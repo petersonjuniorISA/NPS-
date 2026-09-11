@@ -993,13 +993,25 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
 /* trajetória dentro do quadro do NPS — ocupa a linha inteira, abaixo do
    número e do medidor */
+/* O quadro do NPS leva mais largura que o padrao de 1.45fr: dentro dele ha um
+   grafico de oito meses, e cada mes precisa caber o proprio numero e o da
+   meta. O card de metas ao lado e uma lista curta — perde pouco com o aperto. */
+@media (min-width: 981px) { .grid-nps { grid-template-columns: 2fr 1fr; } }
+
 .hero-chart {
   grid-column: 1 / -1;
-  height: 110px; margin-top: var(--lg);
+  /* 110px nao davam conta: com a meta de cada mes sao nove numeros no mesmo
+     espaco, e a linha do realizado ficava espremida contra a do alvo */
+  height: 200px; margin-top: var(--lg);
   padding-top: var(--md); border-top: 1px solid rgba(255, 255, 255, .15);
 }
 .hero-chart canvas { width: 100% !important; }
-@media (max-width: 980px) { .hero-chart { height: 96px; } }
+@media (max-width: 980px) { .hero-chart { height: 150px; } }
+
+/* com o quadro do NPS mais largo, o card de metas encolheu: o título não pode
+   quebrar em duas linhas por causa do botão ao lado */
+.grid-nps > .card .card-title { white-space: nowrap; }
+.grid-nps > .card .btn-acao { padding: 0 14px; }
 
 </style>
 </head>
@@ -1064,7 +1076,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
     <!-- ============ NPS ============ -->
     <section class="page active" id="page-nps">
-      <div class="grid grid-wide">
+      <div class="grid grid-wide grid-nps">
         <div class="hero">
           <div>
             <div class="hero-label">NPS · <span id="hero-month">—</span></div>
@@ -1103,7 +1115,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
               <div class="card-sub" id="metas-sub"></div>
             </div>
             <div class="metas-acoes">
-              <button class="btn-acao" type="button" id="btn-editar-metas">Editar metas</button>
+              <button class="btn-acao" type="button" id="btn-editar-metas">Editar</button>
             </div>
           </div>
           <div class="farol" id="farol"></div>
@@ -1908,7 +1920,7 @@ window.NPS_CONFIG = {
     if (!b) return;
     b.addEventListener("click", () => {
       editandoMetas = !editandoMetas;
-      b.textContent = editandoMetas ? "Concluir" : "Editar metas";
+      b.textContent = editandoMetas ? "Concluir" : "Editar";
       b.classList.toggle("ativo", editandoMetas);
       farol();
     });
