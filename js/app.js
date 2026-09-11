@@ -1235,9 +1235,10 @@
     return Object.keys((S.oc && S.oc.meses) || {}).sort().slice(-OC_MESES);
   }
 
-  /** Os meses da aba de tickets, que pode estar lendo outra base. */
+  /** Os meses da aba de tickets — vazio enquanto o Zendesk nao estiver ligado. */
   function tkMesesSerie() {
-    return Object.keys(baseTickets().meses).sort().slice(-OC_MESES);
+    const base = baseTickets();
+    return base ? Object.keys(base.meses).sort().slice(-OC_MESES) : [];
   }
 
   function ocorrencias() {
@@ -1404,8 +1405,9 @@
   function popOcorrencias(elementos, meses) {
     if (!elementos || !elementos.length) return;
     const mes = meses[elementos[0].index];
-    const base = S.pagina === "tickets" ? baseTickets() : { meses: (S.oc && S.oc.meses) || {} };
-    if (!mes || !base.meses[mes]) return;
+    const base = S.pagina === "tickets" ? baseTickets()
+               : { meses: (S.oc && S.oc.meses) || {}, fonte: "comunidade" };
+    if (!base || !mes || !base.meses[mes]) return;
     if (S.pagina === "tickets") { S.tkMes = mes; tickets(); }
     else { S.ocMes = mes; ocorrencias(); }
     const comSemanas = meses.filter(m => ((base.meses[m] || {}).semanas || []).length);
@@ -1475,18 +1477,17 @@
      dos de FCR e CSAT, e a distribuicao por assunto em linha.
      ===================================================================== */
 
-/* ---------- De onde a Analise de tickets le ----------
-     O Zendesk e a fonte certa: e de la que vem o ticket de suporte. Mas ele
-     depende de credencial, e ate ela existir a aba nao pode ficar vazia —
-     entao ela cai nos tickets da Comunidade, que estao no Metabase e ja
-     chegam sozinhos. As duas bases tem o mesmo formato de propósito. */
+  /* ---------- De onde a Analise de tickets le ----------
+     So do Zendesk. Ocorrencia da Comunidade e ticket de suporte sao
+     populacoes diferentes — uma e operacao de cuidado (alteracao de PAD, furo
+     de escala), a outra e o ISA pedindo ajuda no chat. Ja emprestei os numeros
+     de uma para a outra enquanto o Zendesk nao vinha; era numero certo com
+     rotulo errado, que e pior do que numero nenhum. */
   function baseTickets() {
     const zen = S.zt && S.zt.meses && Object.keys(S.zt.meses).length ? S.zt : null;
     return zen
-      ? { meses: zen.meses, fonte: "zendesk", rotulo: "Zendesk",
-          temIa: true, chaveAssunto: "por_assunto", info: zen }
-      : { meses: (S.oc && S.oc.meses) || {}, fonte: "comunidade", rotulo: "Comunidade (Metabase)",
-          temIa: false, chaveAssunto: "por_tipo", info: S.oc };
+      ? { meses: zen.meses, fonte: "zendesk", chaveAssunto: "por_assunto", info: zen }
+      : null;
   }
 
   const IND_TICKET = [
@@ -1515,19 +1516,28 @@
   function tickets() {
     const base = baseTickets();
     const meses = tkMesesSerie();
-    if (!meses.length) return;
-    const atual = (S.tkMes && base.meses[S.tkMes]) ? S.tkMes
+
+    filaDeTickets(base);
+
+    // o mes de referencia e o mesmo para os dois blocos da aba: sem isso o
+    // volume mostraria setembro enquanto a fila mostra agosto
+    const atual = !meses.length ? null
+                : base.meses[S.tkMes] ? S.tkMes
                 : (meses.includes(S.mes) ? S.mes : meses[meses.length - 1]);
-    S.tkMes = atual;
+    if (atual) S.tkMes = atual;
 
-
-    if (base.temIa) cartoesVolumeZendesk(meses, atual, base);
-    else {
+    // o volume vem do Zendesk nos dois casos: contado pela API, ou digitado
+    // no CSV enquanto a API nao existe
+    if (base && atual) cartoesVolumeZendesk(meses, atual, base);
+    else if (!base) {
       const mensal = zenMensal();
-      const mesVol = mensal.some(r => r.mes === atual) ? atual
+      const mesVol = mensal.some(r => r.mes === S.mes) ? S.mes
                    : (mensal.length ? mensal[mensal.length - 1].mes : null);
       cartoesVolume(mensal, mesVol);
     }
+
+    if (!base || !atual) return;
+
 
     cartoesTicket(meses, atual, base);
     seletorIndAssunto();
@@ -1698,6 +1708,31 @@
     });
   }
 
+/* Sem Zendesk nao ha fila para mostrar. O quadro diz o que falta em vez de
+     deixar a secao em branco — e em vez de preenche-la com outra coisa. */
+  function filaDeTickets(base) {
+    const vazio = $("#tk-vazio"), corpo = $("#tk-fila");
+    if (!vazio || !corpo) return;
+    if (base) {
+      vazio.innerHTML = "";
+      corpo.hidden = false;
+      return;
+    }
+    corpo.hidden = true;
+    vazio.innerHTML =
+      '<div class="card aguardando">' +
+      '<div class="card-title">Esperando a conexão com o Zendesk</div>' +
+      '<p>Volume aberto, tempo de resolução e distribuição por assunto saem do ' +
+      'Zendesk, que é onde o ticket de suporte nasce. Enquanto a API não estiver ' +
+      'ligada, esta parte fica vazia de propósito: os tickets da Comunidade que ' +
+      'aparecem na aba <b>Ocorrências</b> são outra coisa — operação de cuidado, ' +
+      'não atendimento ao ISA — e mostrá-los aqui seria número certo com rótulo ' +
+      'errado.</p>' +
+      '<p class="passo">Para ligar: <code>powershell -File scripts\\salvar_chave_zendesk.ps1</code>' +
+      '<br>O token precisa ser gerado por alguém com papel de admin no Zendesk.</p>' +
+      "</div>";
+  }
+
   function cartoesTicket(meses, atual, base) {
     const bloco = m => base.meses[m];
     const idx = meses.indexOf(atual);
@@ -1763,6 +1798,7 @@
   /** Distribuicao por assunto: uma linha por tipo de ticket, mes a mes. */
   function grafTkAssunto() {
     const base = baseTickets();
+    if (!base) return;
     const meses = tkMesesSerie();
     const ind = IND_ASSUNTO.find(i => i.id === S.tkInd) || IND_ASSUNTO[0];
     const bloco = m => (base.meses[m] || {})[base.chaveAssunto] || {};

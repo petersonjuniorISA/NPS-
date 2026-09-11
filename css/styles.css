@@ -866,3 +866,19 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 /* a idade do dado fica discreta; passou de uma semana, ela avisa */
 .updated.velho { color: var(--caution, #ED7B3B); }
 .updated.velho svg { stroke: var(--caution, #ED7B3B); }
+
+/* bloco que explica uma fonte que ainda não chegou */
+.card.aguardando { border-left: 3px solid var(--caution, #ED7B3B); }
+.card.aguardando p {
+  margin: 10px 0 0; font-size: 13px; line-height: 1.55;
+  color: var(--gray-body, #666E80); max-width: 76ch;
+}
+.card.aguardando b { color: var(--blue-dark, #004474); }
+.card.aguardando .passo {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--gray-inactive, #E8EAED); font-size: 12.5px;
+}
+.card.aguardando code {
+  background: var(--gray-bg, #F4F6F9); padding: 2px 6px; border-radius: 5px;
+  font-size: 12px; color: var(--featured, #202020);
+}

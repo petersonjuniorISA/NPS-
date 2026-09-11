@@ -405,16 +405,22 @@ de Suporte.
 "Suporte" abre o subitem. O grupo fica aberto enquanto qualquer uma das duas
 abas estiver em cima.
 
-**A aba escolhe a fonte sozinha.** Se `data/zendesk_tickets.json` existir e
-tiver meses, ela lê o Zendesk. Se não, cai nos tickets da Comunidade
-(`data/ocorrencias.json`), que já chegam pelo Metabase — assim a aba nunca
-fica vazia esperando credencial.
+**Ela lê só o Zendesk.** Ocorrência da Comunidade e ticket de suporte são
+populações diferentes — uma é operação de cuidado (alteração de PAD, furo de
+escala), a outra é o ISA pedindo ajuda no chat. Durante um tempo esta aba caiu
+nas ocorrências enquanto o Zendesk não vinha; era número certo com rótulo
+errado, que é pior do que número nenhum.
 
-| Com Zendesk | Sem Zendesk |
-|---|---|
-| Humano / IA contados por ticket | Preenchidos à mão no CSV |
-| Assunto vem da tag do ticket | Assunto vem do tipo da ocorrência |
-| Semanal mostra Humano × IA | Semanal mostra Comportamental × Técnica |
+A aba tem dois blocos, com dependências diferentes:
+
+| Bloco | Fonte | Sem a API do Zendesk |
+|---|---|---|
+| **Volume atendido** (humano / IA / geral) | Zendesk | Funciona — vem do CSV, digitado à mão |
+| **Fila de atendimento** (abertos, SLA, assunto) | Zendesk | Fica oculto, com um quadro dizendo o que falta |
+
+Os dois blocos sempre falam do mesmo mês. Quando o Zendesk está ligado, o
+volume passa a ser contado por ticket em vez de digitado, e o card semanal
+mostra Humano × IA.
 
 ### Ligar o Zendesk
 
