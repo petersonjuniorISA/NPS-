@@ -53,50 +53,23 @@ O painel tem quatro fontes de dados, com níveis de automação diferentes:
    a seção "Ocorrências (Metabase)" abaixo. Sem a chave, o passo é pulado com
    um aviso e a atualização do NPS segue normalmente.
 
-## Navegar entre meses e semanas
+## Qual recorte o painel mostra
 
-O seletor no topo do painel troca o mês de referência de **tudo**: resumo
-executivo, farol das metas, NPS por especialidade, indicadores de Zendesk e
-alavancas. O mês mais recente vem selecionado por padrão, e o ponto rosa no
-gráfico de evolução marca qual mês está sendo lido.
+Não há seletor de mês nem de semana. O painel abre sempre no **mês mais
+recente com dado** e é isso que ele mostra — tirar a escolha foi decisão de
+produto: quem lê o painel quer o número de agora, não um arquivo navegável.
 
-O `data/nps.json` guarda o detalhamento de **todos** os meses da série
-(campo `meses`) e a quebra semanal de cada um (campo `semanas`) — então
-nenhum mês perde o detalhe quando um novo entra. Dentro de "NPS em detalhe",
-o bloco **Semana a semana** mostra o NPS de cada semana do mês escolhido
-(segunda a domingo, pela data em que a pessoa respondeu), com volume de
-respostas e a divisão promotor / neutro / detrator.
+No lugar do seletor, o topo mostra **há quanto tempo o dado foi coletado**
+("Atualizado há 4 dias"), que passa a laranja depois de oito dias — a coleta é
+semanal, então acima disso alguma automação falhou.
 
-Ao lado do mês há o **seletor de semana** (Mês inteiro / S1 / S2 / S3…).
-Escolher uma semana recalcula o painel inteiro para aquele recorte: NPS
-geral, composição promotor/neutro/detrator, nota por dimensão, NPS por
-especialidade e a tabela de satisfação. Clicar num cartão de semana faz o
-mesmo — e clicar de novo volta pro mês inteiro.
+O detalhe semanal não sumiu: ele aparece no **card flutuante**, ao clicar em
+qualquer mês de qualquer gráfico mensal. É o mesmo dado, só que puxado quando
+alguém quer olhar, em vez de virar um estado do painel inteiro.
 
-Duas coisas continuam **mensais** de propósito, e o aviso no topo diz isso:
-
-- **O medidor de meta e o farol.** As metas do semestre são mensais;
-  comparar uma semana solta com a meta do mês daria um atingimento que não
-  quer dizer nada. Com uma semana selecionada, o medidor mostra "Realizado
-  no mês".
-- **Zendesk e alavancas.** Vêm do CSV preenchido à mão, cuja numeração de
-  semana é própria e não bate necessariamente com as semanas do NPS.
-
-Semanas com menos de 20 respostas aparecem marcadas como **parcial** (cartão
-pontilhado, ponto vazado no gráfico) — o número existe, mas não sustenta
-leitura de tendência. Ao filtrar por uma dessas semanas, a leitura do
-recorte avisa explicitamente.
-
-Meses sem respostas ainda (o mês corrente no começo, por exemplo) aparecem
-normalmente: os cartões de NPS ficam com "—" e um aviso no topo explica, mas
-Zendesk e alavancas continuam disponíveis.
-
-> **Sobre "ver setembro":** o mês de um respondente vem do `reference_month`
-> da tabela, que é o mês da *campanha* de NPS — não a data em que a pessoa
-> respondeu. Por isso respostas que chegaram no começo de setembro ainda
-> contam para agosto (aparecem na última semana de agosto, com o rótulo
-> "31/8 a 6/9"). Setembro só vira um mês próprio no seletor quando a
-> campanha de setembro for disparada.
+O `data/nps.json` continua guardando todos os meses (campo `meses`) e a quebra
+semanal de cada um (`semanas`) — nenhum mês perde detalhe quando um novo
+entra. O que mudou é que o painel não pergunta mais qual deles você quer.
 
 ## Configuração — passo a passo
 

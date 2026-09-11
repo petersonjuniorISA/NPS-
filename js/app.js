@@ -120,7 +120,8 @@
 
   /* ---------- estado ---------- */
   const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, focos: null,
-              sacMes: null, ocMes: null, ocVista: "classe", tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,
+              sacMes: null, ocMes: null, ocVista: "classe", tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,   // semana segue nula: o painel e sempre mensal
+             
               evoDim: null, evoEsp: null, pagina: "nps",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
@@ -142,40 +143,14 @@
     } : null;
   }
   const semanasNps = mes => (S.nps.semanas || {})[mes || S.mes] || [];
-  /** A semana selecionada no topo, ou null quando o recorte é o mês inteiro. */
-  const semanaAtual = () =>
-    S.semana === null ? null : semanasNps().find(s => s.semana === S.semana) || null;
+
+  /** Sempre devolve uma estrutura utilizável, mesmo em mês sem respostas. */
+  const dados = mes => blocoDoMes(mes) || SEM_DADOS;
+  const temNps = mes => blocoDoMes(mes) !== null;
 
   /** "notion" para os meses apurados à mão, "databricks" para os da tabela. */
   const origemDoMes = mes => (blocoDoMes(mes) || {}).origem || "databricks";
   const doNotion = mes => origemDoMes(mes) === "notion";
-
-  /** Recorte em vigor: a semana escolhida, senão o mês. */
-  function bloco(mes) {
-    if (!mes && S.semana !== null) {
-      const s = semanaAtual();
-      // uma semana que sumiu (troca de mês) cai de volta pro mês inteiro
-      if (s && s.kpi) return s;
-    }
-    return blocoDoMes(mes);
-  }
-  /** Sempre devolve uma estrutura utilizável, mesmo em recorte sem respostas. */
-  const dados = mes => bloco(mes) || SEM_DADOS;
-  const temNps = mes => bloco(mes) !== null;
-  /** Como chamar o recorte atual em texto: "agosto de 2026" ou "semana 2". */
-  function recorteLabel() {
-    const s = semanaAtual();
-    return s ? "semana " + s.semana + " (" + s.label + ")"
-             : mesLabel(S.mes).toLowerCase() + " de " + S.mes.slice(0, 4);
-  }
-
-  /** Todos os meses que têm algum dado — de NPS ou de Zendesk. */
-  function mesesDisponiveis() {
-    const doNps = Object.keys(S.nps.meses || {});
-    const doHist = (S.nps.historico_nps || []).map(h => h.mes);
-    const doZen = S.zendesk.map(r => r.mes).filter(Boolean);
-    return Array.from(new Set([...doNps, ...doHist, ...doZen])).sort();
-  }
 
   /* Os dados chegam de dois jeitos, e o painel aceita os dois sem saber a
      diferença: servidos como arquivo (GitHub Pages, servidor local) ou já
@@ -289,11 +264,11 @@
 
   /* ---------- navegação ---------- */
   const PAGES = {
-    nps:         { t: "NPS", s: "Onde estamos, o que puxa e o que os ISAs escreveram" },
-    sac:         { t: "Suporte", s: "FCR, tempos de atendimento e satisfação" },
-    tickets:     { t: "Análise de tickets", s: "Os tickets da Comunidade lidos como fila de atendimento" },
-    ocorrencias: { t: "Ocorrências", s: "Volume, classe e tempo de encerramento na Comunidade" },
-    onboarding:  { t: "Onboarding", s: "Da inscrição ao primeiro plantão, semana a semana" }
+    nps:         { t: "NPS" },
+    sac:         { t: "Suporte" },
+    tickets:     { t: "Análise de tickets" },
+    ocorrencias: { t: "Ocorrências" },
+    onboarding:  { t: "Onboarding" }
   };
 
   function navegacao() {
@@ -312,7 +287,6 @@
     $$(".nav-item, .nav-sub-item").forEach(b => b.classList.toggle("active", b.dataset.page === p));
     $$(".page").forEach(x => x.classList.toggle("active", x.id === "page-" + p));
     $("#page-title").textContent = PAGES[p].t;
-    $("#page-sub").textContent = PAGES[p].s;
     $("#sidebar").classList.remove("open");
     $$(".nav-grupo").forEach(g =>
       g.classList.toggle("aberto", !!g.querySelector('[data-page="' + p + '"]')));
@@ -329,49 +303,6 @@
      de altura e o que interessa nao e ela estar visivel, e sim a leitura ja
      ter chegado nela. */
 
-  function topo() {
-    const d = new Date(S.nps.generated_at);
-    const txt = "Atualizado em " + d.toLocaleDateString("pt-BR") + " às " +
-                d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    $("#updated-text").textContent = txt;
-    $("#foot-updated").textContent = txt;
-
-    const sel = $("#month-select");
-    const meses = mesesDisponiveis().reverse();   // mais recente primeiro
-    sel.innerHTML = "";
-    meses.forEach(m => {
-      const o = el("option");
-      o.value = m;
-      o.textContent = mesLabel(m) + " de " + m.slice(0, 4);
-      if (m === S.mes) o.selected = true;
-      sel.appendChild(o);
-    });
-    sel.disabled = meses.length <= 1;
-    sel.addEventListener("change", () => {
-      S.mes = sel.value;
-      S.semana = null;      // semana 2 de agosto não é semana 2 de setembro
-      S.espSel = null;
-      seletorSemanas();
-      desenharMes();
-    });
-
-    seletorSemanas();
-    $("#week-select").addEventListener("change", e => {
-      S.semana = e.target.value === "" ? null : Number(e.target.value);
-      S.espSel = null;
-      desenharMes();
-    });
-  }
-
-  /** Preenche o seletor de semanas com as semanas do mês selecionado. */
-  function seletorSemanas() {
-    const sel = $("#week-select"), sem = semanasNps();
-    sel.innerHTML = '<option value="">Mês inteiro</option>' +
-      sem.map(s => '<option value="' + s.semana + '">S' + s.semana + " · " + s.label +
-        (s.respostas < MIN_SEMANA ? " (parcial)" : "") + "</option>").join("");
-    sel.value = S.semana === null ? "" : String(S.semana);
-    sel.hidden = sem.length === 0;
-  }
 
   function aviso(msg) {
     const slot = $("#alert-slot"); slot.innerHTML = "";
@@ -383,19 +314,39 @@
 
   /* ---------- RESUMO EXECUTIVO ---------- */
   /** Redesenha tudo que depende do mês selecionado. */
+  /* O painel nao pergunta mais o mes: mostra sempre o mais recente que tem
+     dado. Em vez do seletor, o que fica no topo e a idade do numero — e isso
+     que diz se da para confiar nele agora. */
+  function topo() {
+    const d = new Date(S.nps.generated_at);
+    const data = d.toLocaleDateString("pt-BR") + " às " +
+                 d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const horas = (Date.now() - d.getTime()) / 36e5;
+    const idade = horas < 1 ? "agora há pouco"
+                : horas < 24 ? "há " + Math.round(horas) + "h"
+                : "há " + Math.round(horas / 24) + " dia" + (horas >= 48 ? "s" : "");
+
+    const caixa = $("#updated-box");
+    if (caixa) caixa.title = "Atualizado em " + data;
+    $("#updated-text").textContent = "Atualizado " + idade;
+    // acima de uma semana o dado ja passou da proxima coleta
+    if (caixa) caixa.classList.toggle("velho", horas > 24 * 8);
+
+    const rodape = $("#foot-updated");
+    if (rodape) rodape.textContent = "Atualizado em " + data;
+  }
+
   function desenharMes() {
-    const slot = $("#alert-slot"), sem = semanaAtual();
-    const cerca = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-                  '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>';
-    slot.innerHTML =
-      !temNps() ? '<div class="notice">' + cerca + "<span>Ainda não há respostas de NPS em " +
-                  recorteLabel() + ". Os indicadores de Zendesk continuam disponíveis.</span></div>"
-      : doNotion() ? '<div class="notice">' + cerca + "<span><b>" + mesLabel(S.mes) +
-              "</b> vem da apuração manual do Notion, anterior à entrada do NPS no Databricks. " +
-              "Só o índice geral, a nota por dimensão e o NPS por especialidade foram preservados.</span></div>"
-      : sem ? '<div class="notice">' + cerca + "<span>Recorte da <b>semana " + sem.semana + "</b> (" +
-              sem.label + ", " + sem.respostas + " respostas). As metas do semestre e os números de Zendesk " +
-              "continuam mensais.</span></div>"
+    /* So um aviso sobrevive: o mes apurado a mao no Notion nao tem a mesma
+       quebra que os do Databricks, e quem le precisa saber disso. */
+    const slot = $("#alert-slot");
+    slot.innerHTML = !temNps()
+      ? '<div class="notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>' +
+        "<span>Ainda não há respostas de NPS em " + mesLabel(S.mes).toLowerCase() + ".</span></div>"
+      : doNotion()
+      ? '<div class="notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>' +
+        "<span><b>" + mesLabel(S.mes) + "</b> foi apurado à mão, antes de o NPS entrar no Databricks. " +
+        "Só o índice geral, a nota por dimensão e o NPS por especialidade existem nesse mês.</span></div>"
       : "";
 
     heroi(); farol(); focos(); leitura();
@@ -420,29 +371,25 @@
   }
 
   function heroi() {
-    const k = dados().kpi, mes = S.mes, sem = semanaAtual();
-    $("#hero-month").textContent = sem
-      ? "Semana " + sem.semana + " · " + sem.label
-      : mesLabel(mes) + " de " + mes.slice(0,4);
+    const k = dados().kpi, mes = S.mes;
+    $("#hero-month").textContent = mesLabel(mes) + " de " + mes.slice(0, 4);
     conta($("#hero-nps"), k.nps_geral, 1);
     $("#hero-desc").textContent =
-      !temNps() ? "Ainda não há respostas de NPS em " + recorteLabel() + "."
+      !temNps() ? "Ainda não há respostas de NPS em " + mesLabel(mes).toLowerCase() + "."
       : k.total_respostas === null
-        ? "Mês apurado à mão, antes de o NPS entrar no Databricks. Só o índice geral foi preservado."
-        : "Calculado sobre " + k.total_respostas + " respostas de " +
-          (k.convites_enviados ? k.convites_enviados + " convites" : "campanha") +
-          ". NPS é a diferença entre o percentual de promotores e o de detratores.";
+        ? "Mês apurado à mão, antes do Databricks."
+        : k.total_respostas + " respostas de " +
+          (k.convites_enviados ? k.convites_enviados + " convites" : "campanha");
 
     const tag = $("#hero-tag");
     if (typeof k.nps_geral_variacao_pct === "number") {
       const sobe = k.nps_geral_variacao_pct >= 0;
       tag.className = "hero-tag " + (sobe ? "up" : "down");
-      tag.textContent = (sobe ? "+" : "−") + fmt(Math.abs(k.nps_geral_variacao_pct),1) +
-                        "% vs. " + (sem ? "semana anterior" : "mês anterior");
+      tag.textContent = (sobe ? "+" : "−") + fmt(Math.abs(k.nps_geral_variacao_pct), 1) +
+                        "% vs. mês anterior";
     } else {
       tag.className = "hero-tag";
-      tag.textContent = !temNps() ? "sem respostas ainda"
-                      : sem ? "primeira semana do mês" : "primeiro mês da série";
+      tag.textContent = temNps() ? "primeiro mês da série" : "sem respostas ainda";
     }
 
     const total = k.promotores + k.neutros + k.detratores || 1;
@@ -470,7 +417,7 @@
       conta($("#meter-pct"), pct, 0, "%");
       const objNps = objetivo("nps") || {};
       $("#meter-list").innerHTML =
-        "<div><span>Realizado" + (sem ? " no mês" : "") + "</span><b>" + fmt(kMes.nps_geral,1) + "</b></div>" +
+        "<div><span>Realizado</span><b>" + fmt(kMes.nps_geral,1) + "</b></div>" +
         "<div><span>Meta do mês</span><b>" + fmt(meta,1) + "</b></div>" +
         "<div><span>Alvo de dezembro</span><b>" + fmt(objNps.alvo_final, 0) + "</b></div>";
     } else {
@@ -503,11 +450,11 @@
 
   function leitura() {
     const box = $("#notes"); box.innerHTML = "";
-    $("#notes-label").textContent = S.semana === null ? "Leitura do mês" : "Leitura da semana";
+    $("#notes-label").textContent = "Destaques do mês";
     const mes = S.mes, k = dados().kpi, itens = [];
 
     const stNps = status(objetivo("nps") || { id: "nps", casas: 1 }, mes);
-    if (stNps.meta && temNps() && S.semana === null) {   // a meta é mensal
+    if (stNps.meta && temNps()) {
       const dif = k.nps_geral - stNps.meta;
       itens.push({ t: dif >= 0 ? "up" : "down",
         txt: "O NPS fechou <b>" + fmt(k.nps_geral,1) + "</b> contra meta de <b>" + fmt(stNps.meta,1) + "</b> — " +
@@ -515,20 +462,19 @@
              ", ou " + stNps.att + "% do esperado para " + mesLabel(mes).toLowerCase() + "." });
     }
 
-    const sem = semanaAtual();
-    if (sem) {
-      const anteriores = semanasNps().filter(s => s.semana < sem.semana);
-      const antes = anteriores[anteriores.length - 1];
-      if (antes) {
-        const dif = sem.nps - antes.nps;
-        itens.push({ t: dif >= 0 ? "up" : "down",
-          txt: "Da semana " + antes.semana + " para a " + sem.semana + " o NPS " +
-               (dif >= 0 ? "subiu <b>" : "caiu <b>") + fmt(Math.abs(dif),1) + " pontos</b> (" +
-               fmt(antes.nps,1) + " → " + fmt(sem.nps,1) + ")." });
-      }
-      if (sem.respostas < MIN_SEMANA) itens.push({ t: "down",
-        txt: "São só <b>" + sem.respostas + " respostas</b> nesta semana — o número serve de sinal, não de conclusão." });
+    /* Sem seletor de semana, a comparacao semanal e feita sozinha: as duas
+       ultimas semanas do mes. E o movimento mais recente que existe. */
+    const semanas = semanasNps();
+    const ultima = semanas[semanas.length - 1], penultima = semanas[semanas.length - 2];
+    if (ultima && penultima) {
+      const dif = ultima.nps - penultima.nps;
+      itens.push({ t: dif >= 0 ? "up" : "down",
+        txt: "Da semana " + penultima.semana + " para a " + ultima.semana + " o NPS " +
+             (dif >= 0 ? "subiu <b>" : "caiu <b>") + fmt(Math.abs(dif), 1) + " pontos</b> (" +
+             fmt(penultima.nps, 1) + " → " + fmt(ultima.nps, 1) + ")." });
     }
+    if (ultima && ultima.respostas < MIN_SEMANA) itens.push({ t: "down",
+      txt: "A última semana teve só <b>" + ultima.respostas + " respostas</b> — serve de sinal, não de conclusão." });
 
     const objs = S.metas.objetivos || [];
     const sts = objs.map(o => ({ o, st: status(o, mes) }));
@@ -624,13 +570,10 @@
      area escolheu mexer neste mes. O quadro de "Resolucao com IA" que morava
      aqui saiu — era um indicador solto, e indicador ja tem lugar no farol. */
   function focos() {
-    const box = $("#focos"), sub = $("#focos-sub");
+    const box = $("#focos");
     const cfg = S.focos || {};
     const doMes = (cfg.meses || {})[S.mes] || (cfg.meses || {})[cfg.padrao] || null;
 
-    if (sub) sub.textContent = doMes && doMes.subtitulo
-      ? doMes.subtitulo
-      : "Escritos a mão em data/focos.json";
 
     if (!doMes || !(doMes.itens || []).length) {
       box.innerHTML = '<li class="empty">Sem focos escritos para ' +
@@ -651,14 +594,14 @@
      Matriz de calor. A tabela que existia aqui pedia comparacao de cabeca
      entre 6 colunas de decimais; a cor resolve isso antes da leitura. */
   function cruzamento() {
-    const box = $("#cruz"), sub = $("#cruz-sub");
+    const box = $("#cruz"), sub = null;
     const linhas = (dados().satisfacao_por_especialidade || [])
       .filter(l => (l.n || 0) >= MIN_AMOSTRA)
       .sort((a, b) => (b.n || 0) - (a.n || 0));
 
     if (!linhas.length) {
       box.innerHTML = '<div class="empty">Sem especialidade com ' + MIN_AMOSTRA +
-        " respostas ou mais em " + recorteLabel() + ".</div>";
+        " respostas ou mais em " + mesLabel(S.mes).toLowerCase() + ".</div>";
       if (sub) sub.textContent = "";
       return;
     }
@@ -819,14 +762,11 @@
 
   function grafEvolucaoDimensoes() {
     const eixo = eixoTempo(eixoDe("evoDim", "seg-evo-dim"));
-    const sub = $("#evo-dim-sub");
     if (eixo.length < 2) {
-      if (sub) sub.textContent = "Precisa de pelo menos dois períodos com resposta para desenhar a evolução.";
       grafico("chart-evo-dim", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
       $("#leitura-dim").innerHTML = "";
       return;
     }
-    if (sub) sub.textContent = "Nota de cada dimensão período a período · escala de 0 a 5";
 
     // o rotulo vai no ultimo periodo com amostra cheia — pendurar o numero
     // numa semana parcial daria destaque ao dado menos confiavel
@@ -861,9 +801,7 @@
 
   function grafEvolucaoEspecialidades() {
     const eixo = eixoTempo(eixoDe("evoEsp", "seg-evo-esp"));
-    const sub = $("#evo-esp-sub");
     if (eixo.length < 2) {
-      if (sub) sub.textContent = "Precisa de pelo menos dois períodos com resposta para desenhar a evolução.";
       grafico("chart-evo-esp", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
       $("#leitura-esp").innerHTML = "";
       return;
@@ -872,10 +810,6 @@
     // Onze linhas viram emaranhado: só as de maior volume no mês.
     const escolhidas = [...especialidades().relevantes]
       .sort((a, b) => b.pct_amostra - a.pct_amostra).slice(0, 5).map(e => e.especialidade);
-    if (sub) sub.textContent = escolhidas.length
-      ? "As " + escolhidas.length + " de maior volume em " + mesLabel(S.mes).toLowerCase() +
-        " · ponto ausente = sem resposta no período"
-      : "Sem especialidade com amostra suficiente no mês.";
 
     // o rotulo vai no ultimo periodo com amostra cheia — pendurar o numero
     // numa semana parcial daria destaque ao dado menos confiavel
@@ -1080,11 +1014,6 @@
     const pos = escolhido >= 0 ? escolhido : preenchidos.length - 1;
     const atual = preenchidos[pos], anterior = pos > 0 ? preenchidos[pos - 1] : null;
 
-    $("#sac-ref").innerHTML = !atual ? "Nenhum mês preenchido ainda"
-      : "Números de " + (atual.mes_label || mesLabel(atual.mes)) +
-        (anterior ? " · variação contra " + (anterior.mes_label || mesLabel(anterior.mes)).toLowerCase() : "") +
-        (escolhido < 0 ? " · " + mesLabel(S.mes).toLowerCase() + " ainda não foi preenchido" : "") +
-        " · clique em qualquer gráfico para abrir a semana";
 
     cartoesSuporte(mensal, atual, anterior);
     grafCsat(mensal);
@@ -1361,18 +1290,12 @@
 
   function grafOcClasse() {
     const meses = ocMesesClassificados();
-    const sub = $("#oc-classe-sub");
+    const sub = null;
     if (!meses.length) {
       if (sub) sub.textContent = "Nenhum mês tem motivo preenchido o bastante para separar as classes.";
       grafico("chart-oc-classe", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
       return;
     }
-    if (sub) sub.innerHTML = (S.ocVista === "situacao"
-        ? "Em que estado terminou cada mês · "
-        : "Comportamental, técnica e a soma das duas · ") +
-      "<b>clique num mês</b> para abrir as semanas. " +
-      "A série começa em " + mesLabel(meses[0]).toLowerCase() + " de " + meses[0].slice(0, 4) +
-      ", quando o motivo passou a ser preenchido.";
 
     const classe = (m, k) => {
       const c = (S.oc.meses[m].por_classe) || {};
@@ -1562,11 +1485,6 @@
                 : (meses.includes(S.mes) ? S.mes : meses[meses.length - 1]);
     S.tkMes = atual;
 
-    const ref = $("#tk-ref");
-    if (ref) ref.innerHTML = "Daqui para baixo a fonte é outra: os tickets da Comunidade no " +
-      "Metabase, os mesmos da aba Ocorrências, lidos como fila — quanto entra, quanto sai e " +
-      "quanto tempo leva. Mês de referência: <b>" + mesLabel(atual).toLowerCase() +
-      " de " + atual.slice(0, 4) + "</b>. Clique em qualquer gráfico para abrir a semana.";
 
     const mensal = zenMensal();
     const mesVol = mensal.some(r => r.mes === atual) ? atual
@@ -1608,14 +1526,6 @@
     const linha = mensal[idx] || null;
     const temDado = mensal.some(r => volumeDe(IND_VOLUME[2], r) !== null);
 
-    const ref = $("#tk-vol-ref");
-    if (ref) ref.innerHTML = temDado
-      ? "Conversas de suporte do mês, separadas por quem atendeu. Fonte: Zendesk, " +
-        "preenchido em <code>data/zendesk_semanal.csv</code>."
-      : 'Ainda sem números. Preencha as colunas <code>tickets_humano</code> e ' +
-        '<code>tickets_ia</code> em <code>data/zendesk_semanal.csv</code> — uma linha por mês ' +
-        '(semana 0) e uma por semana. <span class="pendente">O Zendesk não está no ' +
-        'Metabase; se entrar no Databricks, isso passa a ser automático.</span>';
 
     box.innerHTML = IND_VOLUME.map(ind => {
       const v = volumeDe(ind, linha), ant = volumeDe(ind, anterior);
@@ -1766,9 +1676,6 @@
       soma[nome] = (soma[nome] || 0) + (v.total || 0)));
     const nomes = Object.keys(soma).sort((a, b) => soma[b] - soma[a]).slice(0, 7);
 
-    const sub = $("#tk-assunto-sub");
-    if (sub) sub.innerHTML = ind.rotulo + " de cada assunto, mês a mês · <b>clique num mês</b> " +
-      "para abrir as semanas. Os " + nomes.length + " assuntos de maior volume no período.";
 
     grafico("chart-tk-assunto", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: nomes.map((nome, i) => ({
@@ -1818,9 +1725,6 @@
   function onboarding() {
     if (!S.onb) return;
     const lista = onbSemanas();
-    const ref = $("#onb-ref");
-    if (ref) ref.innerHTML = (S.onb.como_medimos || "") +
-      " Todos os números desta aba são semanais e vêm do Metabase — a mesma base do Farol.";
     cartoesOnb(lista);
     grafOnbTempo(lista);
     grafOnbAtivacao(lista);
@@ -1932,9 +1836,6 @@
 
   function grafOnbTempo(lista) {
     const alvo = metaOnb("tempo_ativacao_dias", 2);
-    const sub = $("#onb-tempo-sub");
-    if (sub) sub.innerHTML = "Dias entre o cadastro e a ativação, pela semana em que a pessoa <b>se cadastrou</b> · " +
-      "meta de <b>" + fmt(alvo, 0) + " dias</b> tracejada";
 
     grafico("chart-onb-tempo", { type: "line",
       data: { labels: onbEixoCurto(lista), datasets: [
@@ -1959,9 +1860,6 @@
 
   function grafOnbAtivacao(lista) {
     const alvo = metaOnb("taxa_ativacao_pct", 40);
-    const sub = $("#onb-ativacao-sub");
-    if (sub) sub.innerHTML = "Barras: quantos da turma daquela semana já ativaram · " +
-      "Linha: o mesmo em % · meta de <b>" + fmt(alvo, 0) + "%</b> tracejada";
 
     /* A taxa das semanas ainda abertas fica pontilhada: elas nao cairam, so
        nao tiveram tempo de ativar todo mundo. */
@@ -2014,9 +1912,6 @@
 
   function grafOnbTemporarios(lista) {
     const alvo = metaOnb("temporarios", 0);
-    const sub = $("#onb-temp-sub");
-    if (sub) sub.innerHTML = "Quantos de cada turma seguem hoje como Temporário · " +
-      "a meta é <b>chegar perto de " + fmt(alvo, 0) + "</b>";
 
     grafico("chart-onb-temporarios", { type: "bar",
       data: { labels: onbEixoCurto(lista), datasets: [

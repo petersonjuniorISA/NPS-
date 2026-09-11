@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=70">
+<link rel="stylesheet" href="css/styles.css?v=75">
 </head>
 <body>
 
@@ -57,12 +57,9 @@
    <div class="topbar-inner">
     <div>
       <h1 id="page-title">NPS</h1>
-      <div class="topbar-sub" id="page-sub">Onde estamos, o que puxa e o que os ISAs escreveram</div>
     </div>
     <div class="topbar-actions">
-      <select class="select" id="month-select" aria-label="Mês de referência"></select>
-      <select class="select" id="week-select" aria-label="Semana do mês"></select>
-      <span class="updated">
+      <span class="updated" id="updated-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
         <span id="updated-text">—</span>
       </span>
@@ -108,7 +105,6 @@
           <div class="card-head">
             <div>
               <div class="card-title">Focos do mês</div>
-              <div class="card-sub" id="focos-sub">O que a área escolheu atacar agora</div>
             </div>
           </div>
           <ul class="focos" id="focos"></ul>
@@ -119,7 +115,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Evolução do NPS</div>
-            <div class="card-sub">Índice, promotores, neutros, detratores e volume de respostas · meta tracejada</div>
           </div>
         </div>
         <div class="chart h340"><canvas id="chart-historico"></canvas></div>
@@ -129,7 +124,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Evolução por dimensão</div>
-            <div class="card-sub" id="evo-dim-sub">Como cada nota se moveu ao longo do tempo</div>
           </div>
           <div class="seg" id="seg-evo-dim">
             <button data-eixo="semanas">Semanas</button>
@@ -144,7 +138,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Evolução do NPS por especialidade</div>
-            <div class="card-sub" id="evo-esp-sub">As de maior volume, ao longo do tempo</div>
           </div>
           <div class="seg" id="seg-evo-esp">
             <button data-eixo="semanas">Semanas</button>
@@ -160,7 +153,6 @@
           <div class="card-head">
             <div>
               <div class="card-title">NPS por especialidade</div>
-              <div class="card-sub">Clique para ver o detalhamento</div>
             </div>
             <div class="seg" id="seg-esp">
               <button class="active" data-sort="nps">NPS</button>
@@ -180,7 +172,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Farol das metas do semestre</div>
-            <div class="card-sub">Onde cada indicador está contra a meta do mês</div>
           </div>
         </div>
         <div class="farol" id="farol"></div>
@@ -190,7 +181,7 @@
         <div class="card-head">
           <div>
             <div class="card-title">Especialidade × dimensão</div>
-            <div class="card-sub" id="cruz-sub">Onde cada especialidade sente cada tema · escala de 0 a 5</div>
+            <div class="card-sub" id="cruz-sub">Escala de 0 a 5</div>
           </div>
         </div>
         <div class="cruz-wrap"><div class="cruz" id="cruz"></div></div>
@@ -206,7 +197,6 @@
 
     <!-- ============ SUPORTE ============ -->
     <section class="page" id="page-sac">
-      <div class="section-label" id="sac-ref" style="margin-top:0;"></div>
 
       <!-- 6 indicadores: numero grande + evolucao logo abaixo -->
       <div class="grid grid-3" id="sac-linha-1"></div>
@@ -217,7 +207,6 @@
           <div class="card-head">
             <div>
               <div class="card-title">CSAT</div>
-              <div class="card-sub">Humano, IA e a média dos dois · meta tracejada</div>
             </div>
           </div>
           <div class="chart h280"><canvas id="chart-csat"></canvas></div>
@@ -226,7 +215,6 @@
           <div class="card-head">
             <div>
               <div class="card-title">FCR</div>
-              <div class="card-sub">Resolvido no primeiro contato · meta tracejada</div>
             </div>
           </div>
           <div class="chart h280"><canvas id="chart-fcr"></canvas></div>
@@ -241,12 +229,10 @@
 <!-- ============ ANÁLISE DE TICKETS ============ -->
     <section class="page" id="page-tickets">
       <div class="section-label" style="margin-top:0;">Volume atendido</div>
-      <p class="section-desc" id="tk-vol-ref" style="margin-top:0;"></p>
 
       <div class="grid grid-3" id="tk-volume"></div>
 
       <div class="section-label" style="margin-top:28px;">Fila da Comunidade</div>
-      <p class="section-desc" id="tk-ref" style="margin-top:0;"></p>
 
       <div class="grid grid-3" id="tk-linha-1"></div>
       <div class="grid grid-3" style="margin-top:16px;" id="tk-linha-2"></div>
@@ -255,7 +241,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Distribuição por assunto</div>
-            <div class="card-sub" id="tk-assunto-sub">Volume de cada assunto mês a mês · clique num mês para abrir as semanas</div>
           </div>
           <div class="seg" id="seg-tk-ind"></div>
         </div>
@@ -278,7 +263,6 @@
           <div class="card-head">
             <div>
               <div class="card-title">SLA de encerramento</div>
-              <div class="card-sub">Tempo entre abertura e encerramento</div>
             </div>
           </div>
           <div class="sla-num tabular" id="oc-sla">—</div>
@@ -290,7 +274,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Comportamental × técnica</div>
-            <div class="card-sub" id="oc-classe-sub">Clique num mês para abrir as semanas dele</div>
           </div>
           <div class="seg" id="seg-oc-vista">
             <button class="active" data-vista="classe">Classe</button>
@@ -309,7 +292,6 @@
           <div class="card-head">
             <div>
               <div class="card-title">Volume por departamento</div>
-              <div class="card-sub">Ocorrências abertas mês a mês · clique num mês para abrir as semanas</div>
             </div>
           </div>
           <div class="chart h300"><canvas id="chart-oc-vol-dep"></canvas></div>
@@ -319,7 +301,7 @@
           <div class="card-head">
             <div>
               <div class="card-title">SLA por departamento</div>
-              <div class="card-sub">Dias medianos até encerrar · clique num mês para abrir as semanas</div>
+              <div class="card-sub">Dias até encerrar</div>
             </div>
           </div>
           <div class="chart h300"><canvas id="chart-oc-sla-dep"></canvas></div>
@@ -331,7 +313,6 @@
           <div class="card-head">
             <div>
               <div class="card-title">Volume por tipo</div>
-              <div class="card-sub">Os tipos mais frequentes, mês a mês</div>
             </div>
           </div>
           <div class="chart h300"><canvas id="chart-oc-vol-tipo"></canvas></div>
@@ -341,7 +322,7 @@
           <div class="card-head">
             <div>
               <div class="card-title">SLA por tipo</div>
-              <div class="card-sub">Dias medianos até encerrar, por tipo</div>
+              <div class="card-sub">Dias até encerrar</div>
             </div>
           </div>
           <div class="chart h300"><canvas id="chart-oc-sla-tipo"></canvas></div>
@@ -352,7 +333,6 @@
 
     <!-- ============ HISTORICO ============ -->
     <section class="page" id="page-onboarding">
-      <p class="section-desc" id="onb-ref" style="margin-top:0;"></p>
 
       <div class="grid grid-4" id="onb-cartoes"></div>
 
@@ -360,7 +340,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Tempo médio de ativação</div>
-            <div class="card-sub" id="onb-tempo-sub"></div>
           </div>
         </div>
         <div class="chart h300"><canvas id="chart-onb-tempo"></canvas></div>
@@ -370,7 +349,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Ativados e taxa de ativação</div>
-            <div class="card-sub" id="onb-ativacao-sub"></div>
           </div>
         </div>
         <div class="chart h300"><canvas id="chart-onb-ativacao"></canvas></div>
@@ -381,7 +359,6 @@
         <div class="card-head">
           <div>
             <div class="card-title">Temporários</div>
-            <div class="card-sub" id="onb-temp-sub"></div>
           </div>
         </div>
         <div class="chart h300"><canvas id="chart-onb-temporarios"></canvas></div>
@@ -408,8 +385,8 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=70"></script>
-<script src="js/app.js?v=70"></script>
+<script src="js/config.js?v=75"></script>
+<script src="js/app.js?v=75"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>

@@ -862,3 +862,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   font-size: 11.5px; line-height: 1.45; color: var(--gray-body, #666E80);
 }
 .onb-nota b { color: var(--blue-dark, #004474); }
+
+/* a idade do dado fica discreta; passou de uma semana, ela avisa */
+.updated.velho { color: var(--caution, #ED7B3B); }
+.updated.velho svg { stroke: var(--caution, #ED7B3B); }
