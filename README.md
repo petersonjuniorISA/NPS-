@@ -399,7 +399,7 @@ entra numa classe", justamente para quem lê poder discordar dela.
 O quadro **Metas do semestre**, no alto da aba de NPS, tem um botão **Editar
 metas**. Ele troca os números por campos: a meta do mês à esquerda, o alvo de
 dezembro à direita. Mexer em qualquer um redesenha o painel na hora — o
-medidor, o farol e as linhas tracejadas dos gráficos se movem junto, então dá
+medidor, o farol e as linhas de meta dos gráficos se movem junto, então dá
 para ver o efeito antes de gravar.
 
 **A edição não grava sozinha.** O painel é um arquivo estático servido pelo
@@ -546,6 +546,6 @@ O menu tem quatro itens: **NPS** · **Suporte** · **Ocorrencias** ·
 uma aba separada — mesma base das Ocorrencias, lida como fila de atendimento.
 
 Nao existem mais abas de Metas nem de Historico. A meta virou a linha
-tracejada cinza dentro de cada grafico que tem meta definida, e o historico
+cinza reta dentro de cada grafico que tem meta definida, e o historico
 virou o proprio formato: todo grafico do painel e de linha, mes a mes. O farol
 das metas do semestre continua, agora dentro da aba de NPS.

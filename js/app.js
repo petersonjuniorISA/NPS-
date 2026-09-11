@@ -471,7 +471,7 @@
 
 /* ---------- Metas editaveis ----------
      O painel e um arquivo estatico: nao ha servidor para gravar. Entao editar
-     aqui muda o painel na hora — as linhas tracejadas se movem junto — e a
+     aqui muda o painel na hora — as linhas de meta se movem junto — e a
      gravacao e feita copiando o JSON para data/metas.json. E menos magico que
      um "salvar", mas e honesto: o que a pessoa ve na tela e o que o arquivo
      vai ter, e nada muda para os outros sem passar pelo arquivo. */
@@ -494,7 +494,7 @@
           o.metas = o.metas || {};
           if (valor === null) delete o.metas[S.mes]; else o.metas[S.mes] = valor;
         }
-        desenharMes();   // farol, hero, medidor e as linhas tracejadas dos gráficos
+        desenharMes();   // farol, hero, medidor e as linhas de meta dos gráficos
       });
     });
   }
@@ -609,7 +609,7 @@
 
      Duas escalas: o indice e a meta vao de 0 a 100 na esquerda; as contagens
      tem ordem de grandeza propria e vivem na direita. A meta e a unica linha
-     tracejada do painel inteiro, porque e o unico indicador daqui com meta. */
+     de meta do painel inteiro, porque e o unico indicador daqui com meta. */
   function grafHistorico() {
     const hist = S.nps.historico_nps || [];
     const objNps = objetivo("nps") || { metas: {} };
@@ -634,8 +634,8 @@
         pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : C.blue),
         pointBorderColor: "#fff", pointBorderWidth: 2,
         rotulo: { casas: 1, cor: C.blue } },
-      { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderDash: [5, 4], borderWidth: 1.8,
-        backgroundColor: "transparent", tension: .3, pointRadius: 0, yAxisID: "y", spanGaps: true,
+      { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderWidth: 1.8,
+        backgroundColor: "transparent", tension: 0, pointRadius: 0, yAxisID: "y", spanGaps: true,
         rotulo: { casas: 0, cor: C.cinzaMeta, soUltimo: true } }
     ];
 
@@ -1105,7 +1105,7 @@
   /* Os seis cartoes: numero grande e a evolucao logo abaixo.
      Todas as linhas em azul de propósito — a cor aqui nao carrega informacao,
      e seis cores diferentes so fariam o olho procurar um significado que nao
-     existe. O que a cor marca e a meta: cinza claro, tracejada, igual em
+     existe. O que a cor marca e a meta: cinza claro, reta, igual em
      todos. */
   function cartoesSuporte(mensal, atual, anterior) {
     [["#sac-linha-1", 0, 3], ["#sac-linha-2", 3, 6]].forEach(([alvo, de, ate]) => {
@@ -1144,8 +1144,8 @@
             pointBackgroundColor: meses.map(m => atual && m === atual.mes ? C.pink : C.blue),
             pointBorderColor: "#fff", pointBorderWidth: 1.5,
             rotulo: { casas: ind.casas ?? 1, cor: C.blue, tempo: !!ind.tempo, sufixo: ind.suf || "" } },
-          { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderDash: [4, 3],
-            borderWidth: 1.5, backgroundColor: "transparent", tension: .35,
+          { label: "Meta", data: meta, borderColor: C.cinzaMeta,
+            borderWidth: 1.5, backgroundColor: "transparent", tension: 0,
             pointRadius: 0, spanGaps: true,
             rotulo: { casas: ind.casas ?? 1, cor: C.cinzaMeta, tempo: !!ind.tempo,
                       sufixo: ind.suf || "", soUltimo: true } } ] },
@@ -1206,7 +1206,7 @@
     });
   }
 
-  /** CSAT: humano, IA, a media dos dois e a meta tracejada. Escala de 1 a 5. */
+  /** CSAT: humano, IA, a media dos dois e a meta. Escala de 1 a 5. */
   function grafCsat(mensal) {
     const meses = mensal.map(r => r.mes);
     const humano = mensal.map(r => num(r.csat_humano));
@@ -1231,8 +1231,8 @@
           borderWidth: 2.8, tension: .3, pointRadius: 5, pointBackgroundColor: C.pink,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
           rotulo: { casas: 2, cor: C.pink, soUltimo: true } },
-        { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderDash: [5, 4], borderWidth: 1.8,
-          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true,
+        { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderWidth: 1.8,
+          backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
           rotulo: { casas: 2, cor: C.cinzaMeta, soUltimo: true } } ] },
       options: opcoes({
         onClick: (e, els) => popDoMes(els, meses, "csat_humano"),
@@ -1246,7 +1246,7 @@
     });
   }
 
-  /** FCR: realizado e meta tracejada, com o numero da meta na ponta. */
+  /** FCR: realizado e meta, com o numero da meta na ponta. */
   function grafFcr(mensal) {
     const meses = mensal.map(r => r.mes);
     grafico("chart-fcr", { type: "line",
@@ -1257,8 +1257,8 @@
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
           rotulo: { casas: 1, sufixo: "%", cor: C.blue } },
         { label: "Meta", data: meses.map(m => metaSup({ id: "fcr_pct" }, m)),
-          borderColor: C.cinzaMeta, borderDash: [5, 4], borderWidth: 1.8,
-          backgroundColor: "transparent", tension: .3, pointRadius: 0, spanGaps: true,
+          borderColor: C.cinzaMeta, borderWidth: 1.8,
+          backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
           rotulo: { casas: 0, sufixo: "%", cor: C.cinzaMeta } } ] },
       options: opcoes({
         onClick: (e, els) => popDoMes(els, meses, "fcr_pct"),
@@ -2020,10 +2020,12 @@
   /** Eixo x comum aos quatro gráficos, para as semanas baterem entre eles. */
   function onbEixoCurto(lista) { return lista.map(s => s.label.split(" a ")[0]); }
 
-  /** Linha de meta: cinza claro e tracejada, igual à do resto do painel. */
+  /* Linha de meta: cinza claro, cheia e reta. Tracejado ja marca outra
+     coisa no painel — dado parcial ou apurado a mao — e usar o mesmo
+     traco para meta fazia as duas leituras se confundirem. */
   function linhaMeta(valor, lista, rotuloCasas) {
     return { type: "line", label: "Meta", data: lista.map(() => valor), borderColor: C.cinzaMeta,
-      borderDash: [5, 4], borderWidth: 1.8, backgroundColor: "transparent",
+      borderWidth: 1.8, backgroundColor: "transparent",
       pointRadius: 0, tension: 0, spanGaps: true,
       rotulo: { casas: rotuloCasas ?? 0, cor: C.cinzaMeta, soUltimo: true } };
   }
