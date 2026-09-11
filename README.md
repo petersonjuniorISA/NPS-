@@ -223,7 +223,15 @@ Colunas esperadas (a primeira linha do arquivo já traz isso):
 | `tmr` | `12h48` | texto livre |
 | `fcr_pct` | `73.3` | número, sem o `%` |
 | `resolucao_ia_pct` | `40` | número, sem o `%` |
+| `tickets_humano` | `266` | conversas que um atendente tocou |
+| `tickets_ia` | `17` | conversas atendidas pela IA |
 | `narrativa` | texto livre | as "alavancas da semana" |
+
+As duas colunas de volume alimentam os cartões **Total humano**, **Total IA** e
+**Total geral** no topo da aba Análise de tickets. O total é a soma das duas, e
+a fatia da IA que aparece no cartão deve bater com `resolucao_ia_pct` — se não
+bater, um dos dois números está errado. Enquanto estiverem vazias, os cartões
+dizem que faltam dados em vez de mostrar zero.
 
 ### 4. Ocorrências (Metabase) — ligar a atualização automática
 
@@ -424,9 +432,21 @@ de Suporte.
 "Suporte" abre o subitem. O grupo fica aberto enquanto qualquer uma das duas
 abas estiver em cima.
 
-Ela lê `data/ocorrencias.json` — a mesma base das Ocorrências. A diferença é a
-pergunta: Ocorrências olha o que aconteceu (classe, departamento, tipo);
-Análise de tickets olha a fila (quanto entra, quanto sai, quanto tempo leva).
+**A aba mistura duas fontes, e diz isso na tela:**
+
+| Bloco | Fonte | Como atualiza |
+|---|---|---|
+| Volume atendido (humano / IA / geral) | Zendesk | à mão, em `data/zendesk_semanal.csv` |
+| Fila da Comunidade (abertos, SLA, assuntos) | Metabase | automático, `fetch_metabase.py` |
+
+O segundo bloco lê `data/ocorrencias.json` — a mesma base das Ocorrências. A
+diferença é a pergunta: Ocorrências olha o que aconteceu (classe, departamento,
+tipo); aqui se olha a fila (quanto entra, quanto sai, quanto tempo leva).
+
+> **Pendência:** o ticket de suporte do Zendesk não está no Metabase, só os da
+> Comunidade estão. Se o Zendesk entrar no Databricks (a conferir com o Akira),
+> o bloco de volume passa a ser automático e os dois blocos falam da mesma
+> operação.
 
 Na barra lateral compacta (781–1140px, só ícones) a seta e o submenu somem —
 ali não cabe subitem escrito.

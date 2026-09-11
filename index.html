@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=67">
+<link rel="stylesheet" href="css/styles.css?v=70">
 </head>
 <body>
 
@@ -240,6 +240,12 @@
 
 <!-- ============ ANÁLISE DE TICKETS ============ -->
     <section class="page" id="page-tickets">
+      <div class="section-label" style="margin-top:0;">Volume atendido</div>
+      <p class="section-desc" id="tk-vol-ref" style="margin-top:0;"></p>
+
+      <div class="grid grid-3" id="tk-volume"></div>
+
+      <div class="section-label" style="margin-top:28px;">Fila da Comunidade</div>
       <p class="section-desc" id="tk-ref" style="margin-top:0;"></p>
 
       <div class="grid grid-3" id="tk-linha-1"></div>
@@ -402,8 +408,8 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=67"></script>
-<script src="js/app.js?v=67"></script>
+<script src="js/config.js?v=70"></script>
+<script src="js/app.js?v=70"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>

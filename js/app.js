@@ -1563,14 +1563,134 @@
     S.tkMes = atual;
 
     const ref = $("#tk-ref");
-    if (ref) ref.innerHTML = "Mesma base da aba Ocorrências — Comunidade, sem Captação — só que " +
-      "lida como fila de atendimento: quanto entra, quanto sai e quanto tempo leva. " +
-      "Mês de referência: <b>" + mesLabel(atual).toLowerCase() + " de " + atual.slice(0, 4) +
-      "</b>. Clique em qualquer gráfico para abrir a semana.";
+    if (ref) ref.innerHTML = "Daqui para baixo a fonte é outra: os tickets da Comunidade no " +
+      "Metabase, os mesmos da aba Ocorrências, lidos como fila — quanto entra, quanto sai e " +
+      "quanto tempo leva. Mês de referência: <b>" + mesLabel(atual).toLowerCase() +
+      " de " + atual.slice(0, 4) + "</b>. Clique em qualquer gráfico para abrir a semana.";
+
+    const mensal = zenMensal();
+    const mesVol = mensal.some(r => r.mes === atual) ? atual
+                 : (mensal.length ? mensal[mensal.length - 1].mes : null);
+    cartoesVolume(mensal, mesVol);
 
     cartoesTicket(meses, atual);
     seletorIndAssunto();
     grafTkAssunto();
+  }
+
+/* ---------- Volume atendido: humano, IA e o total ----------
+     Vem do CSV do Zendesk, preenchido a mao — o ticket de suporte nao esta no
+     Metabase, so os da Comunidade estao. Enquanto as colunas estiverem vazias
+     os cartoes dizem isso em vez de mostrar zero, que seria uma afirmacao
+     errada sobre a operacao. */
+  const IND_VOLUME = [
+    { id: "vol_humano", rotulo: "Total humano", campo: "tickets_humano",
+      nota: "Conversas que um atendente tocou" },
+    { id: "vol_ia", rotulo: "Total IA", campo: "tickets_ia",
+      nota: "Conversas atendidas pela IA" },
+    { id: "vol_geral", rotulo: "Total geral", campo: null,
+      nota: "Humano + IA" }
+  ];
+
+  const volumeDe = (ind, linha) => {
+    if (!linha) return null;
+    if (ind.campo) return num(linha[ind.campo]);
+    const h = num(linha.tickets_humano), i = num(linha.tickets_ia);
+    return h === null && i === null ? null : (h || 0) + (i || 0);
+  };
+
+  function cartoesVolume(mensal, atual) {
+    const box = $("#tk-volume");
+    if (!box) return;
+    const meses = mensal.map(r => r.mes);
+    const idx = meses.indexOf(atual);
+    const anterior = idx > 0 ? mensal[idx - 1] : null;
+    const linha = mensal[idx] || null;
+    const temDado = mensal.some(r => volumeDe(IND_VOLUME[2], r) !== null);
+
+    const ref = $("#tk-vol-ref");
+    if (ref) ref.innerHTML = temDado
+      ? "Conversas de suporte do mês, separadas por quem atendeu. Fonte: Zendesk, " +
+        "preenchido em <code>data/zendesk_semanal.csv</code>."
+      : 'Ainda sem números. Preencha as colunas <code>tickets_humano</code> e ' +
+        '<code>tickets_ia</code> em <code>data/zendesk_semanal.csv</code> — uma linha por mês ' +
+        '(semana 0) e uma por semana. <span class="pendente">O Zendesk não está no ' +
+        'Metabase; se entrar no Databricks, isso passa a ser automático.</span>';
+
+    box.innerHTML = IND_VOLUME.map(ind => {
+      const v = volumeDe(ind, linha), ant = volumeDe(ind, anterior);
+      let delta = "";
+      if (v !== null && ant !== null && ant !== 0) {
+        const pct = (v - ant) / Math.abs(ant) * 100;
+        delta = '<span class="delta ' + (pct >= 0 ? "up" : "down") + '">' +
+                (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 1) + "%</span>";
+      }
+      // no total, a nota vira a fatia da IA — que e a leitura que interessa
+      let nota = ind.nota;
+      if (ind.id === "vol_geral" && v) {
+        const ia = volumeDe(IND_VOLUME[1], linha);
+        if (ia !== null) nota = fmt(100 * ia / v, 1) + "% resolvido pela IA";
+      }
+      return '<div class="card sup-card" data-vol="' + ind.id + '">' +
+        '<div class="metric-label">' + ind.rotulo + "</div>" +
+        '<div class="sup-num tabular">' + (v === null ? "—" : fmt(v, 0)) + delta + "</div>" +
+        '<div class="metric-note">' + nota + "</div>" +
+        '<div class="sup-spark" title="Clique para ver as semanas">' +
+        '<canvas id="spark-' + ind.id + '"></canvas></div></div>';
+    }).join("");
+
+    IND_VOLUME.forEach(ind => {
+      grafico("spark-" + ind.id, { type: "line",
+        data: { labels: meses.map(mesCurto), datasets: [{
+          label: ind.rotulo, data: mensal.map(r => volumeDe(ind, r)),
+          borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
+          borderWidth: 2.2, tension: .35, spanGaps: true,
+          pointRadius: meses.map(m => m === atual ? 4.5 : 3),
+          pointBackgroundColor: meses.map(m => m === atual ? C.pink : C.blue),
+          pointBorderColor: "#fff", pointBorderWidth: 1.5,
+          rotulo: { casas: 0, cor: C.blue } }] },
+        options: opcoes({ onClick: () => popVolume(ind),
+          layout: { padding: { top: 14, bottom: 2 } },
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: c => c.parsed.y === null ? "sem dado"
+                                     : fmt(c.parsed.y, 0) + " conversas" } } },
+          scales: { y: { display: false, grace: "26%" },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 }, color: C.text } } } }) });
+    });
+
+    $$(".sup-card[data-vol]").forEach(card => card.addEventListener("click", () => {
+      const ind = IND_VOLUME.find(i => i.id === card.dataset.vol);
+      if (ind) popVolume(ind);
+    }));
+  }
+
+  /** Semana a semana do volume, no mesmo card flutuante do resto do painel. */
+  function popVolume(ind) {
+    const meses = mesesComSemana();
+    if (!meses.length) return;
+    abrirPop({
+      titulo: ind.rotulo + " semana a semana",
+      meses: meses,
+      mes: S.sacMes,
+      sub: m => ind.nota + " · semanas de " + mesLabel(m).toLowerCase(),
+      nota: m => {
+        const sem = zenSemanal(m);
+        const total = sem.reduce((a, r) => a + (volumeDe(ind, r) || 0), 0);
+        return total ? "Somando as semanas: <b>" + fmt(total, 0) + "</b> conversas." : "";
+      },
+      config: m => {
+        const sem = zenSemanal(m);
+        return { type: "bar",
+          data: { labels: sem.map(r => "S" + r.semana + (r.periodo ? " · " + r.periodo.replace(/ de \w+/i, "") : "")),
+            datasets: [{ label: ind.rotulo, data: sem.map(r => volumeDe(ind, r)),
+              backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 46,
+              rotulo: { casas: 0, cor: C.blue } }] },
+          options: opcoes({ layout: { padding: { top: 18 } },
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+                      x: { grid: { display: false } } } }) };
+      }
+    });
   }
 
   function cartoesTicket(meses, atual) {
