@@ -594,9 +594,11 @@
           // uma casa, como o numero grande logo acima: arredondar aqui faria o
           // mesmo indice aparecer como 61,5 e 62 no mesmo quadro
           rotulo: { casas: 1, cor: BRANCO, soUltimo: true } },
+        // a meta de cada mes, nao so a de dezembro: e ela que diz se o mes
+        // que vem ja pede mais do que este entregou
         { label: "Meta", data: meta, borderColor: CINZA, borderWidth: 1.6,
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
-          rotulo: { casas: 0, cor: CINZA, soUltimo: true } } ] },
+          rotulo: { casas: 0, cor: CINZA, desloca: -11 } } ] },
       options: opcoes({ layout: { padding: { top: 14, right: 34, bottom: 2 } },
         plugins: { legend: { display: false },
           tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y, 1) } } },
@@ -637,7 +639,7 @@
         rotulo: { casas: 1, cor: C.blue } },
       { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderWidth: 1.8,
         backgroundColor: "transparent", tension: 0, pointRadius: 0, yAxisID: "y", spanGaps: true,
-        rotulo: { casas: 0, cor: C.cinzaMeta, soUltimo: true } }
+        rotulo: { casas: 0, cor: C.cinzaMeta, soUltimo: true, desloca: -10 } }
     ];
 
     [["Promotores", "promotores", C.positive],
@@ -1162,7 +1164,7 @@
             borderWidth: 1.5, backgroundColor: "transparent", tension: 0,
             pointRadius: 0, spanGaps: true,
             rotulo: { casas: ind.casas ?? 1, cor: C.cinzaMeta, tempo: !!ind.tempo,
-                      sufixo: ind.suf || "", soUltimo: true } } ] },
+                      sufixo: ind.suf || "", soUltimo: true, desloca: -10 } } ] },
         options: opcoes({
           onClick: () => popSuporte(ind),
           layout: { padding: { top: 14, right: 30, bottom: 2 } },
@@ -1247,7 +1249,7 @@
           rotulo: { casas: 2, cor: C.pink, soUltimo: true } },
         { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderWidth: 1.8,
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
-          rotulo: { casas: 2, cor: C.cinzaMeta, soUltimo: true } } ] },
+          rotulo: { casas: 2, cor: C.cinzaMeta, soUltimo: true, desloca: -10 } } ] },
       options: opcoes({
         onClick: (e, els) => popDoMes(els, meses),
         layout: { padding: { right: 52 } },
@@ -1273,7 +1275,7 @@
         { label: "Meta", data: meses.map(m => metaSup({ id: "fcr_pct" }, m)),
           borderColor: C.cinzaMeta, borderWidth: 1.8,
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
-          rotulo: { casas: 0, sufixo: "%", cor: C.cinzaMeta } } ] },
+          rotulo: { casas: 0, sufixo: "%", cor: C.cinzaMeta, desloca: -10 } } ] },
       options: opcoes({
         onClick: (e, els) => popDoMes(els, meses),
         layout: { padding: { right: 20 } },
@@ -1367,7 +1369,11 @@
     });
   }
 
-  const OC_MESES = 12;   // um ano de serie; antes disso o volume era de outra operacao
+  /* Seis meses. Com doze, o pico de 5.079 ocorrências de março de 2025 —
+     outra operação, outro volume — achatava os meses que importam contra o
+     eixo. Nada foi cortado do arquivo: `data/ocorrencias.json` segue com os
+     29 meses, e o card flutuante abre qualquer um deles. */
+  const OC_MESES = 6;
 
   function ocMesesSerie() {
     return Object.keys((S.oc && S.oc.meses) || {}).sort().slice(-OC_MESES);
@@ -1547,8 +1553,12 @@
         label: curto(nome),
         data: meses.map(m => { const v = bloco(m)[nome]; return v ? (v[campo] ?? null) : null; }),
         borderColor: CORES_SERIE[i % CORES_SERIE.length], backgroundColor: "transparent",
-        borderWidth: 2.2, tension: .3,
-        pointRadius: meses.map(m => m === (S.ocMes || S.mes) ? 5 : 3),
+        borderWidth: 2, tension: .35,
+        /* Bolinha só no mês de referência. Com cinco linhas cruzando doze
+           meses, sessenta pontos desenhados viram ruído — a linha já diz onde
+           passou, e o ponto só precisa marcar onde se está lendo. */
+        pointRadius: meses.map(m => m === (S.ocMes || S.mes) ? 5 : 0),
+        pointHoverRadius: 5,
         pointBackgroundColor: CORES_SERIE[i % CORES_SERIE.length],
         pointBorderColor: "#fff", pointBorderWidth: 1.5, spanGaps: true,
         rotulo: { casas: ehSla ? 1 : 0, cor: CORES_SERIE[i % CORES_SERIE.length], soUltimo: true }
@@ -1978,8 +1988,9 @@
         label: nome,
         data: meses.map(m => { const v = bloco(m)[nome]; return v ? (v[ind.campo] ?? null) : null; }),
         borderColor: CORES_SERIE[i % CORES_SERIE.length], backgroundColor: "transparent",
-        borderWidth: 2.2, tension: .3,
-        pointRadius: meses.map(m => m === S.tkMes ? 5 : 3),
+        borderWidth: 2, tension: .35,
+        pointRadius: meses.map(m => m === S.tkMes ? 5 : 0),
+        pointHoverRadius: 5,
         pointBackgroundColor: CORES_SERIE[i % CORES_SERIE.length],
         pointBorderColor: "#fff", pointBorderWidth: 1.5, spanGaps: true,
         rotulo: { casas: ind.casas, cor: CORES_SERIE[i % CORES_SERIE.length], soUltimo: true }
@@ -2116,7 +2127,7 @@
     return { type: "line", label: "Meta", data: lista.map(() => valor), borderColor: C.cinzaMeta,
       borderWidth: 1.8, backgroundColor: "transparent",
       pointRadius: 0, tension: 0, spanGaps: true,
-      rotulo: { casas: rotuloCasas ?? 0, cor: C.cinzaMeta, soUltimo: true } };
+      rotulo: { casas: rotuloCasas ?? 0, cor: C.cinzaMeta, soUltimo: true, desloca: -10 } };
   }
 
   function grafOnbTempo(lista) {
@@ -2402,7 +2413,10 @@
           }
           pendentes.push({
             txt, cor, largura: ctx.measureText(txt).width,
-            px: ponto.x, py: ponto.y + (cfg.soUltimo ? 0 : (barraV ? -11 : -13)),
+            // `desloca` tira o número de cima da própria linha: numa série reta
+            // como a da meta, o texto no fim cai exatamente sobre ela
+            px: ponto.x,
+            py: ponto.y + (cfg.desloca || 0) + (cfg.soUltimo ? 0 : (barraV ? -11 : -13)),
             direita: !!cfg.soUltimo   // fim de linha sai para a direita do ponto
           });
         });
