@@ -119,7 +119,7 @@
   }
 
   /* ---------- estado ---------- */
-  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, focos: null, zt: null,
+  const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, zt: null,
               sacMes: null, ocMes: null, ocVista: "classe", tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,   // semana segue nula: o painel e sempre mensal
              
               evoDim: null, evoEsp: null, pagina: "nps",
@@ -168,19 +168,18 @@
   }
 
   async function carregar() {
-    const [nps, metas, zen, oc, onb, com, foc, zt] = await Promise.all([
+    const [nps, metas, zen, oc, onb, com, zt] = await Promise.all([
       buscarJson("nps", "data/nps.json", null),
       buscarJson("metas", "data/metas.json", { objetivos: [] }),
       carregarZendesk(),
       buscarJson("ocorrencias", "data/ocorrencias.json", null),
       buscarJson("onboarding", "data/onboarding.json", null),
       buscarJson("comentarios", "data/comentarios.json", null),
-      buscarJson("focos", "data/focos.json", null),
       buscarJson("zendesk_tickets", "data/zendesk_tickets.json", null)
     ]);
     if (!nps) throw new Error("Não consegui carregar os dados de NPS.");
     S.nps = nps; S.metas = metas; S.zendesk = zen; S.oc = oc;
-    S.onb = onb; S.com = com; S.focos = foc; S.zt = zt;
+    S.onb = onb; S.com = com; S.zt = zt;
   }
 
   async function carregarZendesk() {
@@ -350,7 +349,7 @@
         "Só o índice geral, a nota por dimensão e o NPS por especialidade existem nesse mês.</span></div>"
       : "";
 
-    heroi(); farol(); focos(); leitura();
+    heroi(); farol(); leitura();
     espLista(); espDetalhe(); cruzamento();
     graficosDa(S.pagina);
   }
@@ -432,20 +431,121 @@
 
   function farol() {
     const mes = S.mes, box = $("#farol");
+    const sub = $("#metas-sub");
+    if (sub) sub.textContent = editandoMetas
+      ? "Mexa nos números; o painel acompanha"
+      : mesLabel(mes) + " de " + mes.slice(0, 4);
+
     box.innerHTML = "";
+    box.classList.toggle("editando", editandoMetas);
     (S.metas.objetivos || []).forEach(o => {
       const st = status(o, mes);
+      const campoMeta = editandoMetas
+        ? '<input class="meta-input" type="text" data-obj="' + o.id + '" data-campo="mes" value="' +
+          (o.metas && o.metas[mes] !== undefined && o.metas[mes] !== null ? o.metas[mes] : "") +
+          '" aria-label="Meta de ' + o.label + '">'
+        : "meta " + mostrarObjetivo(o, st.meta);
+      const campoAlvo = editandoMetas
+        ? '<input class="meta-input" type="text" data-obj="' + o.id + '" data-campo="final" value="' +
+          (o.alvo_final ?? "") + '" aria-label="Alvo de dezembro de ' + o.label + '">'
+        : st.texto;
+
       box.appendChild(el("div", "farol-row",
         '<span class="dot ' + (st.defasada ? "stale" : st.cls) + '"></span>' +
         '<div><div class="farol-name">' + o.label + "</div>" +
-          '<div class="farol-ctx">' + (st.defasada
-            ? "Já passou o alvo de dezembro (" + fmt(o.alvo_final, 0) + unidade(o) + "). A meta precisa ser revista."
-            : (o.contexto || "")) + "</div></div>" +
+          '<div class="farol-ctx">' + (editandoMetas
+            ? "meta do mês · alvo de dezembro"
+            : st.defasada
+              ? "Já passou o alvo de dezembro (" + fmt(o.alvo_final, 0) + unidade(o) + "). A meta precisa ser revista."
+              : (o.contexto || "")) + "</div></div>" +
         '<div class="farol-nums"><div class="farol-real tabular">' + mostrarObjetivo(o, st.real) + "</div>" +
-          '<div class="farol-meta">meta ' + mostrarObjetivo(o, st.meta) + "</div></div>" +
-        '<div class="farol-status"><div class="farol-att tabular ' + (st.defasada ? "stale" : st.cls) + '">' +
-          st.texto + "</div>" +
-          '<div class="farol-word">' + st.palavra + "</div></div>"));
+          '<div class="farol-meta">' + campoMeta + "</div></div>" +
+        '<div class="farol-status"><div class="farol-att tabular ' +
+          (editandoMetas ? "" : (st.defasada ? "stale" : st.cls)) + '">' + campoAlvo + "</div>" +
+          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>"));
+    });
+
+    if (editandoMetas) ligarCamposDeMeta();
+    rodapeDeMetas();
+  }
+
+/* ---------- Metas editaveis ----------
+     O painel e um arquivo estatico: nao ha servidor para gravar. Entao editar
+     aqui muda o painel na hora — as linhas tracejadas se movem junto — e a
+     gravacao e feita copiando o JSON para data/metas.json. E menos magico que
+     um "salvar", mas e honesto: o que a pessoa ve na tela e o que o arquivo
+     vai ter, e nada muda para os outros sem passar pelo arquivo. */
+  let editandoMetas = false;
+
+
+  /** Cada tecla muda o objeto em memória e redesenha o painel inteiro. */
+  function ligarCamposDeMeta() {
+    $$(".meta-input").forEach(input => {
+      input.addEventListener("change", () => {
+        const o = (S.metas.objetivos || []).find(x => x.id === input.dataset.obj);
+        if (!o) return;
+        const bruto = input.value.trim();
+        // TMA e TMR são texto ("10h", "12h48"); o resto é número
+        const valor = bruto === "" ? null
+                    : o.unidade === "tempo" ? bruto
+                    : (isNaN(Number(bruto.replace(",", "."))) ? bruto : Number(bruto.replace(",", ".")));
+        if (input.dataset.campo === "final") o.alvo_final = valor;
+        else {
+          o.metas = o.metas || {};
+          if (valor === null) delete o.metas[S.mes]; else o.metas[S.mes] = valor;
+        }
+        desenharMes();   // farol, hero, medidor e as linhas tracejadas dos gráficos
+      });
+    });
+  }
+
+  function rodapeDeMetas() {
+    const box = $("#metas-rodape");
+    if (!box) return;
+    box.innerHTML = !editandoMetas ? "" :
+      '<p>As mudanças valem neste navegador até serem gravadas. Para todo mundo ver, ' +
+      'copie o arquivo e cole em <code>data/metas.json</code>.</p>' +
+      '<button class="btn-com" type="button" id="btn-copiar-metas">Copiar metas.json</button>' +
+      '<span class="metas-aviso" id="metas-aviso"></span>';
+    const b = $("#btn-copiar-metas");
+    if (b) b.addEventListener("click", copiarMetas);
+  }
+
+  function copiarMetas() {
+    const texto = JSON.stringify(S.metas, null, 2);
+    const aviso = $("#metas-aviso");
+    const feito = () => { if (aviso) aviso.textContent = "copiado — cole em data/metas.json"; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(feito, () => caixaDeTexto(texto));
+    } else {
+      caixaDeTexto(texto);
+    }
+  }
+
+  /* Recuo para quando a área de transferência é bloqueada — acontece em
+     iframe sem permissão, que é como o painel roda dentro do Apps Script. */
+  function caixaDeTexto(texto) {
+    const box = $("#metas-rodape");
+    if (box.querySelector(".metas-json")) return;
+    const area = document.createElement("textarea");
+    area.className = "metas-json";
+    area.readOnly = true;
+    area.value = texto;
+    box.appendChild(area);
+    area.focus();
+    area.select();
+    const aviso = $("#metas-aviso");
+    if (aviso) aviso.textContent = "selecione e copie (Ctrl+C)";
+  }
+
+  function ligarEdicaoDeMetas() {
+    const b = $("#btn-editar-metas");
+    if (!b) return;
+    b.addEventListener("click", () => {
+      editandoMetas = !editandoMetas;
+      b.textContent = editandoMetas ? "Concluir" : "Editar metas";
+      b.classList.toggle("ativo", editandoMetas);
+      farol();
     });
   }
 
@@ -564,31 +664,6 @@
                   y1: { min: 0, position: "right", grid: { display: false },
                         title: { display: true, text: "respostas", font: { size: 10 } } },
                   x: { grid: { display: false } } } }) });
-  }
-
-  /* ---------- Focos do mes ----------
-     Sao escritos a mao em data/focos.json: nao ha metrica que diga em que a
-     area escolheu mexer neste mes. O quadro de "Resolucao com IA" que morava
-     aqui saiu — era um indicador solto, e indicador ja tem lugar no farol. */
-  function focos() {
-    const box = $("#focos");
-    const cfg = S.focos || {};
-    const doMes = (cfg.meses || {})[S.mes] || (cfg.meses || {})[cfg.padrao] || null;
-
-
-    if (!doMes || !(doMes.itens || []).length) {
-      box.innerHTML = '<li class="empty">Sem focos escritos para ' +
-        mesLabel(S.mes).toLowerCase() + '. Edite <code>data/focos.json</code>.</li>';
-      return;
-    }
-    box.innerHTML = doMes.itens.map(f => {
-      const texto = typeof f === "string" ? f : f.texto;
-      const dono = typeof f === "string" ? null : f.dono;
-      const estado = (typeof f === "string" ? "" : f.estado || "").toLowerCase();
-      return '<li class="foco ' + estado + '"><span class="foco-marca"></span>' +
-        "<div><span>" + texto + "</span>" +
-        (dono ? '<span class="foco-dono">' + dono + "</span>" : "") + "</div></li>";
-    }).join("");
   }
 
   /* ---------- Especialidade x dimensao ----------
@@ -2232,12 +2307,28 @@
     });
   }
 
+  /* Rotulos em cima dos pontos.
+
+     O problema que este plugin resolve: quando varias linhas se aproximam no
+     mesmo mes, os numeros caem uns sobre os outros e viram borrao. Antes so os
+     rotulos de fim de linha se espalhavam; os do meio do grafico eram
+     desenhados onde calhasse.
+
+     Agora todos passam pelo mesmo tratamento: sao agrupados por coluna (mesmo
+     x), ordenados pela altura real do ponto e entao afastados o minimo
+     necessario. Ordenar antes de afastar importa — empurrar na ordem dos
+     datasets invertia a sequencia vertical, e o numero da linha de cima
+     aparecia embaixo. Quem sai do lugar ganha um fio ligando ao seu ponto. */
   const ROTULOS = {
     id: "rotulos",
     afterDatasetsDraw(chart) {
       const ctx = chart.ctx;
       const r = chart.scales.r;   // existe só no radar
-      const ancorados = [];       // rótulos de fim de linha, colocados depois
+      const area = chart.chartArea;
+      const ALTURA = 13;          // altura de uma linha de rótulo
+      const COLUNA = 26;          // x's mais próximos que isso são a mesma coluna
+
+      const pendentes = [];       // tudo que precisa de desempate vertical
 
       ctx.save();
       ctx.font = "600 11px 'Open Sans', sans-serif";
@@ -2258,63 +2349,74 @@
           if (cfg.soUltimo && j !== ultimo) return;
           const txt = cfg.tempo ? tempoDeMinutos(v)
                     : fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
-          ctx.fillStyle = cor;
 
-          if (cfg.soUltimo) {
-            // guardado para posicionar junto com os outros, mais abaixo
-            ancorados.push({ txt, cor, x: ponto.x + 10, y: ponto.y, py: ponto.y, px: ponto.x });
-          } else if (barraH) {
-            ctx.textAlign = "left"; ctx.fillText(txt, ponto.x + 7, ponto.y);
-          } else if (barraV) {
-            ctx.textAlign = "center"; ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 15 : -11));
-          } else if (r) {
-            // fora do ponto, na direção do centro, senão encosta no nome da dimensão
+          if (barraH) {
+            // barra deitada: o rótulo vai na ponta dela, sem disputar espaço
+            ctx.fillStyle = cor; ctx.textAlign = "left";
+            ctx.fillText(txt, ponto.x + 7, ponto.y);
+            return;
+          }
+          if (r) {
+            // radar: para fora do ponto, na direção do centro
             const dx = ponto.x - r.xCenter, dy = ponto.y - r.yCenter;
             const d = Math.hypot(dx, dy) || 1;
-            ctx.textAlign = "center";
+            ctx.fillStyle = cor; ctx.textAlign = "center";
             ctx.fillText(txt, ponto.x + dx / d * 13, ponto.y + dy / d * 13);
-          } else {
-            ctx.textAlign = "center";
-            ctx.fillText(txt, ponto.x, ponto.y + (cfg.abaixo ? 14 : -13));
+            return;
           }
+          pendentes.push({
+            txt, cor, px: ponto.x, py: ponto.y,
+            // o de fim de linha sai para a direita; os outros ficam sobre o ponto
+            x: cfg.soUltimo ? ponto.x + 10 : ponto.x,
+            y: ponto.y + (cfg.soUltimo ? 0 : (barraV ? (cfg.abaixo ? 15 : -11) : (cfg.abaixo ? 14 : -13))),
+            align: cfg.soUltimo ? "left" : "center",
+            fixo: barraV && cfg.abaixo   // rótulo dentro da barra não se move
+          });
         });
       });
 
-      /* Rótulos de fim de linha: empurrar um por um na ordem dos datasets
-         invertia a ordem vertical — "60,0" saía embaixo de "54,1" mesmo com a
-         linha do 60,0 por cima. Aqui eles são ordenados pela altura real do
-         ponto e só então espaçados, então a sequência na tela é a mesma das
-         linhas. Quem sai do lugar ganha um fio ligando ao seu ponto. */
-      if (ancorados.length) {
-        const ALTURA = 13, area = chart.chartArea;
-        ancorados.sort((a, b) => a.py - b.py);
-        for (let i = 1; i < ancorados.length; i++) {
-          if (ancorados[i].y - ancorados[i - 1].y < ALTURA)
-            ancorados[i].y = ancorados[i - 1].y + ALTURA;
-        }
-        const sobra = ancorados[ancorados.length - 1].y - (area.bottom - 4);
-        if (sobra > 0) {
-          ancorados.forEach(a => a.y -= sobra);
-          const falta = area.top + 4 - ancorados[0].y;
-          if (falta > 0) ancorados.forEach(a => a.y += falta);
-        }
+      /* Espalha coluna por coluna. Só quem disputa o mesmo x entra na conta —
+         rótulos de meses diferentes nunca se estorvam. */
+      const colunas = new Map();
+      pendentes.forEach(p => {
+        const chave = Math.round(p.px / COLUNA);
+        if (!colunas.has(chave)) colunas.set(chave, []);
+        colunas.get(chave).push(p);
+      });
 
-        ancorados.forEach(a => {
-          if (Math.abs(a.y - a.py) > 2) {
-            ctx.strokeStyle = a.cor;
-            ctx.globalAlpha = .5;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(a.px + 4, a.py);
-            ctx.lineTo(a.x - 2, a.y);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-          }
-          ctx.fillStyle = a.cor;
-          ctx.textAlign = "left";
-          ctx.fillText(a.txt, a.x, a.y);
-        });
-      }
+      colunas.forEach(grupo => {
+        const moveis = grupo.filter(p => !p.fixo).sort((a, b) => a.py - b.py);
+        if (moveis.length < 2) return;
+        for (let i = 1; i < moveis.length; i++) {
+          if (moveis[i].y - moveis[i - 1].y < ALTURA)
+            moveis[i].y = moveis[i - 1].y + ALTURA;
+        }
+        // a coluna inteira volta para dentro do gráfico se tiver estourado
+        const sobra = moveis[moveis.length - 1].y - (area.bottom - 4);
+        if (sobra > 0) moveis.forEach(p => p.y -= sobra);
+        const falta = area.top + 6 - moveis[0].y;
+        if (falta > 0) moveis.forEach(p => p.y += falta);
+      });
+
+      pendentes.forEach(p => {
+        // quem foi afastado ganha um fio até o próprio ponto, senão não dá
+        // para saber de qual linha o número é
+        const dy = Math.abs(p.y - p.py), dx = Math.abs(p.x - p.px);
+        if (dy > ALTURA - 2 || (p.align === "left" && dy > 2)) {
+          ctx.strokeStyle = p.cor;
+          ctx.globalAlpha = .45;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p.px + (p.align === "left" ? 4 : 0), p.py);
+          ctx.lineTo(p.x - (p.align === "left" ? 2 : 0), p.y + (p.align === "center" ? 5 : 0));
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = p.cor;
+        ctx.textAlign = p.align;
+        ctx.fillText(p.txt, p.x, p.y);
+      });
+
       ctx.restore();
     }
   };
@@ -2360,6 +2462,7 @@
     botoesDeComentario();
     painelDeComentarios();
     ligarPop();
+    ligarEdicaoDeMetas();
 
     $$("#seg-esp button").forEach(b => b.addEventListener("click", () => {
       $$("#seg-esp button").forEach(x => x.classList.toggle("active", x === b));

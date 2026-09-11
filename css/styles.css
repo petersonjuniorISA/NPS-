@@ -882,3 +882,42 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   background: var(--gray-bg, #F4F6F9); padding: 2px 6px; border-radius: 5px;
   font-size: 12px; color: var(--featured, #202020);
 }
+
+/* ---------------------------------------------------------------------------
+   Metas editáveis — o farol vira formulário sem mudar de lugar
+--------------------------------------------------------------------------- */
+.metas-acoes { display: flex; align-items: center; gap: 8px; }
+.btn-com.ativo { background: var(--blue-dark, #004474); border-color: var(--blue-dark, #004474); color: #fff; }
+
+.farol.editando .farol-row { align-items: center; }
+.meta-input {
+  width: 84px; height: 30px; padding: 0 8px; text-align: right;
+  border: 1px solid var(--gray-outline, #DDD); border-radius: 8px; background: #fff;
+  font: 600 13px/1 var(--mono, "Open Sans"), sans-serif; color: var(--featured, #202020);
+  font-variant-numeric: tabular-nums;
+}
+.meta-input:focus {
+  outline: none; border-color: var(--teal, #00C3C5);
+  box-shadow: 0 0 0 3px rgba(0, 195, 197, .12);
+}
+
+.metas-rodape:empty { display: none; }
+.metas-rodape {
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--gray-inactive, #E8EAED);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+}
+.metas-rodape p {
+  margin: 0; flex: 1 1 100%;
+  font-size: 12.5px; line-height: 1.5; color: var(--gray-body, #666E80);
+}
+.metas-rodape code {
+  background: var(--gray-bg, #F4F6F9); padding: 2px 6px; border-radius: 5px; font-size: 12px;
+}
+.metas-aviso { font-size: 12px; color: var(--positive, #00C643); font-weight: 600; }
+.metas-json {
+  flex: 1 1 100%; height: 150px; margin-top: 6px; padding: 10px;
+  border: 1px solid var(--gray-outline, #DDD); border-radius: 8px;
+  font: 400 11px/1.45 ui-monospace, Menlo, Consolas, monospace;
+  color: var(--featured, #202020); background: var(--gray-bg, #F4F6F9); resize: vertical;
+}

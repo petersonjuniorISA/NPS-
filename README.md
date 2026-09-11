@@ -395,27 +395,25 @@ entra numa classe", justamente para quem lê poder discordar dela.
 > existentes, não veio de uma definição da área. Vale uma revisão do ISA
 > Experience antes de levar o gráfico ao board.
 
-### 10. Focos do mês
+### 10. Editar as metas pelo painel
 
-O quadro "Focos do mês" na aba de NPS é texto, não indicador: é o que a área
-escolheu atacar naquele mês. Ele sai de `data/focos.json`:
+O quadro **Metas do semestre**, no alto da aba de NPS, tem um botão **Editar
+metas**. Ele troca os números por campos: a meta do mês à esquerda, o alvo de
+dezembro à direita. Mexer em qualquer um redesenha o painel na hora — o
+medidor, o farol e as linhas tracejadas dos gráficos se movem junto, então dá
+para ver o efeito antes de gravar.
 
-```json
-"2026-08": {
-  "subtitulo": "Escolhas de agosto, revisadas na reunião de área",
-  "itens": [
-    { "texto": "...", "dono": "Suporte", "estado": "fazendo" }
-  ]
-}
-```
+**A edição não grava sozinha.** O painel é um arquivo estático servido pelo
+Apps Script; não há servidor para escrever. O botão **Copiar metas.json** monta
+o arquivo já com as mudanças, para colar em `data/metas.json`. Enquanto isso
+não acontece, o que foi editado vale só naquele navegador.
 
-`estado` aceita `fazendo`, `feito`, `risco` ou vazio — muda só a cor do ponto.
-Se o mês aberto no painel não tiver bloco próprio, o painel cai no mês em
-`padrao`.
+Se a área de transferência estiver bloqueada — é o que acontece dentro do Apps
+Script, que roda o painel num iframe — aparece uma caixa de texto com o JSON
+selecionado, para copiar com Ctrl+C.
 
-Esse quadro substituiu o de "Resolução com IA" que ficava aqui. Aquele era um
-indicador solto no meio do resumo, e indicador já tem lugar no farol e na aba
-de Suporte.
+O quadro **Focos do mês** que ficava aqui saiu: era texto solto, e esse espaço
+rende mais mostrando as metas contra o realizado.
 
 ### 11. Onde fica a Análise de tickets
 
@@ -528,7 +526,6 @@ data/zendesk_tickets.json           Tickets de suporte                   <- fetc
 data/classificacao_zendesk.json     Tag/canal -> humano ou IA            (a mao)
 data/comentarios.json               Texto livre do i-NPS                 <- fetch_comentarios
 data/onboarding.json                Funil semanal de ativacao            <- fetch_onboarding
-data/focos.json                     Focos do mes, texto livre            (a mao)
 
 scripts/fetch_databricks.py         NPS oficial (Databricks SQL)
 scripts/fetch_metabase.py           Baixa o CSV de tickets e chama o build

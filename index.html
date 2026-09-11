@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=86">
+<link rel="stylesheet" href="css/styles.css?v=89">
 </head>
 <body>
 
@@ -70,7 +70,6 @@
   <div class="page-wrap">
     <div id="alert-slot"></div>
 
-    <!-- ============ RESUMO EXECUTIVO ============ -->
     <!-- ============ NPS ============ -->
     <section class="page active" id="page-nps">
       <div class="grid grid-wide">
@@ -104,10 +103,15 @@
         <div class="card">
           <div class="card-head">
             <div>
-              <div class="card-title">Focos do mês</div>
+              <div class="card-title">Metas do semestre</div>
+              <div class="card-sub" id="metas-sub"></div>
+            </div>
+            <div class="metas-acoes">
+              <button class="btn-com" type="button" id="btn-editar-metas">Editar metas</button>
             </div>
           </div>
-          <ul class="focos" id="focos"></ul>
+          <div class="farol" id="farol"></div>
+          <div class="metas-rodape" id="metas-rodape"></div>
         </div>
       </div>
 
@@ -166,15 +170,6 @@
           <div class="card-head"><div class="card-title">Detalhamento</div></div>
           <div id="esp-detail"></div>
         </div>
-      </div>
-
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Farol das metas do semestre</div>
-          </div>
-        </div>
-        <div class="farol" id="farol"></div>
       </div>
 
       <div class="card" style="margin-top:16px;">
@@ -389,8 +384,8 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=86"></script>
-<script src="js/app.js?v=86"></script>
+<script src="js/config.js?v=89"></script>
+<script src="js/app.js?v=89"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>
