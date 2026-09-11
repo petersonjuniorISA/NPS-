@@ -393,16 +393,35 @@
     }
 
     const total = k.promotores + k.neutros + k.detratores || 1;
+    /* Cada grupo abre o proprio qualitativo. O numero e o gatilho: quem quer
+       ler o que os detratores escreveram clica em "Detratores", e nao num
+       botao generico que depois pede o recorte de novo. */
+    const temComentario = ((S.com && S.com.comentarios) || []).length > 0;
     $("#hero-facts").innerHTML = [
-      ["Promotores", k.promotores, C.positive],
-      ["Neutros", k.neutros, C.amber],
-      ["Detratores", k.detratores, C.negative],
-      ["Respostas", k.total_respostas, null]
-    ].map(([rot, val, cor]) =>
-      '<div><div class="fact-value tabular">' +
-        (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") +
-        (temNps() && val !== null && val !== undefined ? val : "—") +
-      '</div><div class="fact-label">' + rot + "</div></div>").join("");
+      ["Promotores", k.promotores, C.positive, "promotor"],
+      ["Neutros", k.neutros, C.amber, "neutro"],
+      ["Detratores", k.detratores, C.negative, "detrator"],
+      ["Respostas", k.total_respostas, null, ""]
+    ].map(([rot, val, cor, classe]) => {
+      const clicavel = temComentario && classe && temNps();
+      return '<div class="fact' + (clicavel ? " fact-clicavel" : "") + '"' +
+        (clicavel ? ' data-classe="' + classe + '" role="button" tabindex="0"' +
+                    ' title="Ver o que estes ISAs escreveram"' : "") + ">" +
+        '<div class="fact-value tabular">' +
+          (cor ? '<span class="dot" style="background:' + cor + '"></span>' : "") +
+          (temNps() && val !== null && val !== undefined ? val : "—") +
+        '</div><div class="fact-label">' + rot + "</div>" +
+        (clicavel ? '<div class="fact-dica">ver comentários</div>' : "") +
+        "</div>";
+    }).join("");
+
+    $$("#hero-facts .fact-clicavel").forEach(el => {
+      const abrir = () => abrirComentarios({ classe: el.dataset.classe });
+      el.addEventListener("click", abrir);
+      el.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); }
+      });
+    });
 
     // O medidor fica sempre no mês: a meta é mensal, comparar com uma semana
     // solta daria um atingimento que não quer dizer nada.
@@ -505,7 +524,7 @@
     box.innerHTML = !editandoMetas ? "" :
       '<p>As mudanças valem neste navegador até serem gravadas. Para todo mundo ver, ' +
       'copie o arquivo e cole em <code>data/metas.json</code>.</p>' +
-      '<button class="btn-com" type="button" id="btn-copiar-metas">Copiar metas.json</button>' +
+      '<button class="btn-acao" type="button" id="btn-copiar-metas">Copiar metas.json</button>' +
       '<span class="metas-aviso" id="metas-aviso"></span>';
     const b = $("#btn-copiar-metas");
     if (b) b.addEventListener("click", copiarMetas);
@@ -794,7 +813,14 @@
 
     grafico("chart-evo-dim", { type: "line",
       data: { labels: eixo.map(p => p.label), datasets },
-      options: opcoes({ plugins: { legend: legenda(10) },
+      options: opcoes({
+        // clicar numa linha abre o que foi escrito sobre aquela dimensao
+        onClick: (e, els) => {
+          if (!els.length) return;
+          const d = datasets[els[0].datasetIndex];
+          if (d) abrirComentarios({ tema: d.label });
+        },
+        plugins: { legend: legenda(10) },
         layout: { padding: { right: 48 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), .12, 0, 5),
                     { grid: { color: C.grid } }),
@@ -2180,8 +2206,12 @@
   function desenharComentarios() {
     const lista = comentariosDe(S.comFiltro);
     const caixa = $("#com-corpo");
-    $("#com-titulo").textContent = S.comFiltro.tema
-      ? "Comentários · " + S.comFiltro.tema : "Comentários do NPS";
+    /* O título repete o recorte de quem clicou: quem veio de "Detratores"
+       precisa ver que está lendo detratores, não a caixa toda. */
+    const NOME_CLASSE = { promotor: "Promotores", neutro: "Neutros", detrator: "Detratores" };
+    const partes = [NOME_CLASSE[S.comFiltro.classe], S.comFiltro.tema].filter(Boolean);
+    $("#com-titulo").textContent = partes.length
+      ? "Comentários · " + partes.join(" · ") : "Comentários do NPS";
 
     if (!S.com) {
       caixa.innerHTML = '<div class="empty">Os comentários ainda não foram coletados. ' +
@@ -2226,29 +2256,6 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   }
 
-  /** Prende um botão "Exibir os comentários" embaixo de cada gráfico do NPS. */
-  function botoesDeComentario() {
-    const quantos = (S.com && S.com.comentarios || []).length;
-    ALVOS_COMENTARIO.forEach(([id, tema]) => {
-      const canvas = document.getElementById(id);
-      if (!canvas) return;
-      const card = canvas.closest(".card");
-      if (!card || card.querySelector(".btn-com")) return;
-      const b = document.createElement("button");
-      b.className = "btn-com";
-      b.type = "button";
-      b.textContent = "Exibir os comentários";
-      b.title = quantos ? quantos + " comentários coletados" : "Comentários ainda não coletados";
-      b.addEventListener("click", () => abrirComentarios(tema ? { tema } : null));
-      card.appendChild(b);
-    });
-  }
-
-  const ALVOS_COMENTARIO = [
-    ["chart-historico", null],
-    ["chart-evo-dim", null],
-    ["chart-evo-esp", null]
-  ];
 
   function painelDeComentarios() {
     const painel = $("#com-painel");
@@ -2494,7 +2501,6 @@
     topo();
 
     desenharMes();
-    botoesDeComentario();
     painelDeComentarios();
     ligarPop();
     ligarEdicaoDeMetas();

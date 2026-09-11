@@ -327,8 +327,20 @@ chave — não precisa configurar nada além do que o passo 4 já pede.
 
 Os comentários não estão no Databricks: a tabela `fact_inps_response` guarda só
 as notas. O texto vive na pesquisa, onde cada nota é seguida de um "Quer
-comentar sobre essa resposta?". Por isso o botão **Exibir os comentários** que
-aparece embaixo de cada gráfico do NPS lê o Metabase, não o Databricks.
+comentar sobre essa resposta?".
+
+**Como se chega neles.** Pelo próprio número, não por um botão:
+
+- Clicar em **Promotores**, **Neutros** ou **Detratores** no quadro do NPS abre
+  o qualitativo daquele grupo.
+- Clicar numa linha do gráfico de **evolução por dimensão** abre o que foi
+  escrito sobre aquele tema.
+
+A tela abre em cheio, com os comentários do mês em colunas, e os filtros de
+classe e tema no topo para trocar de recorte sem sair dela. Antes havia um
+botão "Exibir os comentários" embaixo de cada gráfico: ele abria tudo e pedia
+o recorte de novo, dentro da tela, quando o recorte já estava na mão de quem
+clicou.
 
 O onboarding é todo semanal e segue a mesma conta do Farol:
 
