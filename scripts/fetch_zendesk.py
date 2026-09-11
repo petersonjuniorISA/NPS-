@@ -89,7 +89,10 @@ def do_cofre():
 def credenciais():
     guardado = do_cofre()
     dados = {
-        "subdominio": os.environ.get("ZENDESK_SUBDOMINIO") or guardado.get("subdominio"),
+        # o subdominio da ISA e conhecido; fica como padrao para sobrar so
+        # e-mail e token a preencher
+        "subdominio": (os.environ.get("ZENDESK_SUBDOMINIO")
+                       or guardado.get("subdominio") or "isasaude"),
         "email": os.environ.get("ZENDESK_EMAIL") or guardado.get("email"),
         "token": os.environ.get("ZENDESK_TOKEN") or guardado.get("token"),
     }
@@ -98,6 +101,11 @@ def credenciais():
 
 
 # ---------------------------------------------------------------------- API ---
+class SemPermissao(Exception):
+    """O endereco existe, mas esta conta nao alcanca — tipicamente falta de
+    papel de admin."""
+
+
 def chamar(url, cred):
     """GET autenticado, respeitando o 429 do Zendesk em vez de desistir."""
     par = "%s/token:%s" % (cred["email"], cred["token"])
@@ -115,19 +123,81 @@ def chamar(url, cred):
                 print("   limite da API; esperando %ds" % espera)
                 time.sleep(min(espera, ESPERA_LIMITE))
                 continue
-            if e.code in (401, 403):
+            if e.code == 401:
                 raise SystemExit(
-                    "ERRO: o Zendesk recusou a credencial (%s). Confira o e-mail, o "
-                    "token e se o usuario tem permissao de API." % e.code)
+                    "ERRO: o Zendesk recusou a credencial (401). Confira o e-mail e o "
+                    "token — e se o acesso por token esta ligado na conta.")
+            if e.code == 403:
+                # quem chamou decide o que fazer: na exportacao incremental isso
+                # e falta de papel de admin, e ha um caminho alternativo
+                raise SemPermissao(url)
             raise SystemExit("ERRO: Zendesk respondeu %s em %s" % (e.code, url))
         except urllib.error.URLError as e:
             raise SystemExit("ERRO: nao consegui falar com o Zendesk — %s" % e.reason)
     raise SystemExit("ERRO: o Zendesk seguiu limitando as chamadas.")
 
 
+def quem_sou(cred):
+    """Pergunta ao Zendesk qual e o papel desta credencial.
+
+    Vale o request extra: o erro mais provavel aqui e de permissao, e saber o
+    papel de antemao troca um 403 seco por uma frase que diz o que pedir."""
+    try:
+        u = (chamar("https://%s.zendesk.com/api/v2/users/me.json" % cred["subdominio"],
+                    cred) or {}).get("user") or {}
+    except (SemPermissao, SystemExit):
+        return None
+    return {"nome": u.get("name"), "papel": u.get("role"),
+            "admin": bool(u.get("role") == "admin")}
+
+
 def baixar_tickets(cred, desde):
-    """Exportacao incremental: e o unico endpoint que devolve tudo sem o teto
-    de 1000 resultados da busca."""
+    """Tenta o caminho bom; se a conta nao for admin, usa o caminho possivel.
+
+    A exportacao incremental e restrita a administradores. Numa conta de
+    agente ela responde 403, e ai vale a listagem comum ordenada da mais nova
+    para a mais antiga, parando quando passa da data pedida — mesmos campos,
+    mesmo sideload de metricas, so que paginando mais.
+    """
+    try:
+        return exportacao_incremental(cred, desde)
+    except SemPermissao:
+        print("   sem permissao de admin para a exportacao incremental;")
+        print("   usando a listagem comum de tickets (funciona com conta de agente)")
+        return listagem_comum(cred, desde)
+
+
+def listagem_comum(cred, desde):
+    """Lista tickets do mais novo para o mais antigo e para na data de corte."""
+    corte = datetime.strptime(desde, "%Y-%m-%d")
+    url = ("https://%s.zendesk.com/api/v2/tickets.json"
+           "?page[size]=100&sort_by=created_at&sort_order=desc"
+           "&include=metric_sets" % cred["subdominio"])
+    tickets, metricas, paginas = [], {}, 0
+    while url:
+        pagina = chamar(url, cred)
+        for m in (pagina.get("metric_sets") or []):
+            if m.get("ticket_id") is not None:
+                metricas[m["ticket_id"]] = m
+        passou_do_corte = False
+        for t in (pagina.get("tickets") or []):
+            abriu = momento(t.get("created_at"))
+            if abriu and abriu < corte:
+                passou_do_corte = True
+                continue
+            tickets.append(t)
+        paginas += 1
+        print("   pagina %d — %d tickets dentro do periodo" % (paginas, len(tickets)))
+        if passou_do_corte:
+            break
+        proxima = (pagina.get("links") or {}).get("next")
+        tem_mais = (pagina.get("meta") or {}).get("has_more")
+        url = proxima if (proxima and tem_mais) else None
+    return tickets, metricas
+
+
+def exportacao_incremental(cred, desde):
+    """O caminho bom: devolve tudo sem o teto de 1000 resultados da busca."""
     inicio = int(datetime.strptime(desde, "%Y-%m-%d")
                  .replace(tzinfo=timezone.utc).timestamp())
     url = ("https://%s.zendesk.com/api/v2/incremental/tickets.json"
@@ -354,8 +424,24 @@ def main():
         return 0   # nao derruba a atualizacao semanal por causa disso
 
     cfg = carregar_classes()
+    eu = quem_sou(cred)
+    if eu:
+        print("Conectado como %s (%s)" % (eu["nome"], eu["papel"]))
     print("Baixando tickets de %s.zendesk.com desde %s..." % (cred["subdominio"], args.desde))
-    tickets, metricas = baixar_tickets(cred, args.desde)
+    try:
+        tickets, metricas = baixar_tickets(cred, args.desde)
+    except SemPermissao:
+        print()
+        print("ERRO: esta conta nao tem permissao para ler os tickets pela API.")
+        if eu and not eu["admin"]:
+            print("      O papel dela e '%s'; a leitura em massa pede admin." % eu["papel"])
+        print()
+        print("      Peca a quem administra o Zendesk:")
+        print("      1. Admin Center > Apps e integracoes > APIs > Zendesk API")
+        print("         ligar 'Acesso por token' e gerar um token.")
+        print("      2. Que o token seja usado com o e-mail de uma conta admin —")
+        print("         com conta de agente a API nao devolve a base inteira.")
+        return 1
 
     if args.diagnostico:
         diagnostico(tickets, cfg)

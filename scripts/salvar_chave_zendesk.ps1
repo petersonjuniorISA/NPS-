@@ -32,8 +32,9 @@ if (-not (Test-Path $pasta)) { New-Item -ItemType Directory -Path $pasta | Out-N
 if (-not $Subdominio) {
     Write-Host ""
     Write-Host "Subdominio do Zendesk" -ForegroundColor Cyan
-    Write-Host "So a parte antes de .zendesk.com - em isasaude.zendesk.com, digite: isasaude" -ForegroundColor DarkGray
+    Write-Host "So a parte antes de .zendesk.com. Enter aceita o padrao [isasaude]." -ForegroundColor DarkGray
     $Subdominio = Read-Host "Subdominio"
+    if (-not $Subdominio) { $Subdominio = "isasaude" }
 }
 if (-not $Email) {
     Write-Host ""

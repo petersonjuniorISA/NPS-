@@ -425,10 +425,25 @@ que são de operação de cuidado). A única porta é a API REST:
 powershell -File scripts\salvar_chave_zendesk.ps1
 ```
 
-Pede subdomínio, e-mail e token de API — o token se cria em *Zendesk > Admin
-Center > Apps e integrações > APIs > Tokens de API*. Fica cifrado com DPAPI em
+Pede subdomínio (já vem `isasaude`), e-mail e token. Fica cifrado com DPAPI em
 `~/.nps-isas/zendesk.json`, o mesmo esquema da chave do Metabase, e nunca vai
 para o Git.
+
+**O token precisa de alguém com papel de admin no Zendesk.** Criar o token é
+em *Admin Center > Apps e integrações > APIs > Zendesk API > Tokens de API* —
+uma tela que conta de agente não enxerga. E o token sozinho não basta: ele é
+usado com um e-mail, e as permissões são as daquele usuário.
+
+O script lida com os dois cenários:
+
+| Papel da conta | O que acontece |
+|---|---|
+| admin | Exportação incremental — puxa tudo de uma vez |
+| agente | Cai na listagem comum, do mais novo para o mais antigo, parando na data de corte |
+| sem acesso à API | Explica o que pedir ao administrador e sai com 1 |
+
+Ele diz o papel logo na primeira linha (`Conectado como Fulano (admin)`), então
+dá para saber por qual caminho está indo sem adivinhar.
 
 Depois disso, `scripts/fetch_zendesk.py` roda junto da atualização de sexta e
 grava `data/zendesk_tickets.json`. Sem credencial ele avisa e sai com 0 — não
