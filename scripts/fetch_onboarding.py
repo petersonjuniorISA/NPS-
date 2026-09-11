@@ -9,10 +9,12 @@ Tudo o que o Mongo devolve ja vem agregado por dia — puxar profissional a
 profissional estouraria o limite de linhas da API e nao acrescentaria nada,
 porque o painel so mostra semana.
 """
+import csv
 import io
 import json
 import os
 import sys
+import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta
 
@@ -63,6 +65,25 @@ def pedir(payload):
     return [dict(zip(colunas, linha)) for linha in resposta["data"]["rows"]]
 
 
+def csv_de(payload):
+    """O /api/dataset devolve no maximo 2000 linhas; o /csv devolve tudo.
+
+    Aqui sao ~8 mil cadastros e ~5 mil ativacoes, entao e por aqui que elas
+    passam. Aceita consulta nativa nos dois bancos, Postgres e Mongo."""
+    corpo = ("query=" + urllib.parse.quote(json.dumps(payload))).encode()
+    req = urllib.request.Request(fm.METABASE_URL.rstrip("/") + "/api/dataset/csv",
+                                 data=corpo, method="POST")
+    req.add_header("x-api-key", pedir.chave)
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with urllib.request.urlopen(req, timeout=900) as r:
+        texto = r.read().decode("utf-8")
+    linhas = list(csv.reader(io.StringIO(texto)))
+    if not linhas:
+        return []
+    cabecalho = linhas[0]
+    return [dict(zip(cabecalho, l)) for l in linhas[1:]]
+
+
 def mongo(pipeline):
     return pedir({"database": BANCO_EVENTOS, "type": "native",
                   "native": {"collection": COLECAO, "query": json.dumps(pipeline)}})
@@ -87,56 +108,61 @@ def rotulo(inicio):
     return "%d/%d a %d/%d" % (inicio.day, inicio.month, fim.day, fim.month)
 
 
-# ------------------------------------------------------------- consultas ---
-PAR_EVENTOS = [
-    {"$match": {"eventType": {"$in": ["professional.created", "professional.activated"]}}},
-    {"$group": {"_id": {"p": "$professionalId", "e": "$eventType"},
-                "t": {"$min": {"$toDate": "$time"}}}},
-    {"$group": {"_id": "$_id.p",
-                "criado": {"$min": {"$cond": [{"$eq": ["$_id.e", "professional.created"]}, "$t", None]}},
-                "ativado": {"$min": {"$cond": [{"$eq": ["$_id.e", "professional.activated"]}, "$t", None]}}}},
-]
+def cadastros_do_banco():
+    """Todo mundo que se cadastrou desde o corte, direto da tabela.
 
-
-def por_dia_de_cadastro(limite_dias):
-    """Coorte: de quem se cadastrou no dia X, quantos ativaram e em quanto tempo.
-
-    E aqui que o tempo medio de ativacao e medido, do mesmo jeito que o Farol
-    mede: data do evento de ativacao menos a data de cadastro, contando so quem
-    ja ativou, agrupado pela semana de *cadastro*. Medir pela semana de ativacao
-    responde outra pergunta — "quanto tempo tinha esperado quem ativou agora" —
-    e da numeros varias vezes maiores.
+    E aqui que a coorte tem de nascer: o evento professional.created nao cobre
+    todos os cadastros (em 09/09, 81 eventos para 118 linhas na tabela), e a
+    data de cadastro e o denominador do tempo medio e da taxa de ativacao.
     """
-    return mongo(PAR_EVENTOS + [
-        {"$match": {"criado": {"$ne": None}}},
-        {"$project": {
-            "dia": {"$dateToString": {"format": "%Y-%m-%d", "date": "$criado"}},
-            "ativou": {"$cond": [{"$eq": ["$ativado", None]}, 0, 1]},
-            "dias": {"$cond": [{"$eq": ["$ativado", None]}, None,
-                     {"$divide": [{"$subtract": ["$ativado", "$criado"]}, 86400000]}]}}},
-        {"$group": {"_id": "$dia",
-                    "cadastros": {"$sum": 1},
-                    "ativados": {"$sum": "$ativou"},
-                    "soma_dias": {"$sum": {"$ifNull": ["$dias", 0]}},
-                    "em_meta": {"$sum": {"$cond": [
-                        {"$and": [{"$ne": ["$dias", None]},
-                                  {"$lte": ["$dias", limite_dias]}]}, 1, 0]}}}},
-        {"$sort": {"_id": 1}},
-    ])
+    return csv_de({"database": BANCO_CADASTRO, "type": "native", "native": {"query":
+        "select id, to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') as criado "
+        "from professional where deleted_at is null and created_at >= '%s'" % DESDE}})
 
 
-def por_dia_de_ativacao():
-    """Fluxo: quantas ativacoes aconteceram no dia X.
+def ativacoes_por_profissional():
+    """Quando cada um ativou. A tabela nao guarda essa data — so o evento."""
+    pipeline = [
+        {"$match": {"eventType": "professional.activated"}},
+        {"$group": {"_id": "$professionalId", "t": {"$min": {"$toDate": "$time"}}}},
+    ]
+    return csv_de({"database": BANCO_EVENTOS, "type": "native",
+                   "native": {"collection": COLECAO, "query": json.dumps(pipeline)}})
 
-    Numero de operacao, nao de coorte — quantas ativacoes a equipe fez naquela
-    semana, venham de que turma vierem. Fica no tooltip, para nao competir com
-    a leitura de coorte que e a do Farol."""
-    return mongo(PAR_EVENTOS + [
-        {"$match": {"ativado": {"$ne": None}}},
-        {"$project": {"dia": {"$dateToString": {"format": "%Y-%m-%d", "date": "$ativado"}}}},
-        {"$group": {"_id": "$dia", "ativados": {"$sum": 1}}},
-        {"$sort": {"_id": 1}},
-    ])
+
+def instante(txt):
+    """Aceita os dois formatos que chegam: 2026-09-08T10:20:30 e o ISO com Z."""
+    if not txt:
+        return None
+    limpo = str(txt).replace("Z", "").split(".")[0].replace(" ", "T")
+    try:
+        return datetime.strptime(limpo[:19], "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+
+
+def coorte(limite_dias):
+    """Cruza cadastro com ativacao e devolve um registro por profissional."""
+    quando_ativou = {}
+    for l in ativacoes_por_profissional():
+        ident = l.get("_id") or l.get("id")
+        t = instante(l.get("t"))
+        if ident and t:
+            quando_ativou[ident] = t
+
+    pessoas = []
+    for l in cadastros_do_banco():
+        criado = instante(l.get("criado"))
+        if not criado:
+            continue
+        ativado = quando_ativou.get(l.get("id"))
+        dias = (ativado - criado).total_seconds() / 86400.0 if ativado and ativado >= criado else None
+        pessoas.append({"criado": criado, "ativado": ativado, "dias": dias})
+
+    fora = len(quando_ativou) - sum(1 for p in pessoas if p["ativado"])
+    if fora > 0:
+        print("   (%d ativacoes sao de cadastros anteriores a %s)" % (fora, DESDE))
+    return pessoas
 
 
 def coorte_por_semana():
@@ -164,7 +190,7 @@ def retrato_de_hoje():
 
 
 # ------------------------------------------------------------------ monta ---
-def semanas(cadastros, ativacoes, coorte, limite_dias):
+def semanas(pessoas, situacao, limite_dias):
     caixas = {}
 
     def caixa(dia):
@@ -175,15 +201,20 @@ def semanas(cadastros, ativacoes, coorte, limite_dias):
                                        "ativacoes_na_semana": 0,
                                        "temporarios": 0, "assistido": 0})
 
-    for l in cadastros:
-        c = caixa(dia_de(l["_id"]))
-        c["cadastros"] += int(l["cadastros"])
-        c["ativados_da_coorte"] += int(l["ativados"])
-        c["soma_dias"] += float(l["soma_dias"] or 0)
-        c["em_meta"] += int(l["em_meta"])
-    for l in ativacoes:
-        caixa(dia_de(l["_id"]))["ativacoes_na_semana"] += int(l["ativados"])
-    for l in coorte:
+    for p in pessoas:
+        c = caixa(p["criado"].date())
+        c["cadastros"] += 1
+        if p["dias"] is not None:
+            c["ativados_da_coorte"] += 1
+            c["soma_dias"] += p["dias"]
+            if p["dias"] <= limite_dias:
+                c["em_meta"] += 1
+        # o fluxo da operacao: quantas ativacoes aconteceram naquela semana,
+        # venham de que turma vierem
+        if p["ativado"]:
+            caixa(p["ativado"].date())["ativacoes_na_semana"] += 1
+
+    for l in situacao:
         c = caixa(dia_de(l["semana"]))
         c["temporarios"] += int(l["temporarios"])
         c["assistido"] += int(l["assistido"])
@@ -207,12 +238,11 @@ def main():
     metas = metas_do_onboarding()
     limite = metas["tempo_ativacao_dias"]
 
-    cadastros = por_dia_de_cadastro(limite)
-    ativacoes = por_dia_de_ativacao()
-    coorte = coorte_por_semana()
+    pessoas = coorte(limite)
+    situacao = coorte_por_semana()
     hoje = retrato_de_hoje()
 
-    lista = semanas(cadastros, ativacoes, coorte, limite)
+    lista = semanas(pessoas, situacao, limite)
     assistido = sum(hoje.get(s, 0) for s in STATUS_ASSISTIDO)
 
     payload = {
@@ -222,8 +252,8 @@ def main():
         "janela_ativacao_dias": JANELA_ATIVACAO,
         "metas": metas,
         "como_medimos": (
-            "Tempo medio de ativacao: data do evento professional.activated menos a "
-            "data de cadastro, so de quem ja ativou, agrupado pela semana de cadastro "
+            "Tempo medio de ativacao: data do evento professional.activated menos o "
+            "created_at do cadastro, so de quem ja ativou, agrupado pela semana de cadastro "
             "— a mesma conta do Farol. %% na meta = quantos ativaram em ate %d dias."
             % limite),
         "hoje": {

@@ -332,9 +332,20 @@ aparece embaixo de cada gráfico do NPS lê o Metabase, não o Databricks.
 
 O onboarding é todo semanal e segue a mesma conta do Farol:
 
-> **Tempo médio de ativação** = data do evento `professional.activated` menos a
-> data de cadastro, contando só quem já ativou, agrupado pela semana em que a
-> pessoa **se cadastrou**. **% na meta** = quantos ativaram dentro do prazo.
+> **Tempo médio de ativação** = data do evento `professional.activated` menos o
+> `created_at` do cadastro, contando só quem já ativou, agrupado pela semana em
+> que a pessoa **se cadastrou**. **% na meta** = quantos ativaram dentro do prazo.
+
+As duas pontas vêm de lugares diferentes, e isso importa:
+
+| Ponta | Fonte | Por quê |
+|---|---|---|
+| Cadastro | tabela `professional` (Postgres) | O evento `professional.created` **perde gente** — em 09/09, 81 eventos para 118 linhas na tabela. Como o cadastro é o denominador do tempo médio e da taxa, usar o evento deslocava os dois. |
+| Ativação | evento `professional.activated` (Mongo) | A tabela não guarda data de ativação; só o evento tem. |
+
+O cruzamento é feito pelo id, no `fetch_onboarding.py`. As duas consultas
+passam pelo `/api/dataset/csv` em vez do `/api/dataset`, porque a segunda tem
+teto de 2.000 linhas e aqui são ~8 mil cadastros e ~5 mil ativações.
 
 O agrupamento é por semana de *cadastro*, não de ativação. Medir pela semana de
 ativação responde outra pergunta — "quanto tempo tinha esperado quem ativou
@@ -346,10 +357,17 @@ Duas ressalvas que o painel mostra na tela:
 1. A taxa de ativação das semanas mais recentes ainda vai subir — uma ativação
    leva ~30 dias. Elas aparecem **pontilhadas**: não caíram, só não fecharam.
    A janela é configurável em `ONBOARDING_JANELA`.
-2. O gráfico de onboarding assistido é **aproximação**. Não há marcador de
-   "assistido" no cadastro; o que dá para medir é quem está parado num status
-   que só anda com alguém da operação. O número oficial depende da planilha do
-   Gabi.
+2. Os gráficos de **temporários** e de **onboarding assistido** são retrato de
+   hoje distribuído pela semana de cadastro — não são "quantos havia naquela
+   semana". Essa série não dá para montar: o log de status não registra toda
+   entrada nesses status (as saídas de "Ativo temporário" somam 9.315 contra
+   3.223 entradas), e reconstruir para trás dava 1.794 temporários em agosto
+   contra 313 hoje. Para ter a série de verdade, o retrato precisa passar a ser
+   gravado a cada semana daqui para frente.
+3. O gráfico de onboarding assistido é, além disso, **aproximação**: não há
+   marcador de "assistido" no cadastro; o que dá para medir é quem está parado
+   num status que só anda com alguém da operação. O número oficial depende da
+   planilha do Gabi.
 
 As metas do funil ficam em `data/metas.json`, no bloco `onboarding` — fora de
 `objetivos`, porque são semanais e o farol do semestre é mensal:
