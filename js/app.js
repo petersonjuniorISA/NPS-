@@ -1889,6 +1889,7 @@
     const alvoTempo = metaOnb("tempo_ativacao_dias", 2);
     const alvoTaxa = metaOnb("taxa_ativacao_pct", 40);
     const alvoTemp = metaOnb("temporarios", 0);
+    const totalBase = Object.values(hoje.por_status || {}).reduce((a, b) => a + b, 0);
 
     /* Variacao contra a semana anterior. `melhor` diz para que lado e bom:
        em tempo e temporarios, cair e ganhar. */
@@ -1933,15 +1934,15 @@
             (S.onb.janela_ativacao_dias || 30) + " dias"
       }),
       cartaoFarol({
-        rotulo: "Temporários · turma da semana",
-        valor: temp === null || temp === undefined ? "—" : fmt(temp, 0),
-        delta: variacao(temp, antes.temporarios, "baixo"),
+        rotulo: "Temporários na base",
+        valor: fmt(hoje.temporarios ?? 0, 0),
         meta: "perto de " + fmt(alvoTemp, 0),
-        // sem alvo positivo nao ha fracao de caminho: a barra vira participacao
-        pct: ultima.cadastros ? 100 - (temp / ultima.cadastros * 100) : null,
-        rodape: !ultima.cadastros ? "" :
-          fmt(temp / ultima.cadastros * 100, 1) + "% dos cadastros da semana",
-        nota: "hoje são <b>" + (hoje.temporarios ?? 0) + "</b> em toda a base"
+        // sem alvo positivo nao ha fracao de caminho: a barra mostra o quanto
+        // da base esta parada em temporario, que e o que se quer perto de zero
+        pct: totalBase ? 100 - (hoje.temporarios / totalBase * 100) : null,
+        rodape: totalBase ? fmt(100 * hoje.temporarios / totalBase, 1) + "% da base cadastrada" : "",
+        nota: temp === null || temp === undefined ? ""
+          : "<b>" + fmt(temp, 0) + "</b> vieram da turma desta semana"
       }),
       cartaoFarol({
         rotulo: "Em onboarding assistido",
@@ -2042,15 +2043,24 @@
       "</span>";
   }
 
+  /* Retrato de hoje distribuido pela semana de cadastro — nao e quantos
+     temporarios existiam naquela semana. Essa serie nao da para montar: o log
+     de status nao registra toda entrada no status, entao reconstruir para tras
+     dava 1.794 em agosto contra 313 hoje. O que esta aqui e medido.
+
+     Por isso tambem nao ha linha de meta: contra um retrato distribuido, uma
+     linha em zero nao quer dizer nada. A meta vive no cartao, contra o total. */
   function grafOnbTemporarios(lista) {
-    const alvo = metaOnb("temporarios", 0);
+    const hoje = (S.onb.hoje || {}).temporarios ?? 0;
+    const sub = $("#onb-temp-sub");
+    if (sub) sub.innerHTML = "Os <b>" + fmt(hoje, 0) + "</b> temporários de hoje, " +
+      "pela semana em que cada um se cadastrou";
 
     grafico("chart-onb-temporarios", { type: "bar",
       data: { labels: onbEixoCurto(lista), datasets: [
         { type: "bar", label: "Temporários hoje", data: lista.map(s => s.temporarios),
           backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 30,
-          rotulo: { casas: 0, cor: C.featured || "#202020" } },
-        linhaMeta(alvo, lista, 0) ] },
+          rotulo: { casas: 0, cor: C.featured || "#202020" } } ] },
       options: opcoes({ layout: { padding: { top: 18, right: 34 } },
         plugins: { legend: legenda(),
           tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
@@ -2068,11 +2078,12 @@
     /* Nao existe marcador de "onboarding assistido" no cadastro. O que da para
        medir e quem esta parado num status que so anda com alguem da operacao.
        O numero definitivo vem da planilha do Gabi, ainda nao conectada. */
-    if (sub) sub.innerHTML = "Cadastros parados num status que só anda com alguém da operação — hoje são <b>" +
-      (hoje.em_onboarding_assistido ?? 0) + "</b>: " +
-      [["Em validação", det.UNDER_REVIEW], ["Em revisão manual", det.PENDING_REVIEW],
-       ["Incompleto", det.INCOMPLETE]].filter(x => x[1]).map(x => x[1] + " " + x[0].toLowerCase()).join(", ") +
-      '. <span class="pendente">Aproximação — o número oficial virá da planilha do Gabi.</span>';
+    if (sub) sub.innerHTML = "Os <b>" + fmt(hoje.em_onboarding_assistido ?? 0, 0) + "</b> cadastros " +
+      "parados hoje num status que só anda com alguém da operação (" +
+      [["em validação", det.UNDER_REVIEW], ["em revisão manual", det.PENDING_REVIEW],
+       ["incompletos", det.INCOMPLETE]].filter(x => x[1]).map(x => x[1] + " " + x[0]).join(", ") +
+      "), pela semana em que se cadastraram. " +
+      '<span class="pendente">Aproximação — o número oficial virá da planilha do Gabi.</span>';
 
     grafico("chart-onb-assistido", { type: "bar",
       data: { labels: onbEixoCurto(lista), datasets: [{
