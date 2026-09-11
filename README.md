@@ -349,10 +349,33 @@ as notas. O texto vive na pesquisa, onde cada nota é seguida de um "Quer
 comentar sobre essa resposta?". Por isso o botão **Exibir os comentários** que
 aparece embaixo de cada gráfico do NPS lê o Metabase, não o Databricks.
 
-O onboarding é todo semanal, com uma ressalva importante no gráfico de taxa de
-ativação: uma ativação leva ~30 dias, então as semanas mais recentes ainda não
-tiveram tempo de converter. Elas aparecem **pontilhadas** — não caíram, só não
-fecharam. A janela é configurável em `ONBOARDING_JANELA`.
+O onboarding é todo semanal e segue a mesma conta do Farol:
+
+> **Tempo médio de ativação** = data do evento `professional.activated` menos a
+> data de cadastro, contando só quem já ativou, agrupado pela semana em que a
+> pessoa **se cadastrou**. **% na meta** = quantos ativaram dentro do prazo.
+
+O agrupamento é por semana de *cadastro*, não de ativação. Medir pela semana de
+ativação responde outra pergunta — "quanto tempo tinha esperado quem ativou
+agora" — e dá números várias vezes maiores (30 dias contra 0,7 na mesma
+semana). As duas contas estão certas; a do Farol é a que a área usa.
+
+Duas ressalvas que o painel mostra na tela:
+
+1. A taxa de ativação das semanas mais recentes ainda vai subir — uma ativação
+   leva ~30 dias. Elas aparecem **pontilhadas**: não caíram, só não fecharam.
+   A janela é configurável em `ONBOARDING_JANELA`.
+2. O gráfico de onboarding assistido é **aproximação**. Não há marcador de
+   "assistido" no cadastro; o que dá para medir é quem está parado num status
+   que só anda com alguém da operação. O número oficial depende da planilha do
+   Gabi.
+
+As metas do funil ficam em `data/metas.json`, no bloco `onboarding` — fora de
+`objetivos`, porque são semanais e o farol do semestre é mensal:
+
+```json
+"onboarding": { "tempo_ativacao_dias": 2, "taxa_ativacao_pct": 40, "temporarios": 0 }
+```
 
 ### 9. Comportamental × técnica nas ocorrências
 

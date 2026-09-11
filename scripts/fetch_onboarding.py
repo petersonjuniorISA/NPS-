@@ -32,6 +32,22 @@ STATUS_ASSISTIDO = ("UNDER_REVIEW", "PENDING_REVIEW", "INCOMPLETE")
 # mostra-las como queda seria mentira. O painel marca essas como parciais.
 JANELA_ATIVACAO = int(os.environ.get("ONBOARDING_JANELA", "30"))
 
+METAS = os.path.join(AQUI, "..", "data", "metas.json")
+METAS_PADRAO = {"tempo_ativacao_dias": 2, "taxa_ativacao_pct": 40, "temporarios": 0}
+
+
+def metas_do_onboarding():
+    """As metas moram em data/metas.json, fora de `objetivos` — sao semanais e
+    o farol do semestre e mensal."""
+    try:
+        with io.open(METAS, encoding="utf-8") as f:
+            bloco = (json.load(f) or {}).get("onboarding") or {}
+    except (IOError, ValueError):
+        bloco = {}
+    saida = dict(METAS_PADRAO)
+    saida.update({k: v for k, v in bloco.items() if k in METAS_PADRAO})
+    return saida
+
 
 def pedir(payload):
     req = urllib.request.Request(fm.METABASE_URL.rstrip("/") + "/api/dataset",
@@ -82,28 +98,43 @@ PAR_EVENTOS = [
 ]
 
 
-def por_dia_de_cadastro():
-    """Coorte: de quem se cadastrou no dia X, quantos ja foram ativados."""
+def por_dia_de_cadastro(limite_dias):
+    """Coorte: de quem se cadastrou no dia X, quantos ativaram e em quanto tempo.
+
+    E aqui que o tempo medio de ativacao e medido, do mesmo jeito que o Farol
+    mede: data do evento de ativacao menos a data de cadastro, contando so quem
+    ja ativou, agrupado pela semana de *cadastro*. Medir pela semana de ativacao
+    responde outra pergunta — "quanto tempo tinha esperado quem ativou agora" —
+    e da numeros varias vezes maiores.
+    """
     return mongo(PAR_EVENTOS + [
         {"$match": {"criado": {"$ne": None}}},
-        {"$project": {"dia": {"$dateToString": {"format": "%Y-%m-%d", "date": "$criado"}},
-                      "ativou": {"$cond": [{"$eq": ["$ativado", None]}, 0, 1]}}},
-        {"$group": {"_id": "$dia", "cadastros": {"$sum": 1}, "ativados": {"$sum": "$ativou"}}},
+        {"$project": {
+            "dia": {"$dateToString": {"format": "%Y-%m-%d", "date": "$criado"}},
+            "ativou": {"$cond": [{"$eq": ["$ativado", None]}, 0, 1]},
+            "dias": {"$cond": [{"$eq": ["$ativado", None]}, None,
+                     {"$divide": [{"$subtract": ["$ativado", "$criado"]}, 86400000]}]}}},
+        {"$group": {"_id": "$dia",
+                    "cadastros": {"$sum": 1},
+                    "ativados": {"$sum": "$ativou"},
+                    "soma_dias": {"$sum": {"$ifNull": ["$dias", 0]}},
+                    "em_meta": {"$sum": {"$cond": [
+                        {"$and": [{"$ne": ["$dias", None]},
+                                  {"$lte": ["$dias", limite_dias]}]}, 1, 0]}}}},
         {"$sort": {"_id": 1}},
     ])
 
 
 def por_dia_de_ativacao():
-    """Fluxo: quantos foram ativados no dia X e quanto tempo levaram."""
+    """Fluxo: quantas ativacoes aconteceram no dia X.
+
+    Numero de operacao, nao de coorte — quantas ativacoes a equipe fez naquela
+    semana, venham de que turma vierem. Fica no tooltip, para nao competir com
+    a leitura de coorte que e a do Farol."""
     return mongo(PAR_EVENTOS + [
         {"$match": {"ativado": {"$ne": None}}},
-        {"$project": {
-            "dia": {"$dateToString": {"format": "%Y-%m-%d", "date": "$ativado"}},
-            "dias": {"$cond": [{"$eq": ["$criado", None]}, None,
-                     {"$divide": [{"$subtract": ["$ativado", "$criado"]}, 86400000]}]}}},
-        {"$group": {"_id": "$dia", "ativados": {"$sum": 1},
-                    "soma_dias": {"$sum": {"$ifNull": ["$dias", 0]}},
-                    "com_cadastro": {"$sum": {"$cond": [{"$eq": ["$dias", None]}, 0, 1]}}}},
+        {"$project": {"dia": {"$dateToString": {"format": "%Y-%m-%d", "date": "$ativado"}}}},
+        {"$group": {"_id": "$dia", "ativados": {"$sum": 1}}},
         {"$sort": {"_id": 1}},
     ])
 
@@ -133,25 +164,25 @@ def retrato_de_hoje():
 
 
 # ------------------------------------------------------------------ monta ---
-def semanas(cadastros, ativacoes, coorte):
+def semanas(cadastros, ativacoes, coorte, limite_dias):
     caixas = {}
 
     def caixa(dia):
         ini = segunda(dia)
         return caixas.setdefault(ini, {"inicio": ini.isoformat(), "label": rotulo(ini),
                                        "cadastros": 0, "ativados_da_coorte": 0,
-                                       "ativados": 0, "soma_dias": 0.0, "com_cadastro": 0,
+                                       "soma_dias": 0.0, "em_meta": 0,
+                                       "ativacoes_na_semana": 0,
                                        "temporarios": 0, "assistido": 0})
 
     for l in cadastros:
         c = caixa(dia_de(l["_id"]))
         c["cadastros"] += int(l["cadastros"])
         c["ativados_da_coorte"] += int(l["ativados"])
-    for l in ativacoes:
-        c = caixa(dia_de(l["_id"]))
-        c["ativados"] += int(l["ativados"])
         c["soma_dias"] += float(l["soma_dias"] or 0)
-        c["com_cadastro"] += int(l["com_cadastro"])
+        c["em_meta"] += int(l["em_meta"])
+    for l in ativacoes:
+        caixa(dia_de(l["_id"]))["ativacoes_na_semana"] += int(l["ativados"])
     for l in coorte:
         c = caixa(dia_de(l["semana"]))
         c["temporarios"] += int(l["temporarios"])
@@ -161,8 +192,10 @@ def semanas(cadastros, ativacoes, coorte):
     ordenadas = [caixas[k] for k in sorted(caixas) if k >= corte]
 
     for c in ordenadas:
-        c["tempo_medio_ativacao"] = round(c["soma_dias"] / c["com_cadastro"], 1) if c["com_cadastro"] else None
-        c["taxa_ativacao"] = round(100.0 * c["ativados_da_coorte"] / c["cadastros"], 1) if c["cadastros"] else None
+        ativados = c["ativados_da_coorte"]
+        c["tempo_medio_ativacao"] = round(c["soma_dias"] / ativados, 1) if ativados else None
+        c["pct_na_meta"] = round(100.0 * c["em_meta"] / ativados, 1) if ativados else None
+        c["taxa_ativacao"] = round(100.0 * ativados / c["cadastros"], 1) if c["cadastros"] else None
         idade = (date.today() - dia_de(c["inicio"])).days
         c["coorte_fechada"] = idade >= JANELA_ATIVACAO
         del c["soma_dias"]
@@ -171,12 +204,15 @@ def semanas(cadastros, ativacoes, coorte):
 
 def main():
     pedir.chave = fm.obter_chave()
-    cadastros = por_dia_de_cadastro()
+    metas = metas_do_onboarding()
+    limite = metas["tempo_ativacao_dias"]
+
+    cadastros = por_dia_de_cadastro(limite)
     ativacoes = por_dia_de_ativacao()
     coorte = coorte_por_semana()
     hoje = retrato_de_hoje()
 
-    lista = semanas(cadastros, ativacoes, coorte)
+    lista = semanas(cadastros, ativacoes, coorte, limite)
     assistido = sum(hoje.get(s, 0) for s in STATUS_ASSISTIDO)
 
     payload = {
@@ -184,6 +220,12 @@ def main():
         "fonte": "Metabase - Professional History (professionalevents) e Professional (postgres)",
         "desde": DESDE,
         "janela_ativacao_dias": JANELA_ATIVACAO,
+        "metas": metas,
+        "como_medimos": (
+            "Tempo medio de ativacao: data do evento professional.activated menos a "
+            "data de cadastro, so de quem ja ativou, agrupado pela semana de cadastro "
+            "— a mesma conta do Farol. %% na meta = quantos ativaram em ate %d dias."
+            % limite),
         "hoje": {
             "por_status": hoje,
             "temporarios": hoje.get("ACTIVE_TEMPORARY", 0),
@@ -198,9 +240,9 @@ def main():
 
     print("onboarding: %d semanas desde %s" % (len(lista), DESDE))
     for c in lista[-6:]:
-        print("   %s  cadastros %-4s ativados %-4s tempo %-6s taxa %-6s temp %-4s assistido %s"
-              % (c["inicio"], c["cadastros"], c["ativados"], c["tempo_medio_ativacao"],
-                 c["taxa_ativacao"], c["temporarios"], c["assistido"]))
+        print("   %s  cadastros %-4s ativados %-4s tempo %-6s na meta %-7s taxa %-6s temp %s"
+              % (c["inicio"], c["cadastros"], c["ativados_da_coorte"], c["tempo_medio_ativacao"],
+                 c["pct_na_meta"], c["taxa_ativacao"], c["temporarios"]))
     print("   hoje: %d temporarios, %d em onboarding assistido %s"
           % (payload["hoje"]["temporarios"], assistido, payload["hoje"]["detalhe_assistido"]))
     print("arquivo: %s (%.1f KB)" % (destino, os.path.getsize(destino) / 1024.0))

@@ -1680,93 +1680,198 @@
     return lista.filter(s => !s.coorte_fechada).length;
   }
 
-  function onboarding() {
-    if (!S.onb) return;
-    cartoesOnb();
-    grafOnbTempo();
-    grafOnbAtivacao();
-    grafOnbTemporarios();
-    grafOnbAssistido();
-  }
-
-  function cartoesOnb() {
-    const lista = onbSemanas(), hoje = S.onb.hoje || {};
-    const fechadas = lista.filter(s => s.coorte_fechada);
-    const ultima = lista[lista.length - 1] || {};
-    const comTempo = lista.filter(s => s.tempo_medio_ativacao !== null);
-    const tempo = comTempo.length
-      ? comTempo.slice(-4).reduce((a, s) => a + s.tempo_medio_ativacao, 0) / Math.min(4, comTempo.length)
-      : null;
-    const taxa = fechadas.length ? fechadas[fechadas.length - 1].taxa_ativacao : null;
-
-    const cartoes = [
-      ["Tempo médio de ativação", tempo === null ? "—" : fmt(tempo, 1) + " d",
-       "média das últimas 4 semanas"],
-      ["Ativados na semana", ultima.ativados ?? "—", "semana de " + (ultima.label || "—")],
-      ["Taxa de ativação", taxa === null ? "—" : fmt(taxa, 1) + "%",
-       "última turma já fechada"],
-      ["Em onboarding assistido", hoje.em_onboarding_assistido ?? "—",
-       "cadastros parados aguardando a operação"]
-    ];
-    $("#onb-cartoes").innerHTML = cartoes.map(c =>
-      '<div class="card sup-card"><div class="metric-label">' + c[0] + "</div>" +
-      '<div class="sup-num tabular">' + c[1] + "</div>" +
-      '<div class="metric-note">' + c[2] + "</div></div>").join("");
-  }
-
-  /** Eixo x comum aos quatro gráficos, para as semanas baterem entre eles.
-      Só o dia de início: o intervalo inteiro cabe no tooltip. */
-  function onbEixo(lista) { return lista.map(s => s.label.split(" a ")[0]); }
-
   /** Título do tooltip: aí sim a semana inteira, que é o que se lê devagar. */
   function onbTitulo(lista) {
     return itens => { const s = lista[itens[0].dataIndex]; return s ? "Semana de " + s.label : ""; };
   }
 
-  function grafOnbTempo() {
+  /* Metas do funil, lidas de data/metas.json (bloco `onboarding`) e repetidas
+     em onboarding.json por quem coletou — se as duas discordarem, vale a do
+     arquivo de metas, que e o que alguem edita. */
+  function metaOnb(chave, padrao) {
+    const doPainel = ((S.metas || {}).onboarding || {})[chave];
+    if (doPainel !== undefined && doPainel !== null) return doPainel;
+    const doArquivo = ((S.onb || {}).metas || {})[chave];
+    return doArquivo === undefined || doArquivo === null ? padrao : doArquivo;
+  }
+
+  function onboarding() {
+    if (!S.onb) return;
     const lista = onbSemanas();
+    const ref = $("#onb-ref");
+    if (ref) ref.innerHTML = (S.onb.como_medimos || "") +
+      " Todos os números desta aba são semanais e vêm do Metabase — a mesma base do Farol.";
+    cartoesOnb(lista);
+    grafOnbTempo(lista);
+    grafOnbAtivacao(lista);
+    grafOnbTemporarios(lista);
+    grafOnbAssistido(lista);
+  }
+
+  /* Cartao no formato do Farol: numero grande, meta embaixo, barra de quanto
+     do caminho foi feito e a variacao contra a semana anterior. */
+  function cartaoFarol(c) {
+    const pct = c.pct === null ? null : Math.max(0, Math.min(100, c.pct));
+    const cls = pct === null ? "" : pct >= 100 ? "ok" : pct >= 85 ? "risco" : "off";
+    return '<div class="card onb-card">' +
+      '<div class="metric-label">' + c.rotulo + "</div>" +
+      '<div class="sup-num tabular">' + c.valor +
+      (c.delta || "") + "</div>" +
+      '<div class="onb-meta">meta: ' + c.meta + "</div>" +
+      '<div class="onb-barra"><i class="' + cls + '" style="width:' +
+      (pct === null ? 0 : pct) + '%"></i></div>' +
+      '<div class="onb-rodape ' + cls + '">' + (c.rodape || "") + "</div>" +
+      (c.nota ? '<div class="onb-nota">' + c.nota + "</div>" : "") +
+      "</div>";
+  }
+
+  function cartoesOnb(lista) {
+    const hoje = S.onb.hoje || {};
+    const ultima = lista[lista.length - 1] || {};
+    const antes = lista[lista.length - 2] || {};
+
+    const alvoTempo = metaOnb("tempo_ativacao_dias", 2);
+    const alvoTaxa = metaOnb("taxa_ativacao_pct", 40);
+    const alvoTemp = metaOnb("temporarios", 0);
+
+    /* Variacao contra a semana anterior. `melhor` diz para que lado e bom:
+       em tempo e temporarios, cair e ganhar. */
+    const variacao = (agora, antes_, melhor) => {
+      if (agora === null || agora === undefined || antes_ === null ||
+          antes_ === undefined || antes_ === 0) return "";
+      const pct = (agora - antes_) / Math.abs(antes_) * 100;
+      const bom = melhor === "baixo" ? pct < 0 : pct > 0;
+      return '<span class="delta ' + (bom ? "up" : "down") + '">' +
+        (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct), 0) + "%</span>";
+    };
+
+    const t = ultima.tempo_medio_ativacao;
+    const taxa = ultima.taxa_ativacao;
+    const temp = ultima.temporarios;
+    const assistido = hoje.em_onboarding_assistido;
+
+    const cartoes = [
+      cartaoFarol({
+        rotulo: "Tempo médio de ativação · semana",
+        valor: t === null || t === undefined ? "—" : fmt(t, 1) + " dias",
+        delta: variacao(t, antes.tempo_medio_ativacao, "baixo"),
+        meta: "≤ " + fmt(alvoTempo, 0) + " dias",
+        // meta e teto: o caminho feito e quanto do limite sobrou
+        pct: t === null || t === undefined || t === 0 ? null : alvoTempo / t * 100,
+        rodape: t === null || t === undefined ? "sem ativação nesta turma"
+          : (t <= alvoTempo ? "✓ dentro da meta" : "▲ " + fmt(t - alvoTempo, 1) + " dia(s) acima da meta"),
+        nota: ultima.pct_na_meta === null || ultima.pct_na_meta === undefined ? ""
+          : fmt(ultima.pct_na_meta, 0) + "% na meta · " + ultima.ativados_da_coorte + " ativados"
+      }),
+      cartaoFarol({
+        rotulo: "Taxa de ativação · semana",
+        valor: taxa === null || taxa === undefined ? "—" : fmt(taxa, 1) + "%",
+        delta: variacao(taxa, antes.taxa_ativacao, "cima"),
+        meta: fmt(alvoTaxa, 0) + "%",
+        pct: taxa === null || taxa === undefined ? null : taxa / alvoTaxa * 100,
+        rodape: taxa === null || taxa === undefined ? "sem cadastro na semana"
+          : taxa >= alvoTaxa ? "✓ dentro da meta"
+          : "faltam " + fmt(alvoTaxa - taxa, 1) + " p.p.",
+        nota: ultima.coorte_fechada ? ultima.cadastros + " cadastros na turma"
+          : ultima.cadastros + " cadastros · turma ainda dentro da janela de " +
+            (S.onb.janela_ativacao_dias || 30) + " dias"
+      }),
+      cartaoFarol({
+        rotulo: "Temporários · turma da semana",
+        valor: temp === null || temp === undefined ? "—" : fmt(temp, 0),
+        delta: variacao(temp, antes.temporarios, "baixo"),
+        meta: "perto de " + fmt(alvoTemp, 0),
+        // sem alvo positivo nao ha fracao de caminho: a barra vira participacao
+        pct: ultima.cadastros ? 100 - (temp / ultima.cadastros * 100) : null,
+        rodape: !ultima.cadastros ? "" :
+          fmt(temp / ultima.cadastros * 100, 1) + "% dos cadastros da semana",
+        nota: "hoje são <b>" + (hoje.temporarios ?? 0) + "</b> em toda a base"
+      }),
+      cartaoFarol({
+        rotulo: "Em onboarding assistido",
+        valor: assistido === null || assistido === undefined ? "—" : fmt(assistido, 0),
+        meta: "sem meta definida",
+        pct: null,
+        rodape: "cadastros parados aguardando a operação",
+        nota: '<span class="pendente">Aproximação — o número oficial virá da planilha do Gabi.</span>'
+      })
+    ];
+    $("#onb-cartoes").innerHTML = cartoes.join("");
+  }
+
+  /** Eixo x comum aos quatro gráficos, para as semanas baterem entre eles. */
+  function onbEixoCurto(lista) { return lista.map(s => s.label.split(" a ")[0]); }
+
+  /** Linha de meta: cinza claro e tracejada, igual à do resto do painel. */
+  function linhaMeta(valor, lista, rotuloCasas) {
+    return { type: "line", label: "Meta", data: lista.map(() => valor), borderColor: C.cinzaMeta,
+      borderDash: [5, 4], borderWidth: 1.8, backgroundColor: "transparent",
+      pointRadius: 0, tension: 0, spanGaps: true,
+      rotulo: { casas: rotuloCasas ?? 0, cor: C.cinzaMeta, soUltimo: true } };
+  }
+
+  function grafOnbTempo(lista) {
+    const alvo = metaOnb("tempo_ativacao_dias", 2);
+    const sub = $("#onb-tempo-sub");
+    if (sub) sub.innerHTML = "Dias entre o cadastro e a ativação, pela semana em que a pessoa <b>se cadastrou</b> · " +
+      "meta de <b>" + fmt(alvo, 0) + " dias</b> tracejada";
+
     grafico("chart-onb-tempo", { type: "line",
-      data: { labels: onbEixo(lista), datasets: [{
-        label: "Dias até ativar", data: lista.map(s => s.tempo_medio_ativacao),
-        borderColor: C.blue, backgroundColor: C.blueFill, fill: true, tension: .3,
-        borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: C.blue,
-        pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-        rotulo: { casas: 1, cor: C.blue } }] },
-      options: opcoes({ plugins: { legend: { display: false },
-          tooltip: { callbacks: { title: onbTitulo(lista),
-                                  label: c => fmt(c.parsed.y, 1) + " dias em média" } } },
+      data: { labels: onbEixoCurto(lista), datasets: [
+        { label: "Dias até ativar", data: lista.map(s => s.tempo_medio_ativacao),
+          borderColor: C.blue, backgroundColor: C.blueFill, fill: true, tension: .3,
+          borderWidth: 2.5, pointRadius: 4.5, pointBackgroundColor: C.blue,
+          pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
+          rotulo: { casas: 1, cor: C.blue } },
+        linhaMeta(alvo, lista, 0) ] },
+      options: opcoes({ layout: { padding: { top: 18, right: 34 } },
+        plugins: { legend: legenda(),
+          tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
+            const s = lista[itens[0].dataIndex];
+            if (!s || s.pct_na_meta === null || s.pct_na_meta === undefined) return "";
+            return fmt(s.pct_na_meta, 0) + "% ativaram em até " + fmt(alvo, 0) + " dias" +
+                   " · " + s.ativados_da_coorte + " de " + s.cadastros + " cadastros";
+          } } } },
         scales: { y: { beginAtZero: true, grid: { color: C.grid },
                        title: { display: true, text: "dias", font: { size: 10 } } },
                   x: { grid: { display: false } } } }) });
   }
 
-  function grafOnbAtivacao() {
-    const lista = onbSemanas();
+  function grafOnbAtivacao(lista) {
+    const alvo = metaOnb("taxa_ativacao_pct", 40);
+    const sub = $("#onb-ativacao-sub");
+    if (sub) sub.innerHTML = "Barras: quantos da turma daquela semana já ativaram · " +
+      "Linha: o mesmo em % · meta de <b>" + fmt(alvo, 0) + "%</b> tracejada";
+
     /* A taxa das semanas ainda abertas fica pontilhada: elas nao cairam, so
        nao tiveram tempo de ativar todo mundo. */
-    grafico("chart-onb-ativacao", {
-      data: { labels: onbEixo(lista), datasets: [
-        { type: "bar", label: "Ativados", data: lista.map(s => s.ativados),
-          backgroundColor: C.teal, borderRadius: 4, maxBarThickness: 26, yAxisID: "y",
+    grafico("chart-onb-ativacao", { type: "bar",
+      data: { labels: onbEixoCurto(lista), datasets: [
+        { type: "bar", label: "Ativados", data: lista.map(s => s.ativados_da_coorte),
+          backgroundColor: C.teal, borderRadius: 4, maxBarThickness: 30, yAxisID: "y",
           rotulo: { casas: 0, cor: C.blue } },
-        { type: "line", label: "Taxa de ativação (%)",
-          data: lista.map(s => s.taxa_ativacao),
+        { type: "line", label: "Taxa de ativação (%)", data: lista.map(s => s.taxa_ativacao),
           borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
-          pointRadius: lista.map(s => s.coorte_fechada ? 4 : 3),
+          pointRadius: lista.map(s => s.coorte_fechada ? 4.5 : 3),
           pointStyle: lista.map(s => s.coorte_fechada ? "circle" : "triangle"),
           pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y1",
           segment: { borderDash: ctx => lista[ctx.p1DataIndex] && !lista[ctx.p1DataIndex].coorte_fechada
-                                        ? [5, 4] : undefined } } ] },
-      options: opcoes({ plugins: { legend: legenda(),
+                                        ? [5, 4] : undefined },
+          rotulo: { casas: 1, sufixo: "%", cor: C.pink, soUltimo: true } },
+        Object.assign(linhaMeta(alvo, lista, 0), { yAxisID: "y1", label: "Meta" }) ] },
+      options: opcoes({ layout: { padding: { top: 18, right: 40 } },
+        plugins: { legend: legenda(),
           tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
             const s = lista[itens[0].dataIndex];
             if (!s) return "";
-            const base = s.cadastros + " cadastros na semana";
+            const base = s.cadastros + " cadastros na semana · " +
+              s.ativacoes_na_semana + " ativações aconteceram nesta semana";
             return s.coorte_fechada ? base
               : base + " — turma ainda dentro da janela de " +
                 (S.onb.janela_ativacao_dias || 30) + " dias, a taxa ainda sobe";
           } } } },
-        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
+        scales: { y: { beginAtZero: true, grid: { color: C.grid },
+                       title: { display: true, text: "pessoas", font: { size: 10 } } },
                   y1: { beginAtZero: true, max: 100, position: "right", grid: { display: false },
                         ticks: { callback: v => v + "%" } },
                   x: { grid: { display: false } } } }) });
@@ -1782,30 +1887,36 @@
       "Entre as turmas já fechadas, a taxa de ativação saiu de <b>" + fmt(ini.taxa_ativacao, 1) +
       "%</b> na semana de " + ini.label + " para <b>" + fmt(fim.taxa_ativacao, 1) + "%</b> em " +
       fim.label + (dif >= 0 ? " — subiu " : " — caiu ") + fmt(Math.abs(dif), 1) + " ponto" +
-      (Math.abs(dif) >= 2 ? "s" : "") + "." +
+      (Math.abs(dif) >= 2 ? "s" : "") + ", contra uma meta de " + fmt(alvo, 0) + "%." +
       (abertas ? " As <b>" + abertas + " semanas mais recentes</b> aparecem pontilhadas porque a turma ainda está dentro da janela de ativação." : "") +
       "</span>";
   }
 
-  function grafOnbTemporarios() {
-    const lista = onbSemanas();
+  function grafOnbTemporarios(lista) {
+    const alvo = metaOnb("temporarios", 0);
+    const sub = $("#onb-temp-sub");
+    if (sub) sub.innerHTML = "Quantos de cada turma seguem hoje como Temporário · " +
+      "a meta é <b>chegar perto de " + fmt(alvo, 0) + "</b>";
+
     grafico("chart-onb-temporarios", { type: "bar",
-      data: { labels: onbEixo(lista), datasets: [{
-        label: "Temporários hoje", data: lista.map(s => s.temporarios),
-        backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 26,
-        rotulo: { casas: 0, cor: C.featured || "#202020" } }] },
-      options: opcoes({ plugins: { legend: { display: false },
+      data: { labels: onbEixoCurto(lista), datasets: [
+        { type: "bar", label: "Temporários hoje", data: lista.map(s => s.temporarios),
+          backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 30,
+          rotulo: { casas: 0, cor: C.featured || "#202020" } },
+        linhaMeta(alvo, lista, 0) ] },
+      options: opcoes({ layout: { padding: { top: 18, right: 34 } },
+        plugins: { legend: legenda(),
           tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
             const s = lista[itens[0].dataIndex];
-            return s ? "de " + s.cadastros + " cadastros dessa semana" : "";
+            return s && s.cadastros ? "de " + s.cadastros + " cadastros dessa semana (" +
+              fmt(100 * s.temporarios / s.cadastros, 1) + "%)" : "";
           } } } },
         scales: { y: { beginAtZero: true, grid: { color: C.grid } },
                   x: { grid: { display: false } } } }) });
   }
 
-  function grafOnbAssistido() {
-    const lista = onbSemanas(), hoje = (S.onb.hoje || {});
-    const det = hoje.detalhe_assistido || {};
+  function grafOnbAssistido(lista) {
+    const hoje = S.onb.hoje || {}, det = hoje.detalhe_assistido || {};
     const sub = $("#onb-assistido-sub");
     /* Nao existe marcador de "onboarding assistido" no cadastro. O que da para
        medir e quem esta parado num status que so anda com alguem da operacao.
@@ -1817,11 +1928,12 @@
       '. <span class="pendente">Aproximação — o número oficial virá da planilha do Gabi.</span>';
 
     grafico("chart-onb-assistido", { type: "bar",
-      data: { labels: onbEixo(lista), datasets: [{
+      data: { labels: onbEixoCurto(lista), datasets: [{
         label: "Aguardando a operação", data: lista.map(s => s.assistido),
-        backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 26,
+        backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 30,
         rotulo: { casas: 0, cor: C.blue } }] },
-      options: opcoes({ plugins: { legend: { display: false },
+      options: opcoes({ layout: { padding: { top: 18 } },
+        plugins: { legend: { display: false },
           tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
             const s = lista[itens[0].dataIndex];
             return s && s.cadastros ? fmt(100 * s.assistido / s.cadastros, 0) +

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=62">
+<link rel="stylesheet" href="css/styles.css?v=67">
 </head>
 <body>
 
@@ -346,51 +346,49 @@
 
     <!-- ============ HISTORICO ============ -->
     <section class="page" id="page-onboarding">
+      <p class="section-desc" id="onb-ref" style="margin-top:0;"></p>
+
       <div class="grid grid-4" id="onb-cartoes"></div>
 
-      <div class="grid grid-wide" style="margin-top:16px;">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Tempo médio de ativação</div>
-              <div class="card-sub">Dias entre o cadastro e a ativação, pela semana em que a ativação aconteceu</div>
-            </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Tempo médio de ativação</div>
+            <div class="card-sub" id="onb-tempo-sub"></div>
           </div>
-          <div class="chart h280"><canvas id="chart-onb-tempo"></canvas></div>
         </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Ativados e taxa de ativação</div>
-              <div class="card-sub">Barras: ativados na semana · Linha: % da turma que se cadastrou naquela semana e já ativou</div>
-            </div>
-          </div>
-          <div class="chart h280"><canvas id="chart-onb-ativacao"></canvas></div>
-          <div class="leitura" id="onb-leitura"></div>
-        </div>
+        <div class="chart h300"><canvas id="chart-onb-tempo"></canvas></div>
       </div>
 
-      <div class="grid grid-wide" style="margin-top:16px;">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Temporários</div>
-              <div class="card-sub">Quantos de cada semana de cadastro seguem hoje como Temporário · <b>a meta é chegar perto de zero</b></div>
-            </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Ativados e taxa de ativação</div>
+            <div class="card-sub" id="onb-ativacao-sub"></div>
           </div>
-          <div class="chart h280"><canvas id="chart-onb-temporarios"></canvas></div>
         </div>
+        <div class="chart h300"><canvas id="chart-onb-ativacao"></canvas></div>
+        <div class="leitura" id="onb-leitura"></div>
+      </div>
 
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">ISAs em onboarding assistido</div>
-              <div class="card-sub" id="onb-assistido-sub"></div>
-            </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Temporários</div>
+            <div class="card-sub" id="onb-temp-sub"></div>
           </div>
-          <div class="chart h280"><canvas id="chart-onb-assistido"></canvas></div>
         </div>
+        <div class="chart h300"><canvas id="chart-onb-temporarios"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <div class="card-title">ISAs em onboarding assistido</div>
+            <div class="card-sub" id="onb-assistido-sub"></div>
+          </div>
+        </div>
+        <div class="chart h300"><canvas id="chart-onb-assistido"></canvas></div>
       </div>
     </section>
 
@@ -404,8 +402,8 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=62"></script>
-<script src="js/app.js?v=62"></script>
+<script src="js/config.js?v=67"></script>
+<script src="js/app.js?v=67"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>
