@@ -1125,10 +1125,6 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
           <div>
             <div class="card-title">Evolução por dimensão</div>
           </div>
-          <div class="seg" id="seg-evo-dim">
-            <button data-eixo="semanas">Semanas</button>
-            <button class="active" data-eixo="meses">Meses</button>
-          </div>
         </div>
         <div class="chart h320"><canvas id="chart-evo-dim"></canvas></div>
         <div class="leitura" id="leitura-dim"></div>
@@ -1138,10 +1134,6 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
         <div class="card-head">
           <div>
             <div class="card-title">Evolução do NPS por especialidade</div>
-          </div>
-          <div class="seg" id="seg-evo-esp">
-            <button data-eixo="semanas">Semanas</button>
-            <button class="active" data-eixo="meses">Meses</button>
           </div>
         </div>
         <div class="chart h320"><canvas id="chart-evo-esp"></canvas></div>
@@ -1476,7 +1468,7 @@ window.NPS_CONFIG = {
   const S = { nps: null, metas: null, zendesk: [], charts: {}, oc: null, onb: null, com: null, zt: null,
               sacMes: null, ocMes: null, ocVista: "classe", ocRecorte: null, tkMes: null, tkInd: null, comFiltro: null, mes: null, semana: null,   // semana segue nula: o painel e sempre mensal
              
-              evoDim: null, evoEsp: null, pagina: "nps",
+               pagina: "nps",
               espOrdem: "nps", espSel: null, satOrdem: { col: "experiencia_geral", dir: -1 } };
 
   const SEM_DADOS = {
@@ -2051,27 +2043,23 @@ window.NPS_CONFIG = {
   /* ---------- Evolução no tempo ---------- */
 
   /** Pontos do eixo: as semanas do mês escolhido ou os meses da série. */
-  function eixoTempo(modo) {
-    if (modo === "meses") {
-      return Object.keys(S.nps.meses || {}).sort()
-        .map(m => ({ label: mesCurto(m), bloco: S.nps.meses[m], parcial: false }));
-    }
-    return semanasNps().map(sem => ({
-      label: "S" + sem.semana, bloco: sem, parcial: sem.respostas < MIN_SEMANA
+  /** Os meses da série, que é o que a tela mostra. */
+  function eixoMeses() {
+    return Object.keys(S.nps.meses || {}).sort()
+      .map(m => ({ mes: m, label: mesCurto(m), bloco: S.nps.meses[m], parcial: false }));
+  }
+
+  /** As semanas de um mês, que é o que o card flutuante mostra. */
+  function eixoSemanas(mes) {
+    return semanasNps(mes).map(sem => ({
+      label: "S" + sem.semana + (sem.label ? " · " + sem.label : ""),
+      bloco: sem, parcial: sem.respostas < MIN_SEMANA
     }));
   }
 
-  /** Qual eixo faz sentido por padrão: o que tiver mais de um ponto. */
-  function eixoPadrao() {
-    return Object.keys(S.nps.meses || {}).length > 1 && semanasNps().length < 2
-      ? "meses" : "semanas";
-  }
-
-  /** Liga os botões Semanas/Meses e devolve o eixo em vigor. */
-  function eixoDe(qual, idSeg) {
-    const escolhido = S[qual] || eixoPadrao();
-    $$("#" + idSeg + " button").forEach(b => b.classList.toggle("active", b.dataset.eixo === escolhido));
-    return escolhido;
+  /** Meses que têm quebra semanal — só eles entram no card flutuante. */
+  function mesesComSemanaNps() {
+    return Object.keys(S.nps.semanas || {}).filter(m => (S.nps.semanas[m] || []).length > 1).sort();
   }
 
   /* Linhas com poucos pontos ficam ilegíveis se todas levarem rótulo em cada
@@ -2138,19 +2126,10 @@ window.NPS_CONFIG = {
     return { min: Math.floor(min * 10) / 10, max: Math.ceil(max * 10) / 10 };
   }
 
-  function grafEvolucaoDimensoes() {
-    const eixo = eixoTempo(eixoDe("evoDim", "seg-evo-dim"));
-    if (eixo.length < 2) {
-      grafico("chart-evo-dim", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
-      $("#leitura-dim").innerHTML = "";
-      return;
-    }
-
-    // o rotulo vai no ultimo periodo com amostra cheia — pendurar o numero
-    // numa semana parcial daria destaque ao dado menos confiavel
-    const ancora = eixo.reduce((ac, p, i) => p.parcial ? ac : i, 0);
-
-    const datasets = DIMENSOES.map((d, i) => {
+  /* Séries de dimensão de um eixo qualquer — serve tanto para os meses na
+     tela quanto para as semanas dentro do card flutuante. */
+  function seriesDeDimensao(eixo, ancora) {
+    return DIMENSOES.map((d, i) => {
       const cor = CORES_SERIE[i % CORES_SERIE.length];
       return {
         label: d.label,
@@ -2160,20 +2139,26 @@ window.NPS_CONFIG = {
         }),
         borderColor: cor, backgroundColor: "transparent", borderWidth: 2.2, tension: .3,
         pointRadius: 4, pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 1.5,
-        spanGaps: true, rotulo: { casas: 2, cor: cor, soUltimo: true, indice: ancora },
+        spanGaps: true,
+        rotulo: { casas: 2, cor: cor, soUltimo: true, indice: ancora },
         segment: { borderDash: ctx => eixo[ctx.p1DataIndex].parcial ? [5, 4] : undefined }
       };
     });
+  }
+
+  function grafEvolucaoDimensoes() {
+    const eixo = eixoMeses();
+    if (eixo.length < 2) {
+      grafico("chart-evo-dim", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      $("#leitura-dim").innerHTML = "";
+      return;
+    }
+    const datasets = seriesDeDimensao(eixo, eixo.length - 1);
 
     grafico("chart-evo-dim", { type: "line",
       data: { labels: eixo.map(p => p.label), datasets },
       options: opcoes({
-        // clicar numa linha abre o que foi escrito sobre aquela dimensao
-        onClick: (e, els) => {
-          if (!els.length) return;
-          const d = datasets[els[0].datasetIndex];
-          if (d) abrirComentarios({ tema: d.label });
-        },
+        onClick: (e, els) => popDimensoes(els, eixo),
         plugins: { legend: legenda(10) },
         layout: { padding: { right: 48 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), .12, 0, 5),
@@ -2184,23 +2169,40 @@ window.NPS_CONFIG = {
       datasets.map(d => ({ nome: d.label, valores: d.data })), 2, "");
   }
 
-  function grafEvolucaoEspecialidades() {
-    const eixo = eixoTempo(eixoDe("evoEsp", "seg-evo-esp"));
-    if (eixo.length < 2) {
-      grafico("chart-evo-esp", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
-      $("#leitura-esp").innerHTML = "";
-      return;
-    }
+  /** Clique num mês da evolução por dimensão: as semanas daquele mês. */
+  function popDimensoes(elementos, eixo) {
+    if (!elementos || !elementos.length) return;
+    const mes = (eixo[elementos[0].index] || {}).mes;
+    const comSemana = mesesComSemanaNps();
+    if (!mes || !comSemana.length) return;
+    abrirPop({
+      titulo: "Nota por dimensão, semana a semana",
+      meses: comSemana,
+      mes: comSemana.includes(mes) ? mes : comSemana[comSemana.length - 1],
+      sub: m => "Semanas de " + mesLabel(m).toLowerCase() +
+        " · trecho pontilhado é semana com menos de " + MIN_SEMANA + " respostas",
+      nota: m => {
+        const sem = semanasNps(m).filter(x => x.respostas < MIN_SEMANA);
+        return sem.length ? "<b>" + sem.length + "</b> semana(s) com amostra curta — o ponto " +
+          "serve de sinal, não de conclusão." : "";
+      },
+      config: m => {
+        const eixoSem = eixoSemanas(m);
+        const ds = seriesDeDimensao(eixoSem, eixoSem.length - 1);
+        return { type: "line",
+          data: { labels: eixoSem.map(p => p.label), datasets: ds },
+          options: opcoes({ layout: { padding: { top: 18, right: 48 } },
+            plugins: { legend: legenda(10) },
+            scales: { y: Object.assign(faixa(ds.map(d => d.data), .12, 0, 5),
+                        { grid: { color: C.grid } }),
+                      x: { grid: { display: false } } } }) };
+      }
+    });
+  }
 
-    // Onze linhas viram emaranhado: só as de maior volume no mês.
-    const escolhidas = [...especialidades().relevantes]
-      .sort((a, b) => b.pct_amostra - a.pct_amostra).slice(0, 5).map(e => e.especialidade);
-
-    // o rotulo vai no ultimo periodo com amostra cheia — pendurar o numero
-    // numa semana parcial daria destaque ao dado menos confiavel
-    const ancora = eixo.reduce((ac, p, i) => p.parcial ? ac : i, 0);
-
-    const datasets = escolhidas.map((nome, i) => {
+  /** As 5 especialidades de maior volume, no eixo que vier. */
+  function seriesDeEspecialidade(eixo, escolhidas, ancora) {
+    return escolhidas.map((nome, i) => {
       const cor = CORES_SERIE[i % CORES_SERIE.length];
       return {
         label: nome,
@@ -2210,14 +2212,31 @@ window.NPS_CONFIG = {
         }),
         borderColor: cor, backgroundColor: "transparent", borderWidth: 2.2, tension: .3,
         pointRadius: 4, pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 1.5,
-        spanGaps: true, rotulo: { casas: 1, cor: cor, soUltimo: true, indice: ancora },
+        spanGaps: true,
+        rotulo: { casas: 1, cor: cor, soUltimo: true, indice: ancora },
         segment: { borderDash: ctx => eixo[ctx.p1DataIndex].parcial ? [5, 4] : undefined }
       };
     });
+  }
+
+  function grafEvolucaoEspecialidades() {
+    const eixo = eixoMeses();
+    if (eixo.length < 2) {
+      grafico("chart-evo-esp", { type: "line", data: { labels: [], datasets: [] }, options: opcoes({}) });
+      $("#leitura-esp").innerHTML = "";
+      return;
+    }
+
+    // Onze linhas viram emaranhado: só as de maior volume no mês.
+    const escolhidas = [...especialidades().relevantes]
+      .sort((a, b) => b.pct_amostra - a.pct_amostra).slice(0, 5).map(e => e.especialidade);
+    const datasets = seriesDeEspecialidade(eixo, escolhidas, eixo.length - 1);
 
     grafico("chart-evo-esp", { type: "line",
       data: { labels: eixo.map(p => p.label), datasets },
-      options: opcoes({ plugins: { legend: legenda(10) },
+      options: opcoes({
+        onClick: (e, els) => popEspecialidades(els, eixo, escolhidas),
+        plugins: { legend: legenda(10) },
         layout: { padding: { right: 48 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), 8, -100, 100),
                     { grid: { color: C.grid } }),
@@ -2226,6 +2245,38 @@ window.NPS_CONFIG = {
     escreverLeitura("#leitura-esp", eixo,
       datasets.map(d => ({ nome: d.label, valores: d.data })), 1, "");
   }
+
+  /** Clique num mês da evolução por especialidade: as semanas daquele mês. */
+  function popEspecialidades(elementos, eixo, escolhidas) {
+    if (!elementos || !elementos.length) return;
+    const mes = (eixo[elementos[0].index] || {}).mes;
+    const comSemana = mesesComSemanaNps();
+    if (!mes || !comSemana.length) return;
+    abrirPop({
+      titulo: "NPS por especialidade, semana a semana",
+      meses: comSemana,
+      mes: comSemana.includes(mes) ? mes : comSemana[comSemana.length - 1],
+      sub: m => "Semanas de " + mesLabel(m).toLowerCase() +
+        " · as mesmas 5 especialidades de maior volume",
+      nota: m => {
+        const sem = semanasNps(m).filter(x => x.respostas < MIN_SEMANA);
+        return sem.length ? "<b>" + sem.length + "</b> semana(s) com amostra curta — numa " +
+          "especialidade isso pode ser uma resposta só." : "";
+      },
+      config: m => {
+        const eixoSem = eixoSemanas(m);
+        const ds = seriesDeEspecialidade(eixoSem, escolhidas, eixoSem.length - 1);
+        return { type: "line",
+          data: { labels: eixoSem.map(p => p.label), datasets: ds },
+          options: opcoes({ layout: { padding: { top: 18, right: 48 } },
+            plugins: { legend: legenda(10) },
+            scales: { y: Object.assign(faixa(ds.map(d => d.data), 8, -100, 100),
+                        { grid: { color: C.grid } }),
+                      x: { grid: { display: false } } } }) };
+      }
+    });
+  }
+
 
   function espLista() {
     const { relevantes, pequenas } = especialidades();
@@ -3863,14 +3914,6 @@ window.NPS_CONFIG = {
       $$("#seg-esp button").forEach(x => x.classList.toggle("active", x === b));
       S.espOrdem = b.dataset.sort;
       espLista();
-    }));
-    $$("#seg-evo-dim button").forEach(b => b.addEventListener("click", () => {
-      S.evoDim = b.dataset.eixo;
-      grafEvolucaoDimensoes();
-    }));
-    $$("#seg-evo-esp button").forEach(b => b.addEventListener("click", () => {
-      S.evoEsp = b.dataset.eixo;
-      grafEvolucaoEspecialidades();
     }));
   }
 

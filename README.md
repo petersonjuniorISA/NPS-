@@ -64,8 +64,14 @@ No lugar do seletor, o topo mostra **há quanto tempo o dado foi coletado**
 semanal, então acima disso alguma automação falhou.
 
 O detalhe semanal não sumiu: ele aparece no **card flutuante**, ao clicar em
-qualquer mês de qualquer gráfico mensal. É o mesmo dado, só que puxado quando
-alguém quer olhar, em vez de virar um estado do painel inteiro.
+qualquer mês de qualquer gráfico mensal — inclusive nas evoluções por dimensão
+e por especialidade, que antes tinham um seletor Semanas/Meses próprio. Aquele
+seletor tinha um defeito: "Semanas" só mostrava as do mês corrente, então o
+botão ora comparava quatro meses, ora três semanas de agosto — duas perguntas
+diferentes disputando o mesmo gráfico.
+
+É o mesmo dado, só que puxado quando alguém quer olhar, em vez de virar um
+estado do painel inteiro.
 
 O `data/nps.json` continua guardando todos os meses (campo `meses`) e a quebra
 semanal de cada um (`semanas`) — nenhum mês perde detalhe quando um novo
