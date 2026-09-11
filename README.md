@@ -357,17 +357,16 @@ Duas ressalvas que o painel mostra na tela:
 1. A taxa de ativação das semanas mais recentes ainda vai subir — uma ativação
    leva ~30 dias. Elas aparecem **pontilhadas**: não caíram, só não fecharam.
    A janela é configurável em `ONBOARDING_JANELA`.
-2. Os gráficos de **temporários** e de **onboarding assistido** são retrato de
-   hoje distribuído pela semana de cadastro — não são "quantos havia naquela
-   semana". Essa série não dá para montar: o log de status não registra toda
-   entrada nesses status (as saídas de "Ativo temporário" somam 9.315 contra
-   3.223 entradas), e reconstruir para trás dava 1.794 temporários em agosto
-   contra 313 hoje. Para ter a série de verdade, o retrato precisa passar a ser
-   gravado a cada semana daqui para frente.
-3. O gráfico de onboarding assistido é, além disso, **aproximação**: não há
-   marcador de "assistido" no cadastro; o que dá para medir é quem está parado
-   num status que só anda com alguém da operação. O número oficial depende da
-   planilha do Gabi.
+2. O gráfico de **temporários** é retrato de hoje distribuído pela semana de
+   cadastro — não é "quantos havia naquela semana". Essa série não dá para
+   montar: o log de status não registra toda entrada no status (as saídas de
+   "Ativo temporário" somam 9.315 contra 3.223 entradas), e reconstruir para
+   trás dava 1.794 em agosto contra 313 hoje. Para ter a série de verdade, o
+   retrato precisa passar a ser gravado a cada semana daqui para frente. Esse
+   gráfico não tem meta: o combinado é acompanhar o número, não persegui-lo.
+
+O gráfico de **ISAs em onboarding assistido** saiu da aba — essa parte ainda
+vai ser construída, e não havia como medi-la sem inventar.
 
 As metas do funil ficam em `data/metas.json`, no bloco `onboarding` — fora de
 `objetivos`, porque são semanais e o farol do semestre é mensal:

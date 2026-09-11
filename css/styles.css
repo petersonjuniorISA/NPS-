@@ -921,3 +921,26 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   font: 400 11px/1.45 ui-monospace, Menlo, Consolas, monospace;
   color: var(--featured, #202020); background: var(--gray-bg, #F4F6F9); resize: vertical;
 }
+
+/* ---------------------------------------------------------------------------
+   Farol na coluna estreita
+   Ele nasceu num card de largura inteira, com uma frase de contexto por linha.
+   Do lado do hero não cabe: a frase quebrava em cinco linhas e o nome da meta
+   ficava mais alto que o número. Aqui a linha fica de duas colunas — nome de
+   um lado, número do outro — e o contexto sai.
+--------------------------------------------------------------------------- */
+.grid-wide > .card .farol-row {
+  grid-template-columns: auto 1fr auto;
+  gap: 10px; padding: 11px 0;
+}
+.grid-wide > .card .farol-ctx { display: none; }
+.grid-wide > .card .farol-name { font-size: 13px; line-height: 1.25; }
+.grid-wide > .card .farol-nums { min-width: 0; }
+.grid-wide > .card .farol-real { font-size: 16px; }
+.grid-wide > .card .farol-status { display: none; }
+
+/* na edição o contexto volta, porque ele diz o que cada campo é */
+.grid-wide > .card .farol.editando .farol-row { grid-template-columns: auto 1fr auto auto; }
+.grid-wide > .card .farol.editando .farol-ctx { display: block; font-size: 11px; }
+.grid-wide > .card .farol.editando .farol-status { display: block; min-width: 0; }
+.grid-wide > .card .farol.editando .farol-word { font-size: 9.5px; }

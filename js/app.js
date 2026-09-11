@@ -1936,7 +1936,6 @@
     grafOnbTempo(lista);
     grafOnbAtivacao(lista);
     grafOnbTemporarios(lista);
-    grafOnbAssistido(lista);
   }
 
   /* Cartao no formato do Farol: numero grande, meta embaixo, barra de quanto
@@ -1948,9 +1947,9 @@
       '<div class="metric-label">' + c.rotulo + "</div>" +
       '<div class="sup-num tabular">' + c.valor +
       (c.delta || "") + "</div>" +
-      '<div class="onb-meta">meta: ' + c.meta + "</div>" +
-      '<div class="onb-barra"><i class="' + cls + '" style="width:' +
-      (pct === null ? 0 : pct) + '%"></i></div>' +
+      (c.meta ? '<div class="onb-meta">meta: ' + c.meta + "</div>" : "") +
+      (c.pct === null ? "" : '<div class="onb-barra"><i class="' + cls + '" style="width:' +
+        pct + '%"></i></div>') +
       '<div class="onb-rodape ' + cls + '">' + (c.rodape || "") + "</div>" +
       (c.nota ? '<div class="onb-nota">' + c.nota + "</div>" : "") +
       "</div>";
@@ -1980,7 +1979,6 @@
     const t = ultima.tempo_medio_ativacao;
     const taxa = ultima.taxa_ativacao;
     const temp = ultima.temporarios;
-    const assistido = hoje.em_onboarding_assistido;
 
     const cartoes = [
       cartaoFarol({
@@ -2003,29 +2001,17 @@
         pct: taxa === null || taxa === undefined ? null : taxa / alvoTaxa * 100,
         rodape: taxa === null || taxa === undefined ? "sem cadastro na semana"
           : taxa >= alvoTaxa ? "✓ dentro da meta"
-          : "faltam " + fmt(alvoTaxa - taxa, 1) + " p.p.",
-        nota: ultima.coorte_fechada ? ultima.cadastros + " cadastros na turma"
-          : ultima.cadastros + " cadastros · turma ainda dentro da janela de " +
-            (S.onb.janela_ativacao_dias || 30) + " dias"
+          : "faltam " + fmt(alvoTaxa - taxa, 1) + " p.p."
       }),
+      // sem meta: o combinado e acompanhar o numero, nao persegui-lo
       cartaoFarol({
         rotulo: "Temporários na base",
         valor: fmt(hoje.temporarios ?? 0, 0),
-        meta: "perto de " + fmt(alvoTemp, 0),
-        // sem alvo positivo nao ha fracao de caminho: a barra mostra o quanto
-        // da base esta parada em temporario, que e o que se quer perto de zero
-        pct: totalBase ? 100 - (hoje.temporarios / totalBase * 100) : null,
+        meta: null,
+        pct: null,
         rodape: totalBase ? fmt(100 * hoje.temporarios / totalBase, 1) + "% da base cadastrada" : "",
         nota: temp === null || temp === undefined ? ""
           : "<b>" + fmt(temp, 0) + "</b> vieram da turma desta semana"
-      }),
-      cartaoFarol({
-        rotulo: "Em onboarding assistido",
-        valor: assistido === null || assistido === undefined ? "—" : fmt(assistido, 0),
-        meta: "sem meta definida",
-        pct: null,
-        rodape: "cadastros parados aguardando a operação",
-        nota: '<span class="pendente">Aproximação — o número oficial virá da planilha do Gabi.</span>'
       })
     ];
     $("#onb-cartoes").innerHTML = cartoes.join("");
@@ -2147,34 +2133,6 @@
                   x: { grid: { display: false } } } }) });
   }
 
-  function grafOnbAssistido(lista) {
-    const hoje = S.onb.hoje || {}, det = hoje.detalhe_assistido || {};
-    const sub = $("#onb-assistido-sub");
-    /* Nao existe marcador de "onboarding assistido" no cadastro. O que da para
-       medir e quem esta parado num status que so anda com alguem da operacao.
-       O numero definitivo vem da planilha do Gabi, ainda nao conectada. */
-    if (sub) sub.innerHTML = "Os <b>" + fmt(hoje.em_onboarding_assistido ?? 0, 0) + "</b> cadastros " +
-      "parados hoje num status que só anda com alguém da operação (" +
-      [["em validação", det.UNDER_REVIEW], ["em revisão manual", det.PENDING_REVIEW],
-       ["incompletos", det.INCOMPLETE]].filter(x => x[1]).map(x => x[1] + " " + x[0]).join(", ") +
-      "), pela semana em que se cadastraram. " +
-      '<span class="pendente">Aproximação — o número oficial virá da planilha do Gabi.</span>';
-
-    grafico("chart-onb-assistido", { type: "bar",
-      data: { labels: onbEixoCurto(lista), datasets: [{
-        label: "Aguardando a operação", data: lista.map(s => s.assistido),
-        backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 30,
-        rotulo: { casas: 0, cor: C.blue } }] },
-      options: opcoes({ layout: { padding: { top: 18 } },
-        plugins: { legend: { display: false },
-          tooltip: { callbacks: { title: onbTitulo(lista), afterBody: itens => {
-            const s = lista[itens[0].dataIndex];
-            return s && s.cadastros ? fmt(100 * s.assistido / s.cadastros, 0) +
-              "% dos " + s.cadastros + " cadastros da semana" : "";
-          } } } },
-        scales: { y: { beginAtZero: true, grid: { color: C.grid } },
-                  x: { grid: { display: false } } } }) });
-  }
 
   /* =====================================================================
      COMENTÁRIOS DO NPS
@@ -2309,16 +2267,17 @@
 
   /* Rotulos em cima dos pontos.
 
-     O problema que este plugin resolve: quando varias linhas se aproximam no
-     mesmo mes, os numeros caem uns sobre os outros e viram borrao. Antes so os
-     rotulos de fim de linha se espalhavam; os do meio do grafico eram
-     desenhados onde calhasse.
+     O problema: quando varias linhas se aproximam no mesmo mes, os numeros
+     caem uns sobre os outros e viram borrao.
 
-     Agora todos passam pelo mesmo tratamento: sao agrupados por coluna (mesmo
-     x), ordenados pela altura real do ponto e entao afastados o minimo
-     necessario. Ordenar antes de afastar importa — empurrar na ordem dos
-     datasets invertia a sequencia vertical, e o numero da linha de cima
-     aparecia embaixo. Quem sai do lugar ganha um fio ligando ao seu ponto. */
+     A saida aqui e horizontal. Empilhar verticalmente resolvia a sobreposicao
+     mas afastava o numero do seu ponto, e ai era preciso um fio ligando os
+     dois — mais tinta na tela para consertar o que a propria correcao criou.
+     Lado a lado, cada numero fica na altura do seu ponto e a cor diz de qual
+     linha ele e. Sem fio.
+
+     Quando a fileira nao cabe na largura do grafico, ai sim o excedente
+     desce uma linha: e melhor que sair pela borda. */
   const ROTULOS = {
     id: "rotulos",
     afterDatasetsDraw(chart) {
@@ -2327,8 +2286,9 @@
       const area = chart.chartArea;
       const ALTURA = 13;          // altura de uma linha de rótulo
       const COLUNA = 26;          // x's mais próximos que isso são a mesma coluna
+      const VAO = 7;              // respiro entre dois rótulos lado a lado
 
-      const pendentes = [];       // tudo que precisa de desempate vertical
+      const pendentes = [];
 
       ctx.save();
       ctx.font = "600 11px 'Open Sans', sans-serif";
@@ -2351,75 +2311,137 @@
                     : fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
 
           if (barraH) {
-            // barra deitada: o rótulo vai na ponta dela, sem disputar espaço
             ctx.fillStyle = cor; ctx.textAlign = "left";
             ctx.fillText(txt, ponto.x + 7, ponto.y);
             return;
           }
           if (r) {
-            // radar: para fora do ponto, na direção do centro
             const dx = ponto.x - r.xCenter, dy = ponto.y - r.yCenter;
             const d = Math.hypot(dx, dy) || 1;
             ctx.fillStyle = cor; ctx.textAlign = "center";
             ctx.fillText(txt, ponto.x + dx / d * 13, ponto.y + dy / d * 13);
             return;
           }
+          if (barraV && cfg.abaixo) {   // dentro da barra: não disputa espaço
+            ctx.fillStyle = cor; ctx.textAlign = "center";
+            ctx.fillText(txt, ponto.x, ponto.y + 15);
+            return;
+          }
           pendentes.push({
-            txt, cor, px: ponto.x, py: ponto.y,
-            // o de fim de linha sai para a direita; os outros ficam sobre o ponto
-            x: cfg.soUltimo ? ponto.x + 10 : ponto.x,
-            y: ponto.y + (cfg.soUltimo ? 0 : (barraV ? (cfg.abaixo ? 15 : -11) : (cfg.abaixo ? 14 : -13))),
-            align: cfg.soUltimo ? "left" : "center",
-            fixo: barraV && cfg.abaixo   // rótulo dentro da barra não se move
+            txt, cor, largura: ctx.measureText(txt).width,
+            px: ponto.x, py: ponto.y + (cfg.soUltimo ? 0 : (barraV ? -11 : -13)),
+            direita: !!cfg.soUltimo   // fim de linha sai para a direita do ponto
           });
         });
       });
 
-      /* Espalha coluna por coluna. Só quem disputa o mesmo x entra na conta —
-         rótulos de meses diferentes nunca se estorvam. */
-      const colunas = new Map();
-      pendentes.forEach(p => {
-        const chave = Math.round(p.px / COLUNA);
-        if (!colunas.has(chave)) colunas.set(chave, []);
-        colunas.get(chave).push(p);
-      });
-
-      colunas.forEach(grupo => {
-        const moveis = grupo.filter(p => !p.fixo).sort((a, b) => a.py - b.py);
-        if (moveis.length < 2) return;
-        for (let i = 1; i < moveis.length; i++) {
-          if (moveis[i].y - moveis[i - 1].y < ALTURA)
-            moveis[i].y = moveis[i - 1].y + ALTURA;
+      /* Agrupa por coluna e, dentro dela, por altura: só quem está no mesmo x
+         e na mesma faixa de y realmente se estorva. */
+      const paraDesenhar = [];
+      pendentes.sort((a, b) => a.px - b.px || a.py - b.py);
+      let coluna = [];
+      const fecharColuna = () => {
+        if (!coluna.length) return;
+        coluna.sort((a, b) => a.py - b.py);
+        let bloco = [coluna[0]];
+        const fecharBloco = () => {
+          espalhar(bloco, area, VAO, ALTURA);
+          bloco.forEach(p => paraDesenhar.push(p));
+        };
+        for (let i = 1; i < coluna.length; i++) {
+          if (coluna[i].py - bloco[bloco.length - 1].py < ALTURA) bloco.push(coluna[i]);
+          else { fecharBloco(); bloco = [coluna[i]]; }
         }
-        // a coluna inteira volta para dentro do gráfico se tiver estourado
-        const sobra = moveis[moveis.length - 1].y - (area.bottom - 4);
-        if (sobra > 0) moveis.forEach(p => p.y -= sobra);
-        const falta = area.top + 6 - moveis[0].y;
-        if (falta > 0) moveis.forEach(p => p.y += falta);
-      });
-
+        fecharBloco();
+        coluna = [];
+      };
       pendentes.forEach(p => {
-        // quem foi afastado ganha um fio até o próprio ponto, senão não dá
-        // para saber de qual linha o número é
-        const dy = Math.abs(p.y - p.py), dx = Math.abs(p.x - p.px);
-        if (dy > ALTURA - 2 || (p.align === "left" && dy > 2)) {
-          ctx.strokeStyle = p.cor;
-          ctx.globalAlpha = .45;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(p.px + (p.align === "left" ? 4 : 0), p.py);
-          ctx.lineTo(p.x - (p.align === "left" ? 2 : 0), p.y + (p.align === "center" ? 5 : 0));
-          ctx.stroke();
-          ctx.globalAlpha = 1;
-        }
+        if (coluna.length && p.px - coluna[coluna.length - 1].px > COLUNA) fecharColuna();
+        coluna.push(p);
+      });
+      fecharColuna();
+
+      // rede de segurança: o que ainda se tocar é empurrado para baixo, e o
+      // conjunto sobe se estourar o pé do gráfico
+      resolverRestos(paraDesenhar, area, ALTURA);
+
+      paraDesenhar.forEach(p => {
         ctx.fillStyle = p.cor;
-        ctx.textAlign = p.align;
+        ctx.textAlign = "left";
         ctx.fillText(p.txt, p.x, p.y);
       });
 
       ctx.restore();
     }
   };
+
+  /* Põe os rótulos de um bloco lado a lado, na mesma altura. O que não couber
+     na largura do gráfico desce uma linha e recomeça. */
+  function espalhar(bloco, area, VAO, ALTURA) {
+    const px = bloco[0].px;
+    const alturaMedia = bloco.reduce((a, p) => a + p.py, 0) / bloco.length;
+
+    if (bloco.length === 1) {
+      const p = bloco[0];
+      p.x = p.direita ? p.px + 8 : p.px - p.largura / 2;
+      p.y = Math.min(Math.max(p.py, area.top + 6), area.bottom - 6);
+      if (p.x + p.largura > area.right) p.x = area.right - p.largura;
+      if (p.x < area.left) p.x = area.left;
+      return;
+    }
+
+    const total = bloco.reduce((a, p) => a + p.largura, 0) + VAO * (bloco.length - 1);
+    const disponivel = area.right - (bloco[0].direita ? px + 8 : area.left);
+    const cabeTudo = total <= disponivel;
+
+    const inicio = bloco[0].direita ? px + 8 : px - total / 2;
+    let x = inicio, y = alturaMedia, usado = 0;
+    bloco.forEach(p => {
+      if (!cabeTudo && usado > 0 && usado + p.largura > disponivel) {
+        x = inicio;          // quebrou a linha: volta ao começo e desce
+        y += ALTURA;
+        usado = 0;
+      }
+      p.x = x;
+      p.y = y;
+      x += p.largura + VAO;
+      usado += p.largura + VAO;
+    });
+
+    /* O bloco sobe ou desce inteiro para caber. Grampear cada rótulo no pé do
+       gráfico — que era o que acontecia antes — empilhava todos na mesma
+       altura justamente quando o mês fechava com valor baixo. */
+    const alto = Math.min.apply(null, bloco.map(p => p.y));
+    const baixo = Math.max.apply(null, bloco.map(p => p.y));
+    let desloca = 0;
+    if (baixo > area.bottom - 6) desloca = area.bottom - 6 - baixo;
+    if (alto + desloca < area.top + 6) desloca = area.top + 6 - alto;
+    bloco.forEach(p => {
+      p.y += desloca;
+      if (p.x + p.largura > area.right) p.x = area.right - p.largura;
+      if (p.x < area.left) p.x = area.left;
+    });
+  }
+
+  /* Passada final: nada pode ficar por cima de nada. Percorre de cima para
+     baixo e empurra quem encosta; se o conjunto estourar o pé, sobe tudo. */
+  function resolverRestos(lista, area, ALTURA) {
+    lista.sort((a, b) => a.y - b.y || a.x - b.x);
+    for (let i = 1; i < lista.length; i++) {
+      const p = lista[i];
+      for (let j = 0; j < i; j++) {
+        const q = lista[j];
+        const cruzaX = p.x < q.x + q.largura && q.x < p.x + p.largura;
+        if (cruzaX && Math.abs(p.y - q.y) < ALTURA) p.y = q.y + ALTURA;
+      }
+    }
+    const baixo = Math.max.apply(null, lista.map(p => p.y).concat([-Infinity]));
+    if (baixo > area.bottom - 6) {
+      const sobe = baixo - (area.bottom - 6);
+      lista.forEach(p => p.y -= sobe);
+    }
+  }
+
   Chart.register(ROTULOS);
 
   function opcoes(extra) {
