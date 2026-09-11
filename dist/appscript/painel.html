@@ -630,18 +630,21 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 .com-fundo { position: absolute; inset: 0; background: rgba(0, 25, 45, .42); }
 body.sem-rolagem { overflow: hidden; }
 
+/* Tela cheia, não gaveta: o combinado era "abre uma outra tela". Numa faixa
+   de 620px cada comentário quebrava em oito linhas e a leitura virava rolagem
+   infinita; com a largura toda eles ficam em colunas e o mês inteiro cabe. */
 .com-tela {
-  position: absolute; top: 0; right: 0; bottom: 0;
-  width: min(620px, 100%); background: #fff;
+  position: absolute; inset: 0;
+  background: var(--gray-bg, #F4F6F9);
   display: flex; flex-direction: column;
-  box-shadow: -12px 0 44px rgba(0, 68, 116, .18);
   animation: com-entra .18s ease-out;
 }
-@keyframes com-entra { from { transform: translateX(24px); opacity: .4; } }
+@keyframes com-entra { from { transform: scale(.99); opacity: .4; } }
 
 .com-cab {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-  padding: 22px 24px 16px; border-bottom: 1px solid var(--gray-outline, #DDD);
+  padding: 22px 32px 16px; background: #fff;
+  border-bottom: 1px solid var(--gray-outline, #DDD);
 }
 .com-titulo { font: 600 20px/1.2 "Titillium Web", sans-serif; color: var(--featured, #202020); }
 .com-sub { margin-top: 4px; font-size: 12px; color: var(--gray-body, #666E80); }
@@ -651,18 +654,26 @@ body.sem-rolagem { overflow: hidden; }
 }
 .com-fechar:hover { color: var(--pink, #ED1E79); }
 
-.com-corpo { overflow-y: auto; padding: 8px 24px 32px; }
-.com-mes { margin-top: 20px; }
+.com-corpo { overflow-y: auto; padding: 0 32px 40px; }
+.com-mes { margin-top: 26px; }
 .com-mes-cab {
-  position: sticky; top: 0; background: #fff; padding: 8px 0 10px; z-index: 1;
+  position: sticky; top: 0; background: var(--gray-bg, #F4F6F9);
+  padding: 14px 0 10px; z-index: 1;
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  border-bottom: 1px solid var(--gray-inactive, #E8EAED);
+  border-bottom: 1px solid var(--gray-outline, #DDD);
 }
+/* os comentários do mês em colunas — o texto é curto e a largura sobra */
+.com-lista { columns: 3 320px; column-gap: 20px; margin-top: 4px; }
 .com-mes-cab b { font: 600 15px/1 "Titillium Web", sans-serif; color: var(--blue-dark, #004474); }
 .com-cont { font-size: 11px; color: var(--gray-body, #666E80); }
 
 /* a cor da borda é a classificação da nota, não o humor do texto */
-.com-item { padding: 12px 0 12px 14px; border-left: 3px solid var(--gray-outline, #DDD); margin-top: 12px; }
+.com-item {
+  break-inside: avoid; -webkit-column-break-inside: avoid;
+  background: #fff; border-radius: 10px; padding: 12px 14px; margin: 0 0 12px;
+  border-left: 3px solid var(--gray-outline, #DDD);
+  box-shadow: 0 1px 3px rgba(0, 68, 116, .06);
+}
 .com-item.promotor { border-left-color: var(--positive, #00C643); }
 .com-item.neutro   { border-left-color: var(--warning, #EDBB3B); }
 .com-item.detrator { border-left-color: var(--negative, #E93B5A); }
@@ -691,7 +702,10 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 .nota-classe b { color: var(--blue-dark, #004474); }
 .nota-motivos { margin-top: 4px; font-size: 11.5px; line-height: 1.6; color: var(--gray-body, #666E80); }
 
-@media (max-width: 700px) { .com-tela { width: 100%; } }
+@media (max-width: 700px) {
+  .com-cab, .com-filtros, .com-corpo { padding-left: 16px; padding-right: 16px; }
+  .com-lista { columns: 1; }
+}
 
 /* linha de contexto logo abaixo de um rótulo de seção */
 .section-desc {
@@ -703,7 +717,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 /* filtros da tela de comentários */
 .com-filtros {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 12px 24px; border-bottom: 1px solid var(--gray-inactive, #E8EAED);
+  padding: 12px 32px; border-bottom: 1px solid var(--gray-inactive, #E8EAED);
   background: var(--gray-bg, #F4F6F9);
 }
 .com-select {
@@ -957,6 +971,16 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 .grid-wide > .card .farol.editando .farol-status { display: block; min-width: 0; }
 .grid-wide > .card .farol.editando .farol-word { font-size: 9.5px; }
 
+/* trajetória dentro do quadro do NPS — ocupa a linha inteira, abaixo do
+   número e do medidor */
+.hero-chart {
+  grid-column: 1 / -1;
+  height: 110px; margin-top: var(--lg);
+  padding-top: var(--md); border-top: 1px solid rgba(255, 255, 255, .15);
+}
+.hero-chart canvas { width: 100% !important; }
+@media (max-width: 980px) { .hero-chart { height: 96px; } }
+
 </style>
 </head>
 <body>
@@ -1023,7 +1047,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
       <div class="grid grid-wide">
         <div class="hero">
           <div>
-            <div class="hero-label">NPS geral · <span id="hero-month">—</span></div>
+            <div class="hero-label">NPS · <span id="hero-month">—</span></div>
             <div class="hero-number tabular">
               <span id="hero-nps">—</span>
               <span class="hero-tag" id="hero-tag"></span>
@@ -1045,6 +1069,10 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
               </div>
             </div>
             <div class="meter-list" id="meter-list"></div>
+          </div>
+
+          <div class="hero-chart">
+            <canvas id="chart-hero"></canvas>
           </div>
         </div>
 
@@ -1665,7 +1693,7 @@ window.NPS_CONFIG = {
      porque o tamanho em cache continua zero. Por isso cada aba só desenha os
      próprios gráficos, e só quando está visível. */
   const GRAFICOS = {
-    nps:         () => { grafHistorico(); grafEvolucaoDimensoes(); grafEvolucaoEspecialidades(); },
+    nps:         () => { grafHero(); grafHistorico(); grafEvolucaoDimensoes(); grafEvolucaoEspecialidades(); },
     sac:         () => { sac(); },
     tickets:     () => { tickets(); },
     ocorrencias: () => { ocorrencias(); },
@@ -1855,6 +1883,42 @@ window.NPS_CONFIG = {
     });
   }
 
+
+/* Trajetoria dentro do proprio quadro do NPS: onde o indice esteve e onde a
+     meta pedia que ele estivesse, mes a mes. O medidor ao lado diz quanto da
+     meta do mes foi feito; este grafico diz se isso e melhora ou repique.
+
+     Ele vive sobre fundo escuro, entao nao usa a paleta dos outros: branco
+     para o realizado e um cinza claro para a meta. */
+  function grafHero() {
+    const hist = S.nps.historico_nps || [];
+    const objNps = objetivo("nps") || { metas: {} };
+    const meses = Array.from(new Set([...hist.map(h => h.mes),
+                                      ...Object.keys(objNps.metas || {})])).sort();
+    const real = meses.map(m => { const h = hist.find(x => x.mes === m); return h ? h.nps : null; });
+    const meta = meses.map(m => objNps.metas[m] ?? null);
+    const BRANCO = "#FFFFFF", CINZA = "rgba(255,255,255,.42)";
+
+    grafico("chart-hero", { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: [
+        { label: "Realizado", data: real, borderColor: BRANCO,
+          backgroundColor: "rgba(255,255,255,.10)", fill: true, tension: .3, borderWidth: 2.4,
+          pointRadius: meses.map(m => m === S.mes ? 5 : 3),
+          pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : BRANCO),
+          pointBorderColor: "rgba(255,255,255,.5)", pointBorderWidth: 1.5, spanGaps: true,
+          // uma casa, como o numero grande logo acima: arredondar aqui faria o
+          // mesmo indice aparecer como 61,5 e 62 no mesmo quadro
+          rotulo: { casas: 1, cor: BRANCO, soUltimo: true } },
+        { label: "Meta", data: meta, borderColor: CINZA, borderWidth: 1.6,
+          backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
+          rotulo: { casas: 0, cor: CINZA, soUltimo: true } } ] },
+      options: opcoes({ layout: { padding: { top: 14, right: 34, bottom: 2 } },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y, 1) } } },
+        scales: { y: { display: false, grace: "22%" },
+                  x: { grid: { display: false },
+                       ticks: { font: { size: 9 }, color: "rgba(255,255,255,.55)" } } } }) });
+  }
 
   /* Evolucao do NPS: indice, promotores, neutros, detratores, meta e o volume
      de respostas — tudo num grafico so, como o board le.
@@ -3470,6 +3534,7 @@ window.NPS_CONFIG = {
           '<span class="com-cont">' + doMes.length + " comentários · " +
           cont.promotor + " promotores, " + cont.neutro + " neutros, " +
           cont.detrator + " detratores</span></div>" +
+          '<div class="com-lista">' +
           doMes.map(c =>
             '<div class="com-item ' + (c.classe || "") + '">' +
             '<div class="com-meta"><span class="com-tag">' + c.tema + "</span>" +
@@ -3477,7 +3542,7 @@ window.NPS_CONFIG = {
             (c.nota_tema === null || c.nota_tema === undefined ? ""
               : '<span class="com-nota tabular">nota ' + c.nota_tema + "</span>") +
             "</div><p>" + escapar(c.texto) + "</p></div>").join("") +
-          "</div>";
+          "</div></div>";
       }).join("");
     }
   }
@@ -3562,7 +3627,7 @@ window.NPS_CONFIG = {
       const area = chart.chartArea;
       const ALTURA = 13;          // altura de uma linha de rótulo
       const COLUNA = 26;          // x's mais próximos que isso são a mesma coluna
-      const VAO = 7;              // respiro entre dois rótulos lado a lado
+      const VAO = 11;             // respiro entre dois rótulos lado a lado
 
       const pendentes = [];
 
@@ -3654,6 +3719,7 @@ window.NPS_CONFIG = {
   /* Põe os rótulos de um bloco lado a lado, na mesma altura. O que não couber
      na largura do gráfico desce uma linha e recomeça. */
   function espalhar(bloco, area, VAO, ALTURA) {
+    const ZIGUE = 9;   // quanto o rótulo alternado desce
     const px = bloco[0].px;
     const alturaMedia = bloco.reduce((a, p) => a + p.py, 0) / bloco.length;
 
@@ -3671,17 +3737,22 @@ window.NPS_CONFIG = {
     const cabeTudo = total <= disponivel;
 
     const inicio = bloco[0].direita ? px + 8 : px - total / 2;
-    let x = inicio, y = alturaMedia, usado = 0;
+    let x = inicio, y = alturaMedia, usado = 0, n = 0;
     bloco.forEach(p => {
       if (!cabeTudo && usado > 0 && usado + p.largura > disponivel) {
         x = inicio;          // quebrou a linha: volta ao começo e desce
         y += ALTURA;
         usado = 0;
+        n = 0;
       }
       p.x = x;
-      p.y = y;
+      /* Vizinhos ficam em alturas alternadas. Numa fileira reta, quatro
+         números colados viram uma barra de dígitos; escalonando, o olho separa
+         um do outro antes de ler. */
+      p.y = y + (n % 2 ? ZIGUE : 0);
       x += p.largura + VAO;
       usado += p.largura + VAO;
+      n++;
     });
 
     /* O bloco sobe ou desce inteiro para caber. Grampear cada rótulo no pé do

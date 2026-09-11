@@ -359,7 +359,7 @@
      porque o tamanho em cache continua zero. Por isso cada aba só desenha os
      próprios gráficos, e só quando está visível. */
   const GRAFICOS = {
-    nps:         () => { grafHistorico(); grafEvolucaoDimensoes(); grafEvolucaoEspecialidades(); },
+    nps:         () => { grafHero(); grafHistorico(); grafEvolucaoDimensoes(); grafEvolucaoEspecialidades(); },
     sac:         () => { sac(); },
     tickets:     () => { tickets(); },
     ocorrencias: () => { ocorrencias(); },
@@ -549,6 +549,42 @@
     });
   }
 
+
+/* Trajetoria dentro do proprio quadro do NPS: onde o indice esteve e onde a
+     meta pedia que ele estivesse, mes a mes. O medidor ao lado diz quanto da
+     meta do mes foi feito; este grafico diz se isso e melhora ou repique.
+
+     Ele vive sobre fundo escuro, entao nao usa a paleta dos outros: branco
+     para o realizado e um cinza claro para a meta. */
+  function grafHero() {
+    const hist = S.nps.historico_nps || [];
+    const objNps = objetivo("nps") || { metas: {} };
+    const meses = Array.from(new Set([...hist.map(h => h.mes),
+                                      ...Object.keys(objNps.metas || {})])).sort();
+    const real = meses.map(m => { const h = hist.find(x => x.mes === m); return h ? h.nps : null; });
+    const meta = meses.map(m => objNps.metas[m] ?? null);
+    const BRANCO = "#FFFFFF", CINZA = "rgba(255,255,255,.42)";
+
+    grafico("chart-hero", { type: "line",
+      data: { labels: meses.map(mesCurto), datasets: [
+        { label: "Realizado", data: real, borderColor: BRANCO,
+          backgroundColor: "rgba(255,255,255,.10)", fill: true, tension: .3, borderWidth: 2.4,
+          pointRadius: meses.map(m => m === S.mes ? 5 : 3),
+          pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : BRANCO),
+          pointBorderColor: "rgba(255,255,255,.5)", pointBorderWidth: 1.5, spanGaps: true,
+          // uma casa, como o numero grande logo acima: arredondar aqui faria o
+          // mesmo indice aparecer como 61,5 e 62 no mesmo quadro
+          rotulo: { casas: 1, cor: BRANCO, soUltimo: true } },
+        { label: "Meta", data: meta, borderColor: CINZA, borderWidth: 1.6,
+          backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
+          rotulo: { casas: 0, cor: CINZA, soUltimo: true } } ] },
+      options: opcoes({ layout: { padding: { top: 14, right: 34, bottom: 2 } },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmt(c.parsed.y, 1) } } },
+        scales: { y: { display: false, grace: "22%" },
+                  x: { grid: { display: false },
+                       ticks: { font: { size: 9 }, color: "rgba(255,255,255,.55)" } } } }) });
+  }
 
   /* Evolucao do NPS: indice, promotores, neutros, detratores, meta e o volume
      de respostas — tudo num grafico so, como o board le.
@@ -2164,6 +2200,7 @@
           '<span class="com-cont">' + doMes.length + " comentários · " +
           cont.promotor + " promotores, " + cont.neutro + " neutros, " +
           cont.detrator + " detratores</span></div>" +
+          '<div class="com-lista">' +
           doMes.map(c =>
             '<div class="com-item ' + (c.classe || "") + '">' +
             '<div class="com-meta"><span class="com-tag">' + c.tema + "</span>" +
@@ -2171,7 +2208,7 @@
             (c.nota_tema === null || c.nota_tema === undefined ? ""
               : '<span class="com-nota tabular">nota ' + c.nota_tema + "</span>") +
             "</div><p>" + escapar(c.texto) + "</p></div>").join("") +
-          "</div>";
+          "</div></div>";
       }).join("");
     }
   }
@@ -2256,7 +2293,7 @@
       const area = chart.chartArea;
       const ALTURA = 13;          // altura de uma linha de rótulo
       const COLUNA = 26;          // x's mais próximos que isso são a mesma coluna
-      const VAO = 7;              // respiro entre dois rótulos lado a lado
+      const VAO = 11;             // respiro entre dois rótulos lado a lado
 
       const pendentes = [];
 
@@ -2348,6 +2385,7 @@
   /* Põe os rótulos de um bloco lado a lado, na mesma altura. O que não couber
      na largura do gráfico desce uma linha e recomeça. */
   function espalhar(bloco, area, VAO, ALTURA) {
+    const ZIGUE = 9;   // quanto o rótulo alternado desce
     const px = bloco[0].px;
     const alturaMedia = bloco.reduce((a, p) => a + p.py, 0) / bloco.length;
 
@@ -2365,17 +2403,22 @@
     const cabeTudo = total <= disponivel;
 
     const inicio = bloco[0].direita ? px + 8 : px - total / 2;
-    let x = inicio, y = alturaMedia, usado = 0;
+    let x = inicio, y = alturaMedia, usado = 0, n = 0;
     bloco.forEach(p => {
       if (!cabeTudo && usado > 0 && usado + p.largura > disponivel) {
         x = inicio;          // quebrou a linha: volta ao começo e desce
         y += ALTURA;
         usado = 0;
+        n = 0;
       }
       p.x = x;
-      p.y = y;
+      /* Vizinhos ficam em alturas alternadas. Numa fileira reta, quatro
+         números colados viram uma barra de dígitos; escalonando, o olho separa
+         um do outro antes de ler. */
+      p.y = y + (n % 2 ? ZIGUE : 0);
       x += p.largura + VAO;
       usado += p.largura + VAO;
+      n++;
     });
 
     /* O bloco sobe ou desce inteiro para caber. Grampear cada rótulo no pé do
