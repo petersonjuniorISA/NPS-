@@ -1021,6 +1021,84 @@
     if (!linha) return null;
     return ind.tempo ? minutosDeTempo(linha[ind.campo]) : num(linha[ind.campo]);
   }
+
+  /* ---------- Semana do ano ----------
+     Numerar S1..S4 dentro de cada mes impede a comparacao que interessa: a
+     ultima semana de julho contra a ultima de agosto viravam as duas "S4". A
+     semana ISO e continua e resolve isso sozinha. */
+  function semanaDoAno(dataISO) {
+    const d = new Date(dataISO + "T00:00:00");
+    if (isNaN(d)) return null;
+    // ISO 8601: a semana 1 e a que contem a primeira quinta-feira do ano
+    const alvo = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dia = alvo.getUTCDay() || 7;
+    alvo.setUTCDate(alvo.getUTCDate() + 4 - dia);
+    const jan1 = new Date(Date.UTC(alvo.getUTCFullYear(), 0, 1));
+    return Math.ceil(((alvo - jan1) / 86400000 + 1) / 7);
+  }
+
+  /** O mês a que a semana pertence — a da segunda-feira que a abre. */
+  const mesDaSemana = dataISO => String(dataISO).slice(0, 7);
+
+  /* Faixa de mês sob o eixo. O Chart.js não agrupa rótulo de eixo, então a
+     faixa é desenhada aqui: um traço por bloco de semanas e o nome do mês
+     centrado nele. Sem isso, "semana 36" não diz de que mês é. */
+  const FAIXAS_MES = {
+    id: "faixasMes",
+    afterDraw(chart) {
+      const faixas = chart.options.faixasMes;
+      if (!faixas || !faixas.length) return;
+      const eixoX = chart.scales.x, area = chart.chartArea;
+      if (!eixoX) return;
+      const ctx = chart.ctx;
+      const y = area.bottom + 30;
+
+      ctx.save();
+      ctx.font = "700 10px 'Open Sans', sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+
+      faixas.forEach(f => {
+        const a = eixoX.getPixelForValue(f.de);
+        const b = eixoX.getPixelForValue(f.ate);
+        const meio = (a + b) / 2;
+        const cor = f.destaque ? (chart.options.faixaCorForte || C.blue)
+                               : (chart.options.faixaCor || "rgba(0,0,0,.22)");
+
+        ctx.strokeStyle = cor;
+        ctx.lineWidth = f.destaque ? 2.5 : 1.5;
+        ctx.beginPath();
+        ctx.moveTo(a - 6, y);
+        ctx.lineTo(b + 6, y);
+        ctx.stroke();
+
+        ctx.fillStyle = cor;
+        ctx.fillText(f.rotulo, meio, y + 11);
+      });
+      ctx.restore();
+    }
+  };
+  Chart.register(FAIXAS_MES);
+
+  /** Monta as faixas a partir de uma lista de semanas com `inicio`. */
+  function faixasDe(semanas, mesDestaque) {
+    const faixas = [];
+    semanas.forEach((sem, i) => {
+      const mes = mesDaSemana(sem.inicio);
+      const ultima = faixas[faixas.length - 1];
+      if (ultima && ultima.mes === mes) ultima.ate = i;
+      else faixas.push({ mes, de: i, ate: i, rotulo: mesCurto(mes).toUpperCase(),
+                         destaque: mes === mesDestaque });
+    });
+    return faixas;
+  }
+
+  /** Rótulo de cada ponto: o número da semana do ano. */
+  const rotuloSemana = sem => {
+    const n = semanaDoAno(sem.inicio);
+    return n === null ? (sem.label || "") : String(n);
+  };
+
   /** Meta do indicador no mês, quando existe objetivo cadastrado. */
   function metaSup(ind, mes) {
     const o = objetivo(ind.id);
@@ -1577,9 +1655,53 @@
                   x: { grid: { display: false } } } }) });
   }
 
-  /** Clique num mes de qualquer grafico de ocorrencia -> semanas daquele mes.
-      Chamado das duas abas que leem essa base, entao so redesenha a que esta
-      na tela: redesenhar a oculta criaria graficos de tamanho zero. */
+  /* Todas as semanas da base, em ordem e sem repetir.
+
+     A semana que atravessa a virada do mes aparece nos dois meses — 31/08 a
+     06/09 esta em agosto e em setembro — porque cada balde conta os tickets
+     abertos naquele mes. Sao tickets diferentes, entao somar e o certo. O mes
+     da semana passa a ser o da segunda-feira que a abre.
+
+     O SLA e o unico que nao soma: mediana de mediana nao existe. Usamos a
+     media das duas ponderada pelas finalizadas — aproximacao que so afeta as
+     semanas de virada, e por pouco. */
+  function semanasDeOcorrencia(base) {
+    const porInicio = new Map();
+    Object.keys(base.meses).sort().forEach(m => {
+      ((base.meses[m] || {}).semanas || []).forEach(sem => {
+        const chave = sem.inicio;
+        const anterior = porInicio.get(chave);
+        if (!anterior) {
+          porInicio.set(chave, Object.assign({ mes: mesDaSemana(sem.inicio) }, sem));
+          return;
+        }
+        ["total", "finalizadas", "em_aberto", "canceladas", "humano", "ia"].forEach(k => {
+          if (sem[k] !== undefined) anterior[k] = (anterior[k] || 0) + sem[k];
+        });
+        if (anterior.por_classe && sem.por_classe) {
+          Object.keys(sem.por_classe).forEach(cl => {
+            anterior.por_classe[cl] = anterior.por_classe[cl] || { total: 0 };
+            anterior.por_classe[cl].total =
+              (anterior.por_classe[cl].total || 0) + (sem.por_classe[cl].total || 0);
+          });
+        }
+        const a = anterior.sla_mediano_dias, b = sem.sla_mediano_dias;
+        if (a !== undefined && b !== undefined) {
+          const pa = anterior.finalizadas || 0, pb = sem.finalizadas || 0;
+          anterior.sla_mediano_dias = pa + pb
+            ? Math.round(((a * pa + b * pb) / (pa + pb)) * 10) / 10 : a;
+        } else if (b !== undefined) {
+          anterior.sla_mediano_dias = b;
+        }
+      });
+    });
+    return Array.from(porInicio.values()).sort((x, y) => x.inicio.localeCompare(y.inicio));
+  }
+
+  /* Clique num mes de qualquer grafico de ocorrencia. O card abre a serie
+     semanal inteira — nao so a do mes clicado — porque a comparacao que
+     interessa e entre a ultima semana de um mes e a do mes anterior. O mes
+     clicado fica em destaque na faixa. */
   function popOcorrencias(elementos, meses) {
     if (!elementos || !elementos.length) return;
     const mes = meses[elementos[0].index];
@@ -1588,63 +1710,71 @@
     if (!base || !mes || !base.meses[mes]) return;
     if (S.pagina === "tickets") { S.tkMes = mes; tickets(); }
     else { S.ocMes = mes; ocorrencias(); }
-    const comSemanas = meses.filter(m => ((base.meses[m] || {}).semanas || []).length);
-    // as duas bases nao contam a mesma coisa, entao nem o nome nem as linhas
-    // podem ser os mesmos: o Zendesk sabe quem atendeu, a Comunidade sabe a
-    // classe da ocorrencia
+
     const zendesk = base.fonte === "zendesk";
     const nome = zendesk ? "tickets" : "ocorrências";
+    const todas = semanasDeOcorrencia(base).slice(-26);   // meio ano de semanas
+    if (!todas.length) return;
+
     abrirPop({
       titulo: (zendesk ? "Tickets" : "Ocorrências") + " semana a semana",
-      meses: comSemanas,
+      meses: Array.from(new Set(todas.map(x => x.mes))),
       mes: mes,
-      sub: m => "Semanas de " + mesLabel(m).toLowerCase(),
+      sub: m => "Semana a semana do período · <b>" + mesLabel(m).toLowerCase() +
+        "</b> em destaque na faixa",
       nota: m => {
-        const sem = (base.meses[m] || {}).semanas || [];
-        const abertas = sem.reduce((a, x) => a + x.em_aberto, 0);
-        return abertas ? "<b>" + abertas + "</b> " + nome + " do mês seguem em aberto — não entram no SLA."
-                       : "";
+        const doMes = todas.filter(x => x.mes === m);
+        const abertas = doMes.reduce((a, x) => a + x.em_aberto, 0);
+        return abertas ? "<b>" + abertas + "</b> " + nome + " de " + mesLabel(m).toLowerCase() +
+          " seguem em aberto — não entram no SLA." : "";
       },
       config: m => {
-        const sem = (base.meses[m] || {}).semanas || [];
         const classe = (x, k) => (x.por_classe && x.por_classe[k]) ? x.por_classe[k].total : null;
-        return { data: { labels: sem.map(x => x.label), datasets: [
-            { type: "bar", label: "Finalizadas", data: sem.map(x => x.finalizadas),
-              backgroundColor: C.blue, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y",
-              rotulo: { casas: 0, cor: "#fff", abaixo: true } },
-            { type: "bar", label: "Em aberto", data: sem.map(x => x.em_aberto),
-              backgroundColor: C.amber, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y" },
-            { type: "bar", label: "Canceladas", data: sem.map(x => x.canceladas),
-              backgroundColor: C.cinzaMeta, borderRadius: 4, maxBarThickness: 44, stack: "oc", yAxisID: "y" },
+        const destacar = campo => todas.map(x => x.mes === m ? campo : 0);
+        return { data: { labels: todas.map(rotuloSemana), datasets: [
+            { type: "bar", label: "Finalizadas", data: todas.map(x => x.finalizadas),
+              backgroundColor: todas.map(x => x.mes === m ? C.blue : "rgba(0,68,116,.35)"),
+              borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
+            { type: "bar", label: "Em aberto", data: todas.map(x => x.em_aberto),
+              backgroundColor: todas.map(x => x.mes === m ? C.amber : "rgba(237,187,59,.35)"),
+              borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
+            { type: "bar", label: "Canceladas", data: todas.map(x => x.canceladas),
+              backgroundColor: todas.map(x => x.mes === m ? C.cinzaMeta : "rgba(185,191,201,.35)"),
+              borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
             ...(zendesk
-              ? [{ type: "line", label: "Humano", data: sem.map(x => x.humano ?? null),
+              ? [{ type: "line", label: "Humano", data: todas.map(x => x.humano ?? null),
                    borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
-                   pointRadius: 4, pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y",
-                   rotulo: { casas: 0, cor: C.pink } },
-                 { type: "line", label: "IA", data: sem.map(x => x.ia ?? null),
+                   pointRadius: todas.map(x => x.mes === m ? 4 : 0), pointHoverRadius: 4,
+                   pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y" },
+                 { type: "line", label: "IA", data: todas.map(x => x.ia ?? null),
                    borderColor: C.teal, backgroundColor: "transparent", borderWidth: 2, tension: .3,
-                   pointRadius: 4, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y",
-                   rotulo: { casas: 0, cor: "#009193", abaixo: true } }]
-              : [{ type: "line", label: "Comportamental", data: sem.map(x => classe(x, "comportamental")),
+                   pointRadius: todas.map(x => x.mes === m ? 4 : 0), pointHoverRadius: 4,
+                   pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y" }]
+              : [{ type: "line", label: "Comportamental", data: todas.map(x => classe(x, "comportamental")),
                    borderColor: C.pink, backgroundColor: "transparent", borderWidth: 2, tension: .3,
-                   pointRadius: 4, pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y",
-                   rotulo: { casas: 0, cor: C.pink } },
-                 { type: "line", label: "Técnica", data: sem.map(x => classe(x, "tecnica")),
+                   pointRadius: todas.map(x => x.mes === m ? 4 : 0), pointHoverRadius: 4,
+                   pointBackgroundColor: C.pink, spanGaps: true, yAxisID: "y" },
+                 { type: "line", label: "Técnica", data: todas.map(x => classe(x, "tecnica")),
                    borderColor: C.teal, backgroundColor: "transparent", borderWidth: 2, tension: .3,
-                   pointRadius: 4, pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y",
-                   rotulo: { casas: 0, cor: "#009193", abaixo: true } }]),
+                   pointRadius: todas.map(x => x.mes === m ? 4 : 0), pointHoverRadius: 4,
+                   pointBackgroundColor: C.teal, spanGaps: true, yAxisID: "y" }]),
             { type: "line", label: "SLA mediano (dias)",
-              data: sem.map(x => x.sla_mediano_dias === undefined ? null : x.sla_mediano_dias),
+              data: todas.map(x => x.sla_mediano_dias === undefined ? null : x.sla_mediano_dias),
               borderColor: C.chumbo, backgroundColor: "transparent", borderWidth: 2.4, tension: .3,
-              pointRadius: 4, pointBackgroundColor: C.chumbo, pointBorderColor: "#fff",
-              pointBorderWidth: 2, spanGaps: true, yAxisID: "y1",
-              rotulo: { casas: 1, cor: C.chumbo } } ] },
-          options: opcoes({ layout: { padding: { top: 18 } },
-            plugins: { legend: legenda(10) },
+              pointRadius: todas.map(x => x.mes === m ? 4 : 0), pointHoverRadius: 4,
+              pointBackgroundColor: C.chumbo, pointBorderColor: "#fff",
+              pointBorderWidth: 2, spanGaps: true, yAxisID: "y1" } ] },
+          options: opcoes({ layout: { padding: { top: 18, bottom: 26 } },
+            faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
+            plugins: { legend: legenda(10), tooltip: { callbacks: {
+              title: itens => { const x = todas[itens[0].dataIndex];
+                return x ? "Semana " + rotuloSemana(x) + " · " + x.label + " de " +
+                           mesLabel(x.mes).toLowerCase() : ""; } } } },
             scales: { y: { beginAtZero: true, stacked: true, grid: { color: C.grid } },
                       y1: { beginAtZero: true, position: "right", grid: { display: false },
                             title: { display: true, text: "dias", font: { size: 10 } } },
-                      x: { stacked: true, grid: { display: false } } } }) };
+                      x: { stacked: true, grid: { display: false },
+                           ticks: { font: { size: 9 }, autoSkip: false, maxRotation: 0 } } } }) };
       }
     });
   }
@@ -2084,16 +2214,38 @@
     const taxa = ultima.taxa_ativacao;
     const temp = ultima.temporarios;
 
+    const hist = S.onb.historico || null;
     const cartoes = [
+      /* O historico vem primeiro de proposito. O numero da semana so conta
+         quem ja ativou, entao ele e otimista por construcao — quem esta
+         esperando ha um mes nao aparece nele. */
+      cartaoFarol({
+        rotulo: "Espera real até ativar",
+        valor: hist ? fmt(hist.espera_media_dias, 0) + " dias" : "—",
+        meta: "≤ " + fmt(alvoTempo, 0) + " dias",
+        pct: hist && hist.espera_media_dias ? alvoTempo / hist.espera_media_dias * 100 : null,
+        rodape: hist ? "mediana de " + fmt(hist.espera_mediana_dias, 0) + " dias" : "",
+        nota: hist ? "conta <b>todo</b> cadastro, inclusive os <b>" + fmt(hist.pendentes, 0) +
+          "</b> que ainda esperam" : ""
+      }),
+      cartaoFarol({
+        rotulo: "Taxa de ativação · histórica",
+        valor: hist ? fmt(hist.taxa_ativacao_pct, 1) + "%" : "—",
+        meta: fmt(alvoTaxa, 0) + "%",
+        pct: hist ? hist.taxa_ativacao_pct / alvoTaxa * 100 : null,
+        rodape: hist ? fmt(hist.cadastros - hist.pendentes, 0) + " de " +
+          fmt(hist.cadastros, 0) + " cadastros" : "",
+        nota: hist && hist.mais_antigo_dias ? "o mais antigo sem ativar espera há <b>" +
+          fmt(hist.mais_antigo_dias, 0) + " dias</b>" : ""
+      }),
       cartaoFarol({
         rotulo: "Tempo médio de ativação · semana",
         valor: t === null || t === undefined ? "—" : fmt(t, 1) + " dias",
         delta: variacao(t, antes.tempo_medio_ativacao, "baixo"),
-        meta: "≤ " + fmt(alvoTempo, 0) + " dias",
-        // meta e teto: o caminho feito e quanto do limite sobrou
-        pct: t === null || t === undefined || t === 0 ? null : alvoTempo / t * 100,
+        meta: null,
+        pct: null,
         rodape: t === null || t === undefined ? "sem ativação nesta turma"
-          : (t <= alvoTempo ? "✓ dentro da meta" : "▲ " + fmt(t - alvoTempo, 1) + " dia(s) acima da meta"),
+          : "só de quem se cadastrou e ativou na semana",
         nota: ultima.pct_na_meta === null || ultima.pct_na_meta === undefined ? ""
           : fmt(ultima.pct_na_meta, 0) + "% na meta · " + ultima.ativados_da_coorte + " ativados"
       }),
@@ -2163,11 +2315,18 @@
 
     /* A taxa das semanas ainda abertas fica pontilhada: elas nao cairam, so
        nao tiveram tempo de ativar todo mundo. */
+    /* A coluna e o cadastro, nao o ativado: e o tamanho da fila que da sentido
+       a linha. "332 cadastros e ativamos 6%" diz o que "20 ativados" esconde.
+       A parte ativada fica em cor cheia dentro da coluna. */
     grafico("chart-onb-ativacao", { type: "bar",
       data: { labels: onbEixoCurto(lista), datasets: [
         { type: "bar", label: "Ativados", data: lista.map(s => s.ativados_da_coorte),
-          backgroundColor: C.teal, borderRadius: 4, maxBarThickness: 30, yAxisID: "y",
-          rotulo: { casas: 0, cor: C.blue } },
+          backgroundColor: C.teal, borderRadius: 4, maxBarThickness: 30,
+          stack: "cad", yAxisID: "y", rotulo: { casas: 0, cor: "#fff", abaixo: true } },
+        { type: "bar", label: "Ainda sem ativar",
+          data: lista.map(s => Math.max(0, s.cadastros - s.ativados_da_coorte)),
+          backgroundColor: "rgba(0,68,116,.18)", borderRadius: 4, maxBarThickness: 30,
+          stack: "cad", yAxisID: "y", rotulo: { casas: 0, cor: C.blue } },
         { type: "line", label: "Taxa de ativação (%)", data: lista.map(s => s.taxa_ativacao),
           borderColor: C.pink, backgroundColor: "transparent", tension: .3, borderWidth: 2.4,
           pointRadius: lista.map(s => s.coorte_fechada ? 4.5 : 3),
@@ -2188,11 +2347,11 @@
               : base + " — turma ainda dentro da janela de " +
                 (S.onb.janela_ativacao_dias || 30) + " dias, a taxa ainda sobe";
           } } } },
-        scales: { y: { beginAtZero: true, grid: { color: C.grid },
-                       title: { display: true, text: "pessoas", font: { size: 10 } } },
+        scales: { y: { beginAtZero: true, stacked: true, grid: { color: C.grid },
+                       title: { display: true, text: "cadastros", font: { size: 10 } } },
                   y1: { beginAtZero: true, max: 100, position: "right", grid: { display: false },
                         ticks: { callback: v => v + "%" } },
-                  x: { grid: { display: false } } } }) });
+                  x: { stacked: true, grid: { display: false } } } }) });
 
     const box = $("#onb-leitura");
     if (!box) return;

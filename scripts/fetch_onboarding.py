@@ -165,6 +165,40 @@ def coorte(limite_dias):
     return pessoas
 
 
+def espera_real(pessoas):
+    """O tempo de ativacao contando quem ainda nao ativou.
+
+    O numero da semana e otimista por construcao: so entra quem ja ativou, e
+    quem se cadastrou ha pouco e ativou rapido puxa a media para baixo. Quem
+    esta esperando ha tres semanas nao aparece em lugar nenhum.
+
+    Aqui todo cadastro conta: quem ativou entra com o tempo que levou, quem
+    nao ativou entra com o tempo que ja esta esperando. E a resposta para
+    "quanto tempo alguem espera para ser ativado".
+    """
+    hoje = datetime.now()
+    esperas, pendentes = [], []
+    for p in pessoas:
+        if p["dias"] is not None:
+            esperas.append(p["dias"])
+        elif not p["ativado"]:
+            dias = (hoje - p["criado"]).total_seconds() / 86400.0
+            esperas.append(dias)
+            pendentes.append((dias, p["criado"]))
+    if not esperas:
+        return None
+    pendentes.sort(reverse=True)
+    return {
+        "espera_media_dias": round(sum(esperas) / len(esperas), 1),
+        "espera_mediana_dias": round(sorted(esperas)[len(esperas) // 2], 1),
+        "cadastros": len(esperas),
+        "pendentes": len(pendentes),
+        "mais_antigo_dias": round(pendentes[0][0], 1) if pendentes else None,
+        "mais_antigo_data": pendentes[0][1].strftime("%Y-%m-%d") if pendentes else None,
+        "taxa_ativacao_pct": round(100.0 * (len(esperas) - len(pendentes)) / len(esperas), 1),
+    }
+
+
 def coorte_por_semana():
     """Onde esta hoje quem se cadastrou em cada semana.
 
@@ -243,6 +277,7 @@ def main():
     hoje = retrato_de_hoje()
 
     lista = semanas(pessoas, situacao, limite)
+    historico = espera_real(pessoas)
     assistido = sum(hoje.get(s, 0) for s in STATUS_ASSISTIDO)
 
     payload = {
@@ -256,6 +291,7 @@ def main():
             "created_at do cadastro, so de quem ja ativou, agrupado pela semana de cadastro "
             "— a mesma conta do Farol. %% na meta = quantos ativaram em ate %d dias."
             % limite),
+        "historico": historico,
         "hoje": {
             "por_status": hoje,
             "temporarios": hoje.get("ACTIVE_TEMPORARY", 0),
@@ -273,6 +309,13 @@ def main():
         print("   %s  cadastros %-4s ativados %-4s tempo %-6s na meta %-7s taxa %-6s temp %s"
               % (c["inicio"], c["cadastros"], c["ativados_da_coorte"], c["tempo_medio_ativacao"],
                  c["pct_na_meta"], c["taxa_ativacao"], c["temporarios"]))
+    if historico:
+        print("   historico (todo cadastro desde %s, inclusive quem ainda espera):" % DESDE)
+        print("      espera media %.1f dias, mediana %.1f | %d de %d ainda sem ativar (%.1f%% ativados)"
+              % (historico["espera_media_dias"], historico["espera_mediana_dias"],
+                 historico["pendentes"], historico["cadastros"], historico["taxa_ativacao_pct"]))
+        print("      pendente mais antigo: %s, ha %.0f dias"
+              % (historico["mais_antigo_data"], historico["mais_antigo_dias"]))
     print("   hoje: %d temporarios, %d em onboarding assistido %s"
           % (payload["hoje"]["temporarios"], assistido, payload["hoje"]["detalhe_assistido"]))
     print("arquivo: %s (%.1f KB)" % (destino, os.path.getsize(destino) / 1024.0))

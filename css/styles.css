@@ -1005,3 +1005,8 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   .card-metas .farol-row:nth-last-child(2) { border-bottom: none; }
 }
 .card-metas .card-title { white-space: nowrap; }
+
+/* cinco cartões de onboarding: o histórico ao lado do semanal */
+.grid-5 { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 1320px) { .grid-5 { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 860px)  { .grid-5 { grid-template-columns: repeat(2, 1fr); } }
