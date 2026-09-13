@@ -29,6 +29,13 @@
   const mesLabel = m => MESES[String(m).slice(5,7)] || m;
   const mesCurto = m => mesLabel(m).slice(0,3);
 
+  /** "2026-12" -> "2027-01". Serve para preencher o eixo mes a mes. */
+  function mesSeguinte(mes) {
+    const ano = +String(mes).slice(0, 4), n = +String(mes).slice(5, 7);
+    return n === 12 ? (ano + 1) + "-01"
+                    : ano + "-" + String(n + 1).padStart(2, "0");
+  }
+
   const DIMENSOES = [
     { key: "pontualidade_pagamento", label: "Pontualidade Pagamento" },
     { key: "gestao_escalas",         label: "Gestão de Escalas" },
@@ -1080,8 +1087,14 @@
         ctx.lineTo(b + 6, y);
         ctx.stroke();
 
+        /* O nome fica centrado na faixa, menos quando isso o jogaria para
+           fora do canvas — e o caso do primeiro e do ultimo mes, cujo ponto
+           encosta na borda da area. Ali ele encolhe para dentro em vez de
+           aparecer pela metade. */
+        const largura = ctx.measureText(f.rotulo).width / 2;
         ctx.fillStyle = cor;
-        ctx.fillText(f.rotulo, meio, y + 11);
+        ctx.fillText(f.rotulo,
+          Math.min(Math.max(meio, largura + 2), chart.width - largura - 2), y + 11);
       });
       ctx.restore();
     }
@@ -1218,15 +1231,39 @@
      entra como um ponto so, rotulado "mês", porque fingir uma quebra que
      ninguem apurou seria inventar numero. A faixa de baixo nomeia o mes nos
      dois casos, entao a comparacao mes a mes continua de pe. */
+  /* Os meses que o eixo cobre: do primeiro com numero ate o ultimo com meta —
+     hoje, maio a dezembro. O fim e dezembro de proposito: a meta do semestre
+     inteiro ja esta cadastrada, e e ela que mostra a distancia que falta. Sem
+     isso o grafico parava no ultimo mes apurado e o alvo sumia da vista.
+     Buraco no meio tambem entra, senao novembro sem dado encostaria outubro em
+     dezembro e a linha mentiria sobre o intervalo. */
+  function mesesDoSuporte() {
+    const datas = zenMensal()
+      .filter(r => IND_SUPORTE.some(i => valorSup(i, r) !== null))
+      .map(r => r.mes);
+    IND_SUPORTE.forEach(i => {
+      const o = objetivo(i.id);
+      if (o && o.metas) datas.push(...Object.keys(o.metas));
+    });
+    if (!datas.length) return [];
+    datas.sort();
+    const fora = [];
+    for (let m = datas[0], fim = datas[datas.length - 1]; m <= fim; m = mesSeguinte(m)) fora.push(m);
+    return fora;
+  }
+
   function eixoSuporte() {
     const fora = [];
-    zenMensal().forEach(linha => {
-      const semanas = zenSemanal(linha.mes).filter(r => r.inicio);
+    mesesDoSuporte().forEach(mes => {
+      const semanas = zenSemanal(mes).filter(r => r.inicio);
       if (semanas.length) {
         semanas.forEach(sem => fora.push({
-          mes: linha.mes, linha: sem, semanal: true, rotulo: rotuloSemana(sem) }));
-      } else if (IND_SUPORTE.some(i => valorSup(i, linha) !== null)) {
-        fora.push({ mes: linha.mes, linha: linha, semanal: false, rotulo: "mês" });
+          mes: mes, linha: sem, semanal: true, rotulo: rotuloSemana(sem) }));
+      } else {
+        /* Mes sem quebra semanal entra como um ponto so. O rotulo fica vazio:
+           a faixa de baixo ja diz que mes e esse, e escrever "mês" em cada um
+           deles so encheria o eixo de repeticao. */
+        fora.push({ mes: mes, linha: zenMes(mes) || {}, semanal: false, rotulo: "" });
       }
     });
     return fora;
@@ -1247,27 +1284,8 @@
       S.zendesk.filter(r => (num(r.semana) ?? 0) > 0).map(r => r.mes))).sort();
   }
 
-  /* Todas as semanas do CSV em fila, da mais antiga para a mais nova.
-
-     So entra a linha que tem `inicio` — e da data que saem a semana do ano e
-     a faixa do mes. Linha semanal sem data fica de fora em vez de virar um
-     ponto sem lugar no eixo. */
-  function semanasDeSuporte() {
-    return S.zendesk
-      .filter(r => (num(r.semana) ?? 0) > 0 && r.inicio)
-      .map(r => Object.assign({}, r, { mes: mesDaSemana(r.inicio) }))
-      .sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)))
-      .slice(-26);
-  }
-
   /** Os pontos do mes em foco ficam graudos; os vizinhos, discretos. */
   const raioDoMes = (todas, m) => todas.map(x => x.mes === m ? 6 : 3.5);
-
-  /** Titulo do tooltip: a semana do ano mais o periodo escrito no CSV. */
-  const tituloSemana = todas => itens => {
-    const x = todas[itens[0].dataIndex];
-    return x ? "Semana " + rotuloSemana(x) + (x.periodo ? " · " + x.periodo : "") : "";
-  };
 
   /** Eixo x das series continuas: uma semana por marca, sem rotacao. */
   const eixoDeSemana = () => ({ grid: { display: false },
@@ -1341,26 +1359,26 @@
   /* O semanal de um indicador de suporte. Sem meta: a meta e mensal, e
      desenha-la sobre a semana inventaria um alvo semanal que nao existe. */
   function popSuporte(ind) {
-    const todas = semanasDeSuporte();
+    const todas = eixoSuporte();
     if (!todas.length) return;
     abrirPop({
-      titulo: ind.rotulo + " semana a semana",
+      titulo: ind.rotulo + " ao longo do semestre",
       meses: Array.from(new Set(todas.map(x => x.mes))),
       mes: S.sacMes,
       sub: m => ind.nota + " · o período inteiro, com <b>" +
         mesLabel(m).toLowerCase() + "</b> em destaque na faixa",
       nota: m => {
-        const vals = todas.map(r => valorSup(ind, r)).filter(v => v !== null);
+        const vals = todas.map(p => valorSup(ind, p.linha)).filter(v => v !== null);
         if (vals.length < 2) return "";
         const dif = vals[vals.length - 1] - vals[0];
         const bom = ind.melhor === "baixo" ? dif < 0 : dif > 0;
-        return "Da primeira à última semana do período: <b>" + mostrarSup(ind, vals[0]) +
+        return "Do primeiro ao último número apurado: <b>" + mostrarSup(ind, vals[0]) +
           "</b> para <b>" + mostrarSup(ind, vals[vals.length - 1]) + "</b> — " +
           (bom ? "no sentido certo." : "no sentido contrário ao da meta.");
       },
       config: m => ({ type: "line",
-        data: { labels: todas.map(rotuloSemana), datasets: [{
-          label: ind.rotulo, data: todas.map(r => valorSup(ind, r)),
+        data: { labels: todas.map(p => p.rotulo), datasets: [{
+          label: ind.rotulo, data: todas.map(p => valorSup(ind, p.linha)),
           borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
           borderWidth: 2.6, tension: .3, spanGaps: true,
           pointRadius: raioDoMes(todas, m),
@@ -1371,7 +1389,7 @@
         options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
           faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
           plugins: { legend: { display: false }, tooltip: { callbacks: {
-            title: tituloSemana(todas),
+            title: tituloDoPonto(todas),
             label: c => mostrarSup(ind, c.parsed.y) } } },
           scales: { y: { grace: "22%", grid: { color: C.grid },
                          ticks: { callback: v => ind.tempo ? tempoDeMinutos(v)
@@ -1470,32 +1488,32 @@
   }
 
   function popFcrCsat() {
-    const todas = semanasDeSuporte();
+    const todas = eixoSuporte();
     if (!todas.length) return;
     abrirPop({
-      titulo: "FCR e CSAT semana a semana",
+      titulo: "FCR e CSAT ao longo do semestre",
       meses: Array.from(new Set(todas.map(x => x.mes))),
       mes: S.sacMes,
       sub: m => "O período inteiro, semana a semana · <b>" + mesLabel(m).toLowerCase() +
         "</b> em destaque · a meta é mensal, então não aparece aqui",
       nota: m => {
-        const vals = todas.map(r => num(r.fcr_pct)).filter(v => v !== null);
+        const vals = todas.map(p => num(p.linha.fcr_pct)).filter(v => v !== null);
         if (vals.length < 2) return "";
         const dif = vals[vals.length - 1] - vals[0];
-        return "FCR da primeira à última semana: <b>" + fmt(vals[0], 1) + "%</b> para <b>" +
+        return "FCR do primeiro ao último número apurado: <b>" + fmt(vals[0], 1) + "%</b> para <b>" +
           fmt(vals[vals.length - 1], 1) + "%</b> — " +
           (dif >= 0 ? "no sentido da meta." : "no sentido contrário.");
       },
       config: m => ({
-        data: { labels: todas.map(rotuloSemana), datasets: [
-          { type: "line", label: "FCR (%)", data: todas.map(r => num(r.fcr_pct)),
+        data: { labels: todas.map(p => p.rotulo), datasets: [
+          { type: "line", label: "FCR (%)", data: todas.map(p => num(p.linha.fcr_pct)),
             borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
             borderWidth: 2.6, tension: .3, spanGaps: true, yAxisID: "y",
             pointRadius: raioDoMes(todas, m),
             pointBackgroundColor: todas.map(x => x.mes === m ? C.pink : C.blue),
             pointBorderColor: "#fff", pointBorderWidth: 2,
             rotulo: { casas: 1, sufixo: "%", cor: C.blue } },
-          { type: "line", label: "CSAT humano", data: todas.map(r => num(r.csat_humano)),
+          { type: "line", label: "CSAT humano", data: todas.map(p => num(p.linha.csat_humano)),
             borderColor: C.pink, backgroundColor: "transparent",
             borderWidth: 2.6, tension: .3, spanGaps: true, yAxisID: "y1",
             pointRadius: raioDoMes(todas, m), pointBackgroundColor: C.pink,
@@ -1504,7 +1522,7 @@
         options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
           faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
           plugins: { legend: legendaTopo(), tooltip: { callbacks: {
-            title: tituloSemana(todas) } } },
+            title: tituloDoPonto(todas) } } },
           scales: { y: { min: 0, max: 100, grid: { color: C.grid },
                          ticks: { callback: v => v + "%" },
                          title: { display: true, text: "FCR", font: { size: 10 } } },
@@ -1818,7 +1836,7 @@
       config: m => {
         const classe = (x, k) => (x.por_classe && x.por_classe[k]) ? x.por_classe[k].total : null;
         const destacar = campo => todas.map(x => x.mes === m ? campo : 0);
-        return { data: { labels: todas.map(rotuloSemana), datasets: [
+        return { data: { labels: todas.map(p => p.rotulo), datasets: [
             { type: "bar", label: "Finalizadas", data: todas.map(x => x.finalizadas),
               backgroundColor: todas.map(x => x.mes === m ? C.blue : "rgba(0,68,116,.35)"),
               borderRadius: 4, maxBarThickness: 26, stack: "oc", yAxisID: "y" },
@@ -2076,30 +2094,30 @@
 
   /** Semana a semana do volume, no mesmo card flutuante do resto do painel. */
   function popVolume(ind) {
-    const todas = semanasDeSuporte();
+    const todas = eixoSuporte();
     if (!todas.length) return;
     abrirPop({
-      titulo: ind.rotulo + " semana a semana",
+      titulo: ind.rotulo + " ao longo do semestre",
       meses: Array.from(new Set(todas.map(x => x.mes))),
       mes: S.sacMes,
       sub: m => ind.nota + " · o período inteiro, com <b>" +
         mesLabel(m).toLowerCase() + "</b> em destaque na faixa",
       nota: m => {
         const doMes = todas.filter(x => x.mes === m);
-        const total = doMes.reduce((a, r) => a + (volumeDe(ind, r) || 0), 0);
+        const total = doMes.reduce((a, p) => a + (volumeDe(ind, p.linha) || 0), 0);
         return total ? "Somando as semanas de " + mesLabel(m).toLowerCase() +
           ": <b>" + fmt(total, 0) + "</b> conversas." : "";
       },
       config: m => ({ type: "bar",
-        data: { labels: todas.map(rotuloSemana), datasets: [{
-          label: ind.rotulo, data: todas.map(r => volumeDe(ind, r)),
+        data: { labels: todas.map(p => p.rotulo), datasets: [{
+          label: ind.rotulo, data: todas.map(p => volumeDe(ind, p.linha)),
           backgroundColor: todas.map(x => x.mes === m ? C.blue : "rgba(0,68,116,.35)"),
           borderRadius: 4, maxBarThickness: 30,
           rotulo: { casas: 0, cor: C.blue } }] },
         options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
           faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
           plugins: { legend: { display: false },
-                     tooltip: { callbacks: { title: tituloSemana(todas) } } },
+                     tooltip: { callbacks: { title: tituloDoPonto(todas) } } },
           scales: { y: { beginAtZero: true, grid: { color: C.grid } },
                     x: eixoDeSemana() } }) })
     });
