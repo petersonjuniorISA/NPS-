@@ -440,7 +440,7 @@ dimensão** e o quadro de **destaques do mês** na aba de NPS.
 
 | Aba | Conteúdo |
 |---|---|
-| **NPS** | Resultado do mês · evolução (índice, promotores, neutros, detratores, respostas) · evolução por dimensão · evolução por especialidade · NPS e detalhamento por especialidade · metas editáveis. Os três gráficos têm "Exibir os comentários". |
+| **NPS** | Um quadro só com o resultado do mês **e** a evolução dentro dele — índice, meta de cada mês, promotores, neutros, detratores e respostas. Depois: metas editáveis, evolução por dimensão, por especialidade, e NPS + detalhamento por especialidade |
 | **Suporte** | 6 cartões em duas linhas (TMA, TMR, FCR / CSAT humano, CSAT IA, Resolução com IA) · CSAT (humano, IA, geral, meta) · FCR (realizado, meta) |
 | **Análise de tickets** | Volume atendido (humano, IA, geral) · fila, SLA e distribuição por assunto |
 | **Ocorrências** | Comportamental × técnica (classe ou situação) · volume e SLA lado a lado, por departamento ou tipo. A tela mostra **6 meses**; o arquivo guarda os 29 e o card flutuante abre qualquer um |
