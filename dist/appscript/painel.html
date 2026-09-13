@@ -2413,7 +2413,12 @@ window.NPS_CONFIG = {
       const ctx = chart.ctx;
       /* Logo abaixo do fim do eixo x — isto e, depois dos numeros de semana,
          onde quer que eles terminem. Uma distancia fixa a partir da area do
-         grafico erra sempre que a fonte ou a rotacao do rotulo muda. */
+         grafico erra sempre que a fonte ou a rotacao do rotulo muda.
+
+         Traco e nome ocupam uns 28px daqui para baixo, e o Chart.js nao
+         reserva espaco para o que um plugin desenha: quem usa a faixa precisa
+         de `layout.padding.bottom` de 34, senao o nome do mes fica cortado na
+         borda do canvas. */
       const y = eixoX.bottom + 10;
 
       ctx.save();
@@ -2443,11 +2448,13 @@ window.NPS_CONFIG = {
   };
   Chart.register(FAIXAS_MES);
 
-  /** Monta as faixas a partir de uma lista de semanas com `inicio`. */
+  /* Monta as faixas a partir de uma lista de pontos. O ponto pode trazer o
+     mes pronto (e o caso do eixo do suporte, onde ha ponto que representa o
+     mes inteiro e nao tem data de semana) ou so a data de inicio. */
   function faixasDe(semanas, mesDestaque) {
     const faixas = [];
     semanas.forEach((sem, i) => {
-      const mes = mesDaSemana(sem.inicio);
+      const mes = sem.mes || mesDaSemana(sem.inicio);
       const ultima = faixas[faixas.length - 1];
       if (ultima && ultima.mes === mes) ultima.ate = i;
       else faixas.push({ mes, de: i, ate: i, rotulo: mesCurto(mes).toUpperCase(),
@@ -2556,10 +2563,43 @@ window.NPS_CONFIG = {
     const atual = preenchidos[pos], anterior = pos > 0 ? preenchidos[pos - 1] : null;
 
 
+    S.sacMes = atual ? atual.mes : null;
     cartoesSuporte(mensal, atual, anterior);
-    grafCsat(mensal);
-    grafFcr(mensal);
+    grafCsat();
+    grafFcr();
   }
+
+  /* O eixo dos graficos grandes do suporte: todos os meses de uma vez, com
+     as semanas de cada um lado a lado.
+
+     Onde ha quebra semanal no CSV, o mes entra pelas semanas dele e a linha
+     mensal fica de fora — senao o mesmo agosto apareceria duas vezes, uma
+     como quatro pontos e outra como um. Onde ainda nao ha semana, o mes
+     entra como um ponto so, rotulado "mês", porque fingir uma quebra que
+     ninguem apurou seria inventar numero. A faixa de baixo nomeia o mes nos
+     dois casos, entao a comparacao mes a mes continua de pe. */
+  function eixoSuporte() {
+    const fora = [];
+    zenMensal().forEach(linha => {
+      const semanas = zenSemanal(linha.mes).filter(r => r.inicio);
+      if (semanas.length) {
+        semanas.forEach(sem => fora.push({
+          mes: linha.mes, linha: sem, semanal: true, rotulo: rotuloSemana(sem) }));
+      } else if (IND_SUPORTE.some(i => valorSup(i, linha) !== null)) {
+        fora.push({ mes: linha.mes, linha: linha, semanal: false, rotulo: "mês" });
+      }
+    });
+    return fora;
+  }
+
+  /** Tooltip do eixo corrido: a semana quando ha semana, o mes quando nao ha. */
+  const tituloDoPonto = eixo => itens => {
+    const p = eixo[itens[0].dataIndex];
+    if (!p) return "";
+    return p.semanal
+      ? "Semana " + p.rotulo + (p.linha.periodo ? " · " + p.linha.periodo : "")
+      : mesLabel(p.mes) + " inteiro";
+  };
 
   /** Meses que tem quebra semanal preenchida no CSV do Zendesk. */
   function mesesComSemana() {
@@ -2688,7 +2728,7 @@ window.NPS_CONFIG = {
           pointBorderColor: "#fff", pointBorderWidth: 2,
           rotulo: { casas: ind.casas ?? 1, cor: C.blue, tempo: !!ind.tempo,
                     sufixo: ind.suf || "" } }] },
-        options: opcoes({ layout: { padding: { top: 18, bottom: 26 } },
+        options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
           faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
           plugins: { legend: { display: false }, tooltip: { callbacks: {
             title: tituloSemana(todas),
@@ -2701,51 +2741,60 @@ window.NPS_CONFIG = {
   }
 
   /** CSAT: humano, IA, a media dos dois e a meta. Escala de 1 a 5. */
-  function grafCsat(mensal) {
-    const meses = mensal.map(r => r.mes);
-    const humano = mensal.map(r => num(r.csat_humano));
-    const ia = mensal.map(r => num(r.csat_ia));
+  function grafCsat() {
+    const eixo = eixoSuporte();
+    if (!eixo.length) return;
+    const meses = eixo.map(p => p.mes);
+    const coluna = campo => eixo.map(p => num(p.linha[campo]));
+    const humano = coluna("csat_humano"), ia = coluna("csat_ia");
     // "geral" so faz sentido onde os dois existem; com um lado so seria o
     // proprio numero disfarcado de media
-    const geral = mensal.map((r, i) =>
+    const geral = eixo.map((p, i) =>
       humano[i] !== null && ia[i] !== null ? Math.round((humano[i] + ia[i]) / 2 * 100) / 100 : null);
-    const meta = meses.map(m => metaSup({ id: "csat_humano" }, m));
 
     grafico("chart-csat", { type: "line",
-      data: { labels: meses.map(mesCurto), datasets: [
+      data: { labels: eixo.map(p => p.rotulo), datasets: [
         { label: "Humano", data: humano, borderColor: C.blue, backgroundColor: "transparent",
           borderWidth: 2.4, tension: .3, pointRadius: 4, pointBackgroundColor: C.blue,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 2, cor: C.blue, soUltimo: true } },
+          rotulo: { casas: 2, cor: C.blue } },
         { label: "IA", data: ia, borderColor: C.teal, backgroundColor: "transparent",
           borderWidth: 2.4, tension: .3, pointRadius: 4, pointBackgroundColor: C.teal,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 2, cor: "#009193", soUltimo: true } },
+          rotulo: { casas: 2, cor: "#009193" } },
         { label: "Geral", data: geral, borderColor: C.pink, backgroundColor: "transparent",
           borderWidth: 2.8, tension: .3, pointRadius: 5, pointBackgroundColor: C.pink,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 2, cor: C.pink, soUltimo: true } },
-        { label: "Meta", data: meta, borderColor: C.cinzaMeta, borderWidth: 1.8,
+          rotulo: { casas: 2, cor: C.pink } },
+        // a meta e do mes: dentro do mes ela e reta, e so troca de patamar
+        // quando o mes vira
+        { label: "Meta", data: meses.map(m => metaSup({ id: "csat_humano" }, m)),
+          borderColor: C.cinzaMeta, borderWidth: 1.8,
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
           rotulo: { casas: 2, cor: C.cinzaMeta, soUltimo: true, desloca: -10 } } ] },
       options: opcoes({
         onClick: (e, els) => popDoMes(els, meses),
-        layout: { padding: { right: 52 } },
-        plugins: { legend: legenda() },
+        layout: { padding: { right: 52, bottom: 34 } },
+        faixasMes: faixasDe(eixo, S.sacMes), faixaCorForte: C.blue,
+        plugins: { legend: legendaTopo(), tooltip: { callbacks: {
+          title: tituloDoPonto(eixo) } } },
         // escala de 1 a 5: e a escala da pergunta, e comecar em zero achata
         // toda a variacao que interessa no topo
         scales: { y: { min: 1, max: 5, grid: { color: C.grid }, ticks: { stepSize: 1 } },
-                  x: { grid: { display: false } } }
+                  x: eixoDeSemana() }
       })
     });
   }
 
   /** FCR: realizado e meta, com o numero da meta na ponta. */
-  function grafFcr(mensal) {
-    const meses = mensal.map(r => r.mes);
+  function grafFcr() {
+    const eixo = eixoSuporte();
+    if (!eixo.length) return;
+    const meses = eixo.map(p => p.mes);
+
     grafico("chart-fcr", { type: "line",
-      data: { labels: meses.map(mesCurto), datasets: [
-        { label: "Realizado", data: mensal.map(r => num(r.fcr_pct)),
+      data: { labels: eixo.map(p => p.rotulo), datasets: [
+        { label: "Realizado", data: eixo.map(p => num(p.linha.fcr_pct)),
           borderColor: C.blue, backgroundColor: C.blueFill, fill: true, borderWidth: 2.6,
           tension: .3, pointRadius: 4.5, pointBackgroundColor: C.blue,
           pointBorderColor: "#fff", pointBorderWidth: 2, spanGaps: true,
@@ -2753,14 +2802,16 @@ window.NPS_CONFIG = {
         { label: "Meta", data: meses.map(m => metaSup({ id: "fcr_pct" }, m)),
           borderColor: C.cinzaMeta, borderWidth: 1.8,
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
-          rotulo: { casas: 0, sufixo: "%", cor: C.cinzaMeta, desloca: -10 } } ] },
+          rotulo: { casas: 0, sufixo: "%", cor: C.cinzaMeta, soUltimo: true, desloca: -10 } } ] },
       options: opcoes({
         onClick: (e, els) => popDoMes(els, meses),
-        layout: { padding: { right: 20 } },
-        plugins: { legend: legenda(), tooltip: { callbacks: {
+        layout: { padding: { right: 20, bottom: 34 } },
+        faixasMes: faixasDe(eixo, S.sacMes), faixaCorForte: C.blue,
+        plugins: { legend: legendaTopo(), tooltip: { callbacks: {
+          title: tituloDoPonto(eixo),
           label: c => c.dataset.label + ": " + fmt(c.parsed.y, 1) + "%" } } },
         scales: { y: { min: 0, grid: { color: C.grid }, ticks: { callback: v => v + "%" } },
-                  x: { grid: { display: false } } }
+                  x: eixoDeSemana() }
       })
     });
   }
@@ -2810,7 +2861,7 @@ window.NPS_CONFIG = {
             pointRadius: raioDoMes(todas, m), pointBackgroundColor: C.pink,
             pointBorderColor: "#fff", pointBorderWidth: 2,
             rotulo: { casas: 2, cor: C.pink, abaixo: true } } ] },
-        options: opcoes({ layout: { padding: { top: 18, bottom: 26 } },
+        options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
           faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
           plugins: { legend: legendaTopo(), tooltip: { callbacks: {
             title: tituloSemana(todas) } } },
@@ -3160,7 +3211,7 @@ window.NPS_CONFIG = {
               pointRadius: todas.map(x => x.mes === m ? 4 : 0), pointHoverRadius: 4,
               pointBackgroundColor: C.chumbo, pointBorderColor: "#fff",
               pointBorderWidth: 2, spanGaps: true, yAxisID: "y1" } ] },
-          options: opcoes({ layout: { padding: { top: 18, bottom: 26 } },
+          options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
             faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
             plugins: { legend: legendaTopo(10), tooltip: { callbacks: {
               title: itens => { const x = todas[itens[0].dataIndex];
@@ -3405,7 +3456,7 @@ window.NPS_CONFIG = {
           backgroundColor: todas.map(x => x.mes === m ? C.blue : "rgba(0,68,116,.35)"),
           borderRadius: 4, maxBarThickness: 30,
           rotulo: { casas: 0, cor: C.blue } }] },
-        options: opcoes({ layout: { padding: { top: 18, bottom: 26 } },
+        options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
           faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
           plugins: { legend: { display: false },
                      tooltip: { callbacks: { title: tituloSemana(todas) } } },
