@@ -504,86 +504,84 @@
      A paleta e outra porque o fundo e escuro: as cores do painel claro
      sumiriam aqui. Indice em branco, meta em cinza claro, e as tres fatias em
      tons que aguentam o azul. */
-  const HERO_CORES = {
-    branco: "#FFFFFF",
-    cinza: "rgba(255,255,255,.45)",
-    promotor: "#7BEBA4",
-    neutro: "#FFD98A",
-    detrator: "#FFA9B8",
-    respostas: "rgba(255,255,255,.55)"
-  };
+  /* No fundo escuro do quadro as cores do painel claro sumiriam: o indice vai
+     de branco e a meta de branco apagado. */
+  const HERO_CORES = { branco: "#FFFFFF", cinza: "rgba(255,255,255,.5)" };
 
+  /* A trajetoria do indice contra a meta, dentro do quadro escuro.
+
+     Duas linhas, uma escala. A composicao do mes — promotores, neutros,
+     detratores, total de respostas — vive no tooltip e nos numeros grandes
+     logo acima: como linha, ela vinha numa segunda escala, de contagem, e
+     cruzava a do indice em pontos sem significado nenhum. */
   function grafHero() {
     const hist = S.nps.historico_nps || [];
     const objNps = objetivo("nps") || { metas: {} };
     const meses = Array.from(new Set([...hist.map(h => h.mes),
                                       ...Object.keys(objNps.metas || {})])).sort();
     const doMes = m => (S.nps.meses || {})[m];
-    const contagem = campo => meses.map(m => {
-      const b = doMes(m);
-      return b && b.kpi && b.kpi[campo] !== null && b.kpi[campo] !== undefined ? b.kpi[campo] : null;
-    });
 
     const real = meses.map(m => { const h = hist.find(x => x.mes === m); return h ? h.nps : null; });
     const meta = meses.map(m => objNps.metas[m] ?? null);
     const H = HERO_CORES;
 
-    const ds = [
-      { label: "NPS", data: real, borderColor: H.branco,
-        backgroundColor: "rgba(255,255,255,.12)", fill: true, tension: .3, borderWidth: 2.8,
-        // trecho apurado a mao fica tracejado: mesma serie, confiabilidade diferente
-        segment: { borderDash: ctx => (S.nps.meses_do_notion || []).includes(meses[ctx.p1DataIndex])
-                                      ? [6, 4] : undefined },
-        pointRadius: meses.map(m => m === S.mes ? 7 : 4),
-        pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : H.branco),
-        pointBorderColor: "rgba(255,255,255,.6)", pointBorderWidth: 2, spanGaps: true,
-        yAxisID: "y", rotulo: { casas: 1, cor: H.branco } },
-      // a meta de cada mes, nao so a de dezembro: e ela que diz se o mes que
-      // vem ja pede mais do que este entregou
-      { label: "Meta", data: meta, borderColor: H.cinza, borderWidth: 1.6,
-        backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
-        yAxisID: "y", rotulo: { casas: 0, cor: H.cinza, desloca: -11 } }
-    ];
-
-    [["Promotores", "promotores", H.promotor],
-     ["Neutros", "neutros", H.neutro],
-     ["Detratores", "detratores", H.detrator],
-     ["Respostas", "total_respostas", H.respostas]].forEach(([rot, campo, cor]) => {
-      ds.push({ label: rot, data: contagem(campo), borderColor: cor,
-        backgroundColor: "transparent", borderWidth: rot === "Respostas" ? 2 : 2.2,
-        borderDash: rot === "Respostas" ? [3, 3] : undefined,
-        tension: .3, pointRadius: 3.5, pointBackgroundColor: cor,
-        yAxisID: "y1", spanGaps: true,
-        rotulo: { casas: 0, cor: cor, soUltimo: true } });
-    });
-
-    const eixo = (extra) => Object.assign({
-      grid: { color: "rgba(255,255,255,.12)" },
-      ticks: { color: "rgba(255,255,255,.6)", font: { size: 10 } }
-    }, extra);
+    /* A faixa do eixo sai dos proprios numeros, com folga. Fixar 0 a 100
+       achatava a serie inteira no terco de baixo: o NPS anda entre 35 e 62, e
+       era essa variacao que precisava ocupar a altura. */
+    const todos = real.concat(meta).filter(v => v !== null && v !== undefined);
+    const menor = Math.min(...todos), maior = Math.max(...todos);
+    const folga = Math.max(8, (maior - menor) * .25);
 
     grafico("chart-hero", { type: "line",
-      data: { labels: meses.map(mesCurto), datasets: ds },
-      options: opcoes({ layout: { padding: { top: 16, right: 52 } },
+      data: { labels: meses.map(mesCurto), datasets: [
+        { label: "NPS", data: real, borderColor: H.branco,
+          backgroundColor: "rgba(255,255,255,.10)", fill: true, tension: .35, borderWidth: 3,
+          // trecho apurado a mao fica tracejado: mesma serie, confiabilidade diferente
+          segment: { borderDash: ctx => (S.nps.meses_do_notion || []).includes(meses[ctx.p1DataIndex])
+                                        ? [6, 4] : undefined },
+          pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
+          pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : H.branco),
+          pointBorderColor: "rgba(255,255,255,.55)", pointBorderWidth: 2, spanGaps: true,
+          rotulo: { casas: 1, cor: H.branco } },
+        // a meta de cada mes, nao so a de dezembro: e ela que diz se o mes que
+        // vem ja pede mais do que este entregou. So o ultimo numero aparece —
+        // os outros o proprio desenho da linha ja conta, e o card de metas
+        // ao lado tem todos escritos
+        { label: "Meta", data: meta, borderColor: H.cinza, borderWidth: 1.6,
+          backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
+          rotulo: { casas: 0, cor: H.cinza, soUltimo: true, desloca: -11 } } ] },
+      options: opcoes({ layout: { padding: { top: 20, right: 40, bottom: 4 } },
         plugins: {
-          legend: { display: true, position: "bottom",
+          legend: { display: true, position: "top", align: "end",
             labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true, pointStyle: "circle",
-                      padding: 14, font: { size: 11 }, color: "rgba(255,255,255,.75)" } },
+                      padding: 16, font: { size: 11 }, color: "rgba(255,255,255,.7)" } },
           tooltip: { callbacks: {
+            /* A composicao que saiu do desenho continua aqui: quem quiser o
+               numero de promotores de junho passa o mouse em junho. */
             afterBody: itens => {
-              const m = meses[itens[0].dataIndex], alvo = objNps.metas[m];
-              return alvo === undefined ? "" : "Meta de " + mesCurto(m).toLowerCase() + ": " + fmt(alvo, 1);
+              const m = meses[itens[0].dataIndex], b = doMes(m), alvo = objNps.metas[m];
+              const linhas = [];
+              if (alvo !== undefined && alvo !== null)
+                linhas.push("Meta do mês: " + fmt(alvo, 1));
+              const k = b && b.kpi;
+              if (k && k.total_respostas) {
+                linhas.push(fmt(k.promotores, 0) + " promotores · " +
+                            fmt(k.neutros, 0) + " neutros · " + fmt(k.detratores, 0) + " detratores");
+                linhas.push("de " + fmt(k.total_respostas, 0) + " respostas");
+              }
+              return linhas;
             } } } },
         scales: {
-          y: eixo({ min: 0, max: 100,
-                    title: { display: true, text: "índice", color: "rgba(255,255,255,.5)",
-                             font: { size: 10 } } }),
-          y1: eixo({ min: 0, position: "right", grid: { display: false },
-                     title: { display: true, text: "respostas", color: "rgba(255,255,255,.5)",
-                              font: { size: 10 } } }),
-          x: eixo({ grid: { display: false } })
+          y: { suggestedMin: Math.max(-100, menor - folga),
+               suggestedMax: Math.min(100, maior + folga),
+               grid: { color: "rgba(255,255,255,.10)" },
+               border: { display: false },
+               ticks: { color: "rgba(255,255,255,.55)", font: { size: 10 }, maxTicksLimit: 6 } },
+          x: { grid: { display: false }, border: { color: "rgba(255,255,255,.18)" },
+               ticks: { color: "rgba(255,255,255,.6)", font: { size: 11 } } }
         } }) });
   }
+
 
 /* ---------- Metas editaveis ----------
      O painel e um arquivo estatico: nao ha servidor para gravar. Entao editar
