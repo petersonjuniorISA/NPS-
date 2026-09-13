@@ -975,47 +975,55 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
    ficava mais alto que o número. Aqui a linha fica de duas colunas — nome de
    um lado, número do outro — e o contexto sai.
 --------------------------------------------------------------------------- */
-.grid-wide > .card .farol-row {
+.grid-wide > .card .farol-row,
+.grid-nps > .card .farol-row {
   grid-template-columns: auto 1fr auto;
   gap: 10px; padding: 11px 0;
 }
-.grid-wide > .card .farol-ctx { display: none; }
-.grid-wide > .card .farol-name { font-size: 13px; line-height: 1.25; }
-.grid-wide > .card .farol-nums { min-width: 0; }
-.grid-wide > .card .farol-real { font-size: 16px; }
-.grid-wide > .card .farol-status { display: none; }
+.grid-wide > .card .farol-ctx,
+.grid-nps > .card .farol-ctx { display: none; }
+.grid-wide > .card .farol-name,
+.grid-nps > .card .farol-name { font-size: 13px; line-height: 1.25; }
+.grid-wide > .card .farol-nums,
+.grid-nps > .card .farol-nums { min-width: 0; }
+.grid-wide > .card .farol-real,
+.grid-nps > .card .farol-real { font-size: 16px; }
+.grid-wide > .card .farol-status,
+.grid-nps > .card .farol-status { display: none; }
 
 /* na edição o contexto volta, porque ele diz o que cada campo é */
-.grid-wide > .card .farol.editando .farol-row { grid-template-columns: auto 1fr auto auto; }
-.grid-wide > .card .farol.editando .farol-ctx { display: block; font-size: 11px; }
-.grid-wide > .card .farol.editando .farol-status { display: block; min-width: 0; }
-.grid-wide > .card .farol.editando .farol-word { font-size: 9.5px; }
+.grid-wide > .card .farol.editando .farol-row,
+.grid-nps > .card .farol.editando .farol-row { grid-template-columns: auto 1fr auto auto; }
+.grid-wide > .card .farol.editando .farol-ctx,
+.grid-nps > .card .farol.editando .farol-ctx { display: block; font-size: 11px; }
+.grid-wide > .card .farol.editando .farol-status,
+.grid-nps > .card .farol.editando .farol-status { display: block; min-width: 0; }
+.grid-wide > .card .farol.editando .farol-word,
+.grid-nps > .card .farol.editando .farol-word { font-size: 9.5px; }
 
-/* trajetória dentro do quadro do NPS — ocupa a linha inteira, abaixo do
-   número e do medidor */
-/* O quadro do NPS ocupa a linha inteira: o grafico que mora dentro dele agora
-   e a evolucao completa — seis series, oito meses, legenda — e nao cabia numa
-   coluna. O card de metas desceu para baixo, tambem em largura cheia, onde a
-   lista de seis objetivos respira melhor do que espremida ao lado. */
-.grid-nps { grid-template-columns: 1fr; }
+/* O quadro do NPS divide a linha com as metas: o indice e o alvo dele sao a
+   mesma pergunta, e separa-los em duas alturas da pagina obriga a rolar para
+   comparar. O quadro fica com a fatia maior, porque leva o grafico dentro. */
+.grid-nps { grid-template-columns: 1.5fr 1fr; align-items: stretch; }
+.grid-nps .hero { margin-bottom: 0; }
+
+/* O quadro e mais alto que a lista de metas — leva o grafico dentro. Em vez
+   de deixar meia coluna de fundo vazia ao lado, o card acompanha a altura e
+   as seis metas ficam centradas nele. */
+.grid-nps .card-metas { display: flex; flex-direction: column; }
+.grid-nps .card-metas .farol { flex: 1; justify-content: center; }
+@media (max-width: 1080px) { .grid-nps { grid-template-columns: 1fr; } }
 
 .hero-chart {
   grid-column: 1 / -1;
-  /* Alto de proposito: e por aqui que se le a trajetoria do indice contra a
-     meta, mes a mes, e a fatia de promotores/neutros/detratores junto. */
-  height: 380px; margin-top: var(--lg);
+  /* O que se perdeu de largura volta em altura: sao seis series e oito meses
+     na mesma area, e o que separa uma linha da outra e o espaco vertical. */
+  height: 440px; margin-top: var(--lg);
   padding-top: var(--md); border-top: 1px solid rgba(255, 255, 255, .15);
 }
 .hero-chart canvas { width: 100% !important; }
-@media (max-width: 980px) { .hero-chart { height: 300px; } }
+@media (max-width: 1080px) { .hero-chart { height: 320px; } }
 
-/* o card de metas em largura cheia: a lista vira duas colunas, senão sobra
-   metade da linha vazia à direita de cada meta */
-@media (min-width: 981px) {
-  .card-metas .farol { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--xl); }
-  .card-metas .farol-row:nth-child(2) { padding-top: 0; }
-  .card-metas .farol-row:nth-last-child(2) { border-bottom: none; }
-}
 .card-metas .card-title { white-space: nowrap; }
 
 /* cinco cartões de onboarding: o histórico ao lado do semanal */
