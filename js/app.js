@@ -552,9 +552,6 @@
            movimento de olho. */
         { label: "NPS", data: real, borderColor: H.coral,
           backgroundColor: H.coralFundo, fill: true, tension: .35, borderWidth: 3,
-          // trecho apurado a mao fica tracejado: mesma serie, confiabilidade diferente
-          segment: { borderDash: ctx => (S.nps.meses_do_notion || []).includes(meses[ctx.p1DataIndex])
-                                        ? [6, 4] : undefined },
           // o mes escolhido vira um ponto branco na linha coral: rosa sobre
           // coral seriam dois vermelhos disputando a mesma leitura
           pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
@@ -579,6 +576,11 @@
               const linhas = [];
               if (alvo !== undefined && alvo !== null)
                 linhas.push("Meta do mês: " + fmt(alvo, 1));
+              /* O tracejado que marcava os meses apurados a mao saiu do
+                 desenho — a linha e uma so. O aviso desceu para ca, para a
+                 diferenca de confiabilidade nao sumir junto com ele. */
+              if ((S.nps.meses_do_notion || []).includes(m))
+                linhas.push("Apurado à mão, antes do Databricks");
               const k = b && b.kpi;
               if (k && k.total_respostas) {
                 linhas.push(fmt(k.promotores, 0) + " promotores · " +
