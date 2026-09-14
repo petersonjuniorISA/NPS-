@@ -569,13 +569,17 @@
             labels: { boxWidth: 10, boxHeight: 2, usePointStyle: true, pointStyle: "line",
                       padding: 18, font: { size: 11 }, color: "rgba(255,255,255,.7)" } },
           tooltip: { callbacks: {
+            // "Ago" cabe no eixo, mas no tooltip ha espaco para o nome inteiro
+            title: itens => mesLabel(meses[itens[0].dataIndex]),
             /* A composicao que saiu do desenho continua aqui: quem quiser o
-               numero de promotores de junho passa o mouse em junho. */
+               numero de promotores de junho passa o mouse em junho.
+
+               A meta nao entra: o tooltip e por indice, entao a propria linha
+               da meta ja aparece listada acima. Escreve-la de novo dava
+               "Meta: 54" seguido de "Meta do mes: 54,0". */
             afterBody: itens => {
-              const m = meses[itens[0].dataIndex], b = doMes(m), alvo = objNps.metas[m];
+              const m = meses[itens[0].dataIndex], b = doMes(m);
               const linhas = [];
-              if (alvo !== undefined && alvo !== null)
-                linhas.push("Meta do mês: " + fmt(alvo, 1));
               /* O tracejado que marcava os meses apurados a mao saiu do
                  desenho — a linha e uma so. O aviso desceu para ca, para a
                  diferenca de confiabilidade nao sumir junto com ele. */
