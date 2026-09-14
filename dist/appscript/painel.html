@@ -2628,6 +2628,9 @@ window.NPS_CONFIG = {
        viva no registro do Chart.js, presa a um canvas que nem esta mais na
        pagina, e elas iam se acumulando a cada clique. */
     const caixa = $("#chart-pop").parentElement;
+    /* `altura` vem do card: o eixo de 35 semanas do suporte pede menos altura
+       que o de quatro meses com seis series, e a caixa e a mesma para os dois. */
+    caixa.style.height = POP.altura ? POP.altura + "px" : "";
     if (S.charts["chart-pop"]) S.charts["chart-pop"].destroy();
     caixa.innerHTML = '<canvas id="chart-pop"></canvas>';
     delete S.charts["chart-pop"];
@@ -2709,6 +2712,54 @@ window.NPS_CONFIG = {
     return fora;
   }
 
+  /** A segunda-feira que abre a semana de uma data, em UTC. */
+  function segundaDe(dataISO) {
+    const d = new Date(dataISO + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() || 7) - 1));
+    return d;
+  }
+
+  /* Todas as semanas do periodo, da primeira de maio a ultima de dezembro —
+     35 slots. A semana pertence ao mes da segunda-feira que a abre, a mesma
+     regra que a faixa de baixo usa; sem isso a semana que cruza a virada do
+     mes cairia num lugar na linha e noutro na faixa. */
+  function semanasDoPeriodo() {
+    const meses = mesesDoSuporte();
+    if (!meses.length) return [];
+    const ultimo = meses[meses.length - 1];
+    const fim = new Date(Date.UTC(+ultimo.slice(0, 4), +ultimo.slice(5, 7), 0));
+    const porInicio = new Map();
+    S.zendesk.filter(r => (num(r.semana) ?? 0) > 0 && r.inicio)
+      .forEach(r => porInicio.set(r.inicio, r));
+
+    const fora = [];
+    for (let d = segundaDe(meses[0] + "-01"); d <= fim; d.setUTCDate(d.getUTCDate() + 7)) {
+      const iso = d.toISOString().slice(0, 10);
+      const mes = mesDaSemana(iso);
+      if (mes < meses[0]) continue;              // sobra da virada do mes anterior
+      fora.push({ mes, inicio: iso, rotulo: String(semanaDoAno(iso)),
+                  linha: porInicio.get(iso) || null, mensal: zenMes(mes) || null });
+    }
+    return fora;
+  }
+
+  /** O ponto do meio da faixa de cada mes — onde a media do mes se escreve. */
+  function meioDoMes(eixo) {
+    const faixa = {};
+    eixo.forEach((p, i) => {
+      (faixa[p.mes] = faixa[p.mes] || []).push(i);
+    });
+    return new Set(Object.keys(faixa).map(m => faixa[m][Math.floor(faixa[m].length / 2)]));
+  }
+
+  /** Tooltip do eixo semanal: semana, periodo escrito e o mes a que pertence. */
+  const tituloDaSemana = eixo => itens => {
+    const p = eixo[itens[0].dataIndex];
+    if (!p) return "";
+    return "Semana " + p.rotulo + " · " +
+      (p.linha && p.linha.periodo ? p.linha.periodo : mesLabel(p.mes).toLowerCase());
+  };
+
   /** Tooltip do eixo corrido: a semana quando ha semana, o mes quando nao ha. */
   const tituloDoPonto = eixo => itens => {
     const p = eixo[itens[0].dataIndex];
@@ -2723,9 +2774,6 @@ window.NPS_CONFIG = {
     return Array.from(new Set(
       S.zendesk.filter(r => (num(r.semana) ?? 0) > 0).map(r => r.mes))).sort();
   }
-
-  /** Os pontos do mes em foco ficam graudos; os vizinhos, discretos. */
-  const raioDoMes = (todas, m) => todas.map(x => x.mes === m ? 6 : 3.5);
 
   /** Eixo x das series continuas: uma semana por marca, sem rotacao. */
   const eixoDeSemana = () => ({ grid: { display: false },
@@ -2796,42 +2844,59 @@ window.NPS_CONFIG = {
     }));
   }
 
-  /* O semanal de um indicador de suporte. Sem meta: a meta e mensal, e
-     desenha-la sobre a semana inventaria um alvo semanal que nao existe. */
+  /* O semanal de um indicador de suporte, no calendario inteiro. Sem meta: a
+     meta e mensal, e desenha-la sobre a semana inventaria um alvo semanal que
+     nao existe. */
   function popSuporte(ind) {
-    const todas = eixoSuporte();
-    if (!todas.length) return;
+    const eixo = semanasDoPeriodo();
+    if (!eixo.length) return;
+    const meio = meioDoMes(eixo);
+    const semana = eixo.map(p => p.linha ? valorSup(ind, p.linha) : null);
+    const mesADia = eixo.map(p => p.mensal ? valorSup(ind, p.mensal) : null);
+
     abrirPop({
-      titulo: ind.rotulo + " ao longo do semestre",
-      meses: Array.from(new Set(todas.map(x => x.mes))),
+      titulo: ind.rotulo + " semana a semana",
+      altura: 250,
+      meses: Array.from(new Set(eixo.map(p => p.mes))),
       mes: S.sacMes,
-      sub: m => ind.nota + " · o período inteiro, com <b>" +
-        mesLabel(m).toLowerCase() + "</b> em destaque na faixa",
+      sub: m => ind.nota + " · da primeira semana de " +
+        mesLabel(eixo[0].mes).toLowerCase() + " a dezembro, com <b>" +
+        mesLabel(m).toLowerCase() + "</b> em destaque",
       nota: m => {
-        const vals = todas.map(p => valorSup(ind, p.linha)).filter(v => v !== null);
+        const vals = semana.filter(v => v !== null);
         if (vals.length < 2) return "";
         const dif = vals[vals.length - 1] - vals[0];
         const bom = ind.melhor === "baixo" ? dif < 0 : dif > 0;
-        return "Do primeiro ao último número apurado: <b>" + mostrarSup(ind, vals[0]) +
+        return "Da primeira à última semana apurada: <b>" + mostrarSup(ind, vals[0]) +
           "</b> para <b>" + mostrarSup(ind, vals[vals.length - 1]) + "</b> — " +
           (bom ? "no sentido certo." : "no sentido contrário ao da meta.");
       },
       config: m => ({ type: "line",
-        data: { labels: todas.map(p => p.rotulo), datasets: [{
-          label: ind.rotulo, data: todas.map(p => valorSup(ind, p.linha)),
-          borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
-          borderWidth: 2.6, tension: .3, spanGaps: true,
-          pointRadius: raioDoMes(todas, m),
-          pointBackgroundColor: todas.map(x => x.mes === m ? C.pink : C.blue),
-          pointBorderColor: "#fff", pointBorderWidth: 2,
-          rotulo: { casas: ind.casas ?? 1, cor: C.blue, tempo: !!ind.tempo,
-                    sufixo: ind.suf || "" } }] },
-        options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
-          faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
-          plugins: { legend: { display: false }, tooltip: { callbacks: {
-            title: tituloDoPonto(todas),
-            label: c => mostrarSup(ind, c.parsed.y) } } },
-          scales: { y: { grace: "22%", grid: { color: C.grid },
+        data: { labels: eixo.map(p => p.rotulo), datasets: [
+          /* A media do mes, reta ao longo das semanas dele. E ela que deixa
+             comparar mes com semana sem fingir que julho foi apurado semana a
+             semana: a faixa de julho fica reta enquanto agosto pousa ponto a
+             ponto. */
+          { label: "Média do mês", data: mesADia,
+            borderColor: C.cinzaMeta, borderWidth: 1.6, backgroundColor: "transparent",
+            tension: 0, pointRadius: 0, spanGaps: false,
+            rotulo: { casas: ind.casas ?? 1, cor: C.cinzaMeta, tempo: !!ind.tempo,
+                      sufixo: ind.suf || "", desloca: -10,
+                      pular: (v, j) => !meio.has(j) } },
+          { label: "Semana", data: semana,
+            borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
+            borderWidth: 2.6, tension: .3, spanGaps: true,
+            pointRadius: eixo.map(p => p.linha ? (p.mes === m ? 5.5 : 3.5) : 0),
+            pointBackgroundColor: eixo.map(p => p.mes === m ? C.pink : C.blue),
+            pointBorderColor: "#fff", pointBorderWidth: 2,
+            rotulo: { casas: ind.casas ?? 1, cor: C.blue, tempo: !!ind.tempo,
+                      sufixo: ind.suf || "" } } ] },
+        options: opcoes({ layout: { padding: { top: 22, bottom: 34 } },
+          faixasMes: faixasDe(eixo, m), faixaCorForte: C.blue,
+          plugins: { legend: legendaTopo(), tooltip: { callbacks: {
+            title: tituloDaSemana(eixo),
+            label: c => c.dataset.label + ": " + mostrarSup(ind, c.parsed.y) } } },
+          scales: { y: { grace: "18%", grid: { color: C.grid },
                          ticks: { callback: v => ind.tempo ? tempoDeMinutos(v)
                                     : fmt(v, ind.casas ?? 1) + (ind.suf || "") } },
                     x: eixoDeSemana() } }) })
@@ -2928,41 +2993,54 @@ window.NPS_CONFIG = {
   }
 
   function popFcrCsat() {
-    const todas = eixoSuporte();
-    if (!todas.length) return;
+    const eixo = semanasDoPeriodo();
+    if (!eixo.length) return;
+    const meio = meioDoMes(eixo);
+    const daSemana = campo => eixo.map(p => p.linha ? num(p.linha[campo]) : null);
+    const doMes = campo => eixo.map(p => p.mensal ? num(p.mensal[campo]) : null);
+
     abrirPop({
-      titulo: "FCR e CSAT ao longo do semestre",
-      meses: Array.from(new Set(todas.map(x => x.mes))),
+      titulo: "FCR e CSAT semana a semana",
+      altura: 250,
+      meses: Array.from(new Set(eixo.map(p => p.mes))),
       mes: S.sacMes,
-      sub: m => "O período inteiro, semana a semana · <b>" + mesLabel(m).toLowerCase() +
+      sub: m => "Da primeira semana de " + mesLabel(eixo[0].mes).toLowerCase() +
+        " a dezembro, com <b>" + mesLabel(m).toLowerCase() +
         "</b> em destaque · a meta é mensal, então não aparece aqui",
       nota: m => {
-        const vals = todas.map(p => num(p.linha.fcr_pct)).filter(v => v !== null);
+        const vals = daSemana("fcr_pct").filter(v => v !== null);
         if (vals.length < 2) return "";
         const dif = vals[vals.length - 1] - vals[0];
-        return "FCR do primeiro ao último número apurado: <b>" + fmt(vals[0], 1) + "%</b> para <b>" +
+        return "FCR da primeira à última semana apurada: <b>" + fmt(vals[0], 1) + "%</b> para <b>" +
           fmt(vals[vals.length - 1], 1) + "%</b> — " +
           (dif >= 0 ? "no sentido da meta." : "no sentido contrário.");
       },
       config: m => ({
-        data: { labels: todas.map(p => p.rotulo), datasets: [
-          { type: "line", label: "FCR (%)", data: todas.map(p => num(p.linha.fcr_pct)),
+        data: { labels: eixo.map(p => p.rotulo), datasets: [
+          // a media do mes do FCR, reta ao longo das semanas dele
+          { type: "line", label: "FCR do mês", data: doMes("fcr_pct"),
+            borderColor: C.cinzaMeta, borderWidth: 1.6, backgroundColor: "transparent",
+            tension: 0, pointRadius: 0, spanGaps: false, yAxisID: "y",
+            rotulo: { casas: 1, sufixo: "%", cor: C.cinzaMeta, desloca: -10,
+                      pular: (v, j) => !meio.has(j) } },
+          { type: "line", label: "FCR (%)", data: daSemana("fcr_pct"),
             borderColor: C.blue, backgroundColor: C.blueFill, fill: true,
             borderWidth: 2.6, tension: .3, spanGaps: true, yAxisID: "y",
-            pointRadius: raioDoMes(todas, m),
-            pointBackgroundColor: todas.map(x => x.mes === m ? C.pink : C.blue),
+            pointRadius: eixo.map(p => p.linha ? (p.mes === m ? 5.5 : 3.5) : 0),
+            pointBackgroundColor: eixo.map(p => p.mes === m ? C.pink : C.blue),
             pointBorderColor: "#fff", pointBorderWidth: 2,
             rotulo: { casas: 1, sufixo: "%", cor: C.blue } },
-          { type: "line", label: "CSAT humano", data: todas.map(p => num(p.linha.csat_humano)),
+          { type: "line", label: "CSAT humano", data: daSemana("csat_humano"),
             borderColor: C.pink, backgroundColor: "transparent",
             borderWidth: 2.6, tension: .3, spanGaps: true, yAxisID: "y1",
-            pointRadius: raioDoMes(todas, m), pointBackgroundColor: C.pink,
+            pointRadius: eixo.map(p => p.linha ? (p.mes === m ? 5.5 : 3.5) : 0),
+            pointBackgroundColor: C.pink,
             pointBorderColor: "#fff", pointBorderWidth: 2,
             rotulo: { casas: 2, cor: C.pink, abaixo: true } } ] },
-        options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
-          faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
+        options: opcoes({ layout: { padding: { top: 22, bottom: 34 } },
+          faixasMes: faixasDe(eixo, m), faixaCorForte: C.blue,
           plugins: { legend: legendaTopo(), tooltip: { callbacks: {
-            title: tituloDoPonto(todas) } } },
+            title: tituloDaSemana(eixo) } } },
           scales: { y: { min: 0, max: 100, grid: { color: C.grid },
                          ticks: { callback: v => v + "%" },
                          title: { display: true, text: "FCR", font: { size: 10 } } },
@@ -3532,32 +3610,34 @@ window.NPS_CONFIG = {
     });
   }
 
-  /** Semana a semana do volume, no mesmo card flutuante do resto do painel. */
+  /** Semana a semana do volume, no mesmo calendario do resto do suporte. */
   function popVolume(ind) {
-    const todas = eixoSuporte();
-    if (!todas.length) return;
+    const eixo = semanasDoPeriodo();
+    if (!eixo.length) return;
     abrirPop({
-      titulo: ind.rotulo + " ao longo do semestre",
-      meses: Array.from(new Set(todas.map(x => x.mes))),
+      titulo: ind.rotulo + " semana a semana",
+      altura: 250,
+      meses: Array.from(new Set(eixo.map(p => p.mes))),
       mes: S.sacMes,
-      sub: m => ind.nota + " · o período inteiro, com <b>" +
-        mesLabel(m).toLowerCase() + "</b> em destaque na faixa",
+      sub: m => ind.nota + " · da primeira semana de " +
+        mesLabel(eixo[0].mes).toLowerCase() + " a dezembro, com <b>" +
+        mesLabel(m).toLowerCase() + "</b> em destaque",
       nota: m => {
-        const doMes = todas.filter(x => x.mes === m);
-        const total = doMes.reduce((a, p) => a + (volumeDe(ind, p.linha) || 0), 0);
+        const total = eixo.filter(p => p.mes === m && p.linha)
+          .reduce((a, p) => a + (volumeDe(ind, p.linha) || 0), 0);
         return total ? "Somando as semanas de " + mesLabel(m).toLowerCase() +
           ": <b>" + fmt(total, 0) + "</b> conversas." : "";
       },
       config: m => ({ type: "bar",
-        data: { labels: todas.map(p => p.rotulo), datasets: [{
-          label: ind.rotulo, data: todas.map(p => volumeDe(ind, p.linha)),
-          backgroundColor: todas.map(x => x.mes === m ? C.blue : "rgba(0,68,116,.35)"),
-          borderRadius: 4, maxBarThickness: 30,
+        data: { labels: eixo.map(p => p.rotulo), datasets: [{
+          label: ind.rotulo, data: eixo.map(p => p.linha ? volumeDe(ind, p.linha) : null),
+          backgroundColor: eixo.map(p => p.mes === m ? C.blue : "rgba(0,68,116,.35)"),
+          borderRadius: 4, maxBarThickness: 22,
           rotulo: { casas: 0, cor: C.blue } }] },
-        options: opcoes({ layout: { padding: { top: 18, bottom: 34 } },
-          faixasMes: faixasDe(todas, m), faixaCorForte: C.blue,
+        options: opcoes({ layout: { padding: { top: 22, bottom: 34 } },
+          faixasMes: faixasDe(eixo, m), faixaCorForte: C.blue,
           plugins: { legend: { display: false },
-                     tooltip: { callbacks: { title: tituloDoPonto(todas) } } },
+                     tooltip: { callbacks: { title: tituloDaSemana(eixo) } } },
           scales: { y: { beginAtZero: true, grid: { color: C.grid } },
                     x: eixoDeSemana() } }) })
     });
@@ -4119,6 +4199,11 @@ window.NPS_CONFIG = {
           const v = ds.data[j];
           if (v === null || v === undefined) return;
           if (cfg.soUltimo && j !== ultimo) return;
+          /* `pular` cala o rotulo em pontos escolhidos. Serve a serie que
+             repete o mesmo numero em varios pontos de proposito — a media de
+             um mes ao longo das semanas dele — e que precisa escreve-lo uma
+             vez so, no meio da faixa. */
+          if (cfg.pular && cfg.pular(v, j)) return;
           const txt = cfg.tempo ? tempoDeMinutos(v)
                     : fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
 
