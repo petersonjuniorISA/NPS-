@@ -231,23 +231,23 @@
      vai bem, diz que a meta do mês está defasada. */
   const ATT_DEFASADA = 150;
 
-  /* O mes do card de metas: o de hoje assim que ele tiver o primeiro numero,
-     e ate la o ultimo mes apurado.
+  /* O mes do card de metas e o de hoje, sempre — ele acompanha o calendario,
+     nao o ultimo mes apurado. Em setembro o card fala de setembro, mesmo que o
+     realizado so apareca quando o mes fechar: a meta em vigor e a informacao
+     que a reuniao precisa ver agora, e um numero de agosto no lugar dela seria
+     o mes errado.
 
-     Apontar direto para o mes do calendario deixava o card com seis tracos
-     durante o mes inteiro — o NPS so fecha no fim, e a linha do Zendesk do mes
-     corrente nasce vazia. Um card sem numero nao serve a uma reuniao. Assim
-     ele nunca fica preso num mes velho: vira sozinho no dia em que o mes novo
-     ganha o primeiro dado. */
+     O teto e o ultimo mes com meta cadastrada. Sem ele, em janeiro o card
+     pediria uma meta de 2027 que ninguem cadastrou e ficaria vazio de vez; com
+     ele, para em dezembro e continua mostrando o alvo do semestre. */
   function mesDoFarol() {
     const hoje = new Date();
     const atual = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0");
-    const temNumero = m => (S.metas.objetivos || []).some(o => realizado(o, m) !== null);
-    if (temNumero(atual)) return atual;
-    const anteriores = Object.keys(S.nps.meses || {})
-      .concat(zenMensal().map(r => r.mes))
-      .filter(m => m <= atual).sort().reverse();
-    return anteriores.find(temNumero) || atual;
+    const comMeta = Array.from(new Set(
+      (S.metas.objetivos || []).flatMap(o => Object.keys(o.metas || {})))).sort();
+    if (!comMeta.length) return atual;
+    const ultimo = comMeta[comMeta.length - 1];
+    return atual > ultimo ? ultimo : atual;
   }
 
   function status(o, mes) {
@@ -484,10 +484,13 @@
 
   function farol() {
     const mes = mesDoFarol(), box = $("#farol");
+    /* Enquanto o mes corre o realizado e traco em toda linha. Sem uma palavra
+       no subtitulo o card parece quebrado; com ela, parece o que e. */
+    const semNumero = (S.metas.objetivos || []).every(o => realizado(o, mes) === null);
     const sub = $("#metas-sub");
     if (sub) sub.textContent = editandoMetas
       ? "Mexa nos números; o painel acompanha"
-      : mesLabel(mes) + " de " + mes.slice(0, 4);
+      : mesLabel(mes) + " de " + mes.slice(0, 4) + (semNumero ? " · mês em curso" : "");
 
     box.innerHTML = "";
     box.classList.toggle("editando", editandoMetas);
