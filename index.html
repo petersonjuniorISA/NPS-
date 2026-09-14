@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=133">
+<link rel="stylesheet" href="css/styles.css?v=135">
 </head>
 <body>
 
@@ -122,24 +122,28 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Evolução por dimensão</div>
+      <!-- As duas juntas respondem "o que melhorou e para quem": empilhadas,
+           a segunda so aparecia depois de rolar. -->
+      <div class="grid grid-2 grid-evolucoes" style="margin-top:16px;">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Evolução por dimensão</div>
+            </div>
           </div>
+          <div class="chart h320"><canvas id="chart-evo-dim"></canvas></div>
+          <div class="leitura" id="leitura-dim"></div>
         </div>
-        <div class="chart h320"><canvas id="chart-evo-dim"></canvas></div>
-        <div class="leitura" id="leitura-dim"></div>
-      </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Evolução do NPS por especialidade</div>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Evolução do NPS por especialidade</div>
+            </div>
           </div>
+          <div class="chart h320"><canvas id="chart-evo-esp"></canvas></div>
+          <div class="leitura" id="leitura-esp"></div>
         </div>
-        <div class="chart h320"><canvas id="chart-evo-esp"></canvas></div>
-        <div class="leitura" id="leitura-esp"></div>
       </div>
 
       <div class="grid grid-wide" style="margin-top:16px;">
@@ -329,8 +333,8 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=133"></script>
-<script src="js/app.js?v=133"></script>
+<script src="js/config.js?v=135"></script>
+<script src="js/app.js?v=135"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>

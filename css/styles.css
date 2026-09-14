@@ -1033,6 +1033,18 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
 .card-metas .card-title { white-space: nowrap; }
 
+/* ---------------------------------------------------------------------------
+   As duas evolucoes na mesma linha
+
+   Cada uma com metade da largura leva seis series e um numero por ponto. A
+   folha de calculo do olho e a mesma, mas o espaco e menos: o card estica para
+   acompanhar o vizinho e a leitura de baixo fica encostada no pe, para as duas
+   comecarem e terminarem na mesma altura.
+--------------------------------------------------------------------------- */
+.grid-evolucoes > .card { display: flex; flex-direction: column; }
+.grid-evolucoes .leitura { margin-top: auto; }
+@media (max-width: 1080px) { .grid-evolucoes { grid-template-columns: 1fr; } }
+
 /* cinco cartões de onboarding: o histórico ao lado do semanal */
 .grid-5 { grid-template-columns: repeat(5, 1fr); }
 @media (max-width: 1320px) { .grid-5 { grid-template-columns: repeat(3, 1fr); } }

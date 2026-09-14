@@ -1045,6 +1045,18 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
 .card-metas .card-title { white-space: nowrap; }
 
+/* ---------------------------------------------------------------------------
+   As duas evolucoes na mesma linha
+
+   Cada uma com metade da largura leva seis series e um numero por ponto. A
+   folha de calculo do olho e a mesma, mas o espaco e menos: o card estica para
+   acompanhar o vizinho e a leitura de baixo fica encostada no pe, para as duas
+   comecarem e terminarem na mesma altura.
+--------------------------------------------------------------------------- */
+.grid-evolucoes > .card { display: flex; flex-direction: column; }
+.grid-evolucoes .leitura { margin-top: auto; }
+@media (max-width: 1080px) { .grid-evolucoes { grid-template-columns: 1fr; } }
+
 /* cinco cartões de onboarding: o histórico ao lado do semanal */
 .grid-5 { grid-template-columns: repeat(5, 1fr); }
 @media (max-width: 1320px) { .grid-5 { grid-template-columns: repeat(3, 1fr); } }
@@ -1163,24 +1175,28 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Evolução por dimensão</div>
+      <!-- As duas juntas respondem "o que melhorou e para quem": empilhadas,
+           a segunda so aparecia depois de rolar. -->
+      <div class="grid grid-2 grid-evolucoes" style="margin-top:16px;">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Evolução por dimensão</div>
+            </div>
           </div>
+          <div class="chart h320"><canvas id="chart-evo-dim"></canvas></div>
+          <div class="leitura" id="leitura-dim"></div>
         </div>
-        <div class="chart h320"><canvas id="chart-evo-dim"></canvas></div>
-        <div class="leitura" id="leitura-dim"></div>
-      </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Evolução do NPS por especialidade</div>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Evolução do NPS por especialidade</div>
+            </div>
           </div>
+          <div class="chart h320"><canvas id="chart-evo-esp"></canvas></div>
+          <div class="leitura" id="leitura-esp"></div>
         </div>
-        <div class="chart h320"><canvas id="chart-evo-esp"></canvas></div>
-        <div class="leitura" id="leitura-esp"></div>
       </div>
 
       <div class="grid grid-wide" style="margin-top:16px;">
@@ -2241,7 +2257,7 @@ window.NPS_CONFIG = {
       options: opcoes({
         onClick: (e, els) => popDimensoes(els, eixo),
         plugins: { legend: legenda(10) },
-        layout: { padding: { top: 18, right: 12 } },
+        layout: { padding: { top: 28, right: 12 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), .12, 0, 5),
                     { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
@@ -2272,7 +2288,7 @@ window.NPS_CONFIG = {
         const ds = seriesDeDimensao(eixoSem);
         return { type: "line",
           data: { labels: eixoSem.map(p => p.label), datasets: ds },
-          options: opcoes({ layout: { padding: { top: 18, right: 12 } },
+          options: opcoes({ layout: { padding: { top: 28, right: 12 } },
             plugins: { legend: legenda(10) },
             scales: { y: Object.assign(faixa(ds.map(d => d.data), .12, 0, 5),
                         { grid: { color: C.grid } }),
@@ -2319,7 +2335,7 @@ window.NPS_CONFIG = {
       options: opcoes({
         onClick: (e, els) => popEspecialidades(els, eixo, escolhidas),
         plugins: { legend: legenda(10) },
-        layout: { padding: { top: 18, right: 12 } },
+        layout: { padding: { top: 28, right: 12 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), 8, -100, 100),
                     { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
@@ -2350,7 +2366,7 @@ window.NPS_CONFIG = {
         const ds = seriesDeEspecialidade(eixoSem, escolhidas);
         return { type: "line",
           data: { labels: eixoSem.map(p => p.label), datasets: ds },
-          options: opcoes({ layout: { padding: { top: 18, right: 12 } },
+          options: opcoes({ layout: { padding: { top: 28, right: 12 } },
             plugins: { legend: legenda(10) },
             scales: { y: Object.assign(faixa(ds.map(d => d.data), 8, -100, 100),
                         { grid: { color: C.grid } }),

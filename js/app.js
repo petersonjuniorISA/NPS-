@@ -851,7 +851,7 @@
       options: opcoes({
         onClick: (e, els) => popDimensoes(els, eixo),
         plugins: { legend: legenda(10) },
-        layout: { padding: { top: 18, right: 12 } },
+        layout: { padding: { top: 28, right: 12 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), .12, 0, 5),
                     { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
@@ -882,7 +882,7 @@
         const ds = seriesDeDimensao(eixoSem);
         return { type: "line",
           data: { labels: eixoSem.map(p => p.label), datasets: ds },
-          options: opcoes({ layout: { padding: { top: 18, right: 12 } },
+          options: opcoes({ layout: { padding: { top: 28, right: 12 } },
             plugins: { legend: legenda(10) },
             scales: { y: Object.assign(faixa(ds.map(d => d.data), .12, 0, 5),
                         { grid: { color: C.grid } }),
@@ -929,7 +929,7 @@
       options: opcoes({
         onClick: (e, els) => popEspecialidades(els, eixo, escolhidas),
         plugins: { legend: legenda(10) },
-        layout: { padding: { top: 18, right: 12 } },
+        layout: { padding: { top: 28, right: 12 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), 8, -100, 100),
                     { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
@@ -960,7 +960,7 @@
         const ds = seriesDeEspecialidade(eixoSem, escolhidas);
         return { type: "line",
           data: { labels: eixoSem.map(p => p.label), datasets: ds },
-          options: opcoes({ layout: { padding: { top: 18, right: 12 } },
+          options: opcoes({ layout: { padding: { top: 28, right: 12 } },
             plugins: { legend: legenda(10) },
             scales: { y: Object.assign(faixa(ds.map(d => d.data), 8, -100, 100),
                         { grid: { color: C.grid } }),
