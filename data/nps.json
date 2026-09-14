@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-06T18:47:48.398988+00:00",
+  "generated_at": "2026-09-14T14:49:16.384887+00:00",
   "source": "databricks",
   "current_month": "2026-08",
   "historico_nps": [
@@ -24,19 +24,19 @@
     {
       "mes": "2026-08",
       "label": "Agosto",
-      "nps": 61.5,
+      "nps": 61.1,
       "origem": "databricks"
     }
   ],
   "meses": {
     "2026-08": {
       "kpi": {
-        "nps_geral": 61.5,
+        "nps_geral": 61.1,
         "nps_geral_variacao_pct": null,
-        "total_respostas": 470,
+        "total_respostas": 471,
         "promotores": 341,
         "neutros": 77,
-        "detratores": 52,
+        "detratores": 53,
         "convites_enviados": 2434
       },
       "media_por_pergunta": [
@@ -62,7 +62,7 @@
         },
         {
           "pergunta": "Suporte Chat",
-          "media": 3.78
+          "media": 3.77
         }
       ],
       "nps_por_especialidade": [
@@ -89,10 +89,10 @@
         },
         {
           "especialidade": "Enfermeiro (a)",
-          "enviadas": 224,
-          "taxa_resposta": 22.8,
-          "pct_amostra": 10.9,
-          "nps": 74.5
+          "enviadas": 225,
+          "taxa_resposta": 23.1,
+          "pct_amostra": 11.0,
+          "nps": 75.0
         },
         {
           "especialidade": "Medicina",
@@ -103,30 +103,30 @@
         },
         {
           "especialidade": "Tecnico em Enfermagem",
-          "enviadas": 1158,
-          "taxa_resposta": 22.1,
-          "pct_amostra": 54.5,
-          "nps": 61.7
+          "enviadas": 1157,
+          "taxa_resposta": 22.0,
+          "pct_amostra": 54.1,
+          "nps": 61.6
         },
         {
           "especialidade": "Nutrição",
           "enviadas": 84,
           "taxa_resposta": 23.8,
-          "pct_amostra": 4.3,
+          "pct_amostra": 4.2,
           "nps": 60.0
         },
         {
           "especialidade": "Fisioterapia",
           "enviadas": 468,
-          "taxa_resposta": 12.4,
-          "pct_amostra": 12.3,
-          "nps": 55.2
+          "taxa_resposta": 12.6,
+          "pct_amostra": 12.5,
+          "nps": 52.5
         },
         {
           "especialidade": "Auxiliar de Enfermagem",
           "enviadas": 109,
           "taxa_resposta": 25.7,
-          "pct_amostra": 6.0,
+          "pct_amostra": 5.9,
           "nps": 50.0
         },
         {
@@ -154,13 +154,13 @@
       "satisfacao_por_especialidade": [
         {
           "especialidade": "Enfermeiro (a)",
-          "n": 51,
-          "app_isa_atende": 4.22,
-          "comunicacao": 4.25,
+          "n": 52,
+          "app_isa_atende": 4.17,
+          "comunicacao": 4.21,
           "experiencia_geral": 4.33,
-          "gestao_escalas": 4.31,
+          "gestao_escalas": 4.27,
           "pontualidade_pagamento": 4.31,
-          "suporte_chat": 4.04
+          "suporte_chat": 4.02
         },
         {
           "especialidade": "Psicologia",
@@ -173,23 +173,13 @@
           "suporte_chat": 4.0
         },
         {
-          "especialidade": "Fisioterapia",
-          "n": 58,
-          "app_isa_atende": 4.19,
-          "comunicacao": 3.91,
-          "experiencia_geral": 4.14,
-          "gestao_escalas": 4.26,
-          "pontualidade_pagamento": 4.45,
-          "suporte_chat": 3.72
-        },
-        {
           "especialidade": "Tecnico em Enfermagem",
-          "n": 256,
+          "n": 255,
           "app_isa_atende": 4.16,
-          "comunicacao": 4.0,
+          "comunicacao": 4.01,
           "experiencia_geral": 4.14,
-          "gestao_escalas": 4.14,
-          "pontualidade_pagamento": 4.48,
+          "gestao_escalas": 4.15,
+          "pontualidade_pagamento": 4.49,
           "suporte_chat": 3.77
         },
         {
@@ -201,6 +191,16 @@
           "gestao_escalas": 4.0,
           "pontualidade_pagamento": 4.57,
           "suporte_chat": 4.14
+        },
+        {
+          "especialidade": "Fisioterapia",
+          "n": 59,
+          "app_isa_atende": 4.19,
+          "comunicacao": 3.9,
+          "experiencia_geral": 4.12,
+          "gestao_escalas": 4.25,
+          "pontualidade_pagamento": 4.46,
+          "suporte_chat": 3.71
         },
         {
           "especialidade": "Auxiliar de Enfermagem",
@@ -883,8 +883,8 @@
             "especialidade": "Enfermeiro (a)",
             "enviadas": null,
             "taxa_resposta": null,
-            "pct_amostra": 11.2,
-            "nps": 60.0
+            "pct_amostra": 11.7,
+            "nps": 61.9
           },
           {
             "especialidade": "Nutrição",
@@ -897,8 +897,8 @@
             "especialidade": "Tecnico em Enfermagem",
             "enviadas": null,
             "taxa_resposta": null,
-            "pct_amostra": 54.7,
-            "nps": 54.1
+            "pct_amostra": 54.2,
+            "nps": 53.6
           },
           {
             "especialidade": "Fonoaudiologia",
@@ -932,13 +932,13 @@
         "satisfacao_por_especialidade": [
           {
             "especialidade": "Enfermeiro (a)",
-            "n": 20,
-            "app_isa_atende": 4.25,
-            "comunicacao": 4.25,
-            "experiencia_geral": 4.25,
-            "gestao_escalas": 4.3,
-            "pontualidade_pagamento": 4.4,
-            "suporte_chat": 4.2
+            "n": 21,
+            "app_isa_atende": 4.14,
+            "comunicacao": 4.14,
+            "experiencia_geral": 4.24,
+            "gestao_escalas": 4.19,
+            "pontualidade_pagamento": 4.38,
+            "suporte_chat": 4.14
           },
           {
             "especialidade": "Nutrição",
@@ -952,13 +952,13 @@
           },
           {
             "especialidade": "Tecnico em Enfermagem",
-            "n": 98,
-            "app_isa_atende": 4.03,
-            "comunicacao": 3.85,
+            "n": 97,
+            "app_isa_atende": 4.05,
+            "comunicacao": 3.87,
             "experiencia_geral": 4.01,
-            "gestao_escalas": 4.0,
+            "gestao_escalas": 4.02,
             "pontualidade_pagamento": 4.43,
-            "suporte_chat": 3.58
+            "suporte_chat": 3.59
           },
           {
             "especialidade": "Biologia",
@@ -1131,16 +1131,82 @@
             "suporte_chat": 4.0
           }
         ]
+      },
+      {
+        "semana": 4,
+        "inicio": "2026-09-07",
+        "fim": "2026-09-13",
+        "label": "7/9 a 13/9",
+        "respostas": 1,
+        "promotores": 0,
+        "neutros": 0,
+        "detratores": 1,
+        "nps": -100.0,
+        "kpi": {
+          "nps_geral": -100.0,
+          "nps_geral_variacao_pct": -600.0,
+          "total_respostas": 1,
+          "promotores": 0,
+          "neutros": 0,
+          "detratores": 1
+        },
+        "media_por_pergunta": [
+          {
+            "pergunta": "Pontualidade Pagamento",
+            "media": 5.0
+          },
+          {
+            "pergunta": "Gestão de Escalas",
+            "media": 4.0
+          },
+          {
+            "pergunta": "App Isa Atende",
+            "media": 4.0
+          },
+          {
+            "pergunta": "Experiência Geral",
+            "media": 3.0
+          },
+          {
+            "pergunta": "Comunicação",
+            "media": 3.0
+          },
+          {
+            "pergunta": "Suporte Chat",
+            "media": 3.0
+          }
+        ],
+        "nps_por_especialidade": [
+          {
+            "especialidade": "Fisioterapia",
+            "enviadas": null,
+            "taxa_resposta": null,
+            "pct_amostra": 100.0,
+            "nps": -100.0
+          }
+        ],
+        "satisfacao_por_especialidade": [
+          {
+            "especialidade": "Fisioterapia",
+            "n": 1,
+            "app_isa_atende": 4.0,
+            "comunicacao": 3.0,
+            "experiencia_geral": 3.0,
+            "gestao_escalas": 4.0,
+            "pontualidade_pagamento": 5.0,
+            "suporte_chat": 3.0
+          }
+        ]
       }
     ]
   },
   "kpi": {
-    "nps_geral": 61.5,
+    "nps_geral": 61.1,
     "nps_geral_variacao_pct": null,
-    "total_respostas": 470,
+    "total_respostas": 471,
     "promotores": 341,
     "neutros": 77,
-    "detratores": 52,
+    "detratores": 53,
     "convites_enviados": 2434
   },
   "media_por_pergunta": [
@@ -1166,7 +1232,7 @@
     },
     {
       "pergunta": "Suporte Chat",
-      "media": 3.78
+      "media": 3.77
     }
   ],
   "nps_por_especialidade": [
@@ -1193,10 +1259,10 @@
     },
     {
       "especialidade": "Enfermeiro (a)",
-      "enviadas": 224,
-      "taxa_resposta": 22.8,
-      "pct_amostra": 10.9,
-      "nps": 74.5
+      "enviadas": 225,
+      "taxa_resposta": 23.1,
+      "pct_amostra": 11.0,
+      "nps": 75.0
     },
     {
       "especialidade": "Medicina",
@@ -1207,30 +1273,30 @@
     },
     {
       "especialidade": "Tecnico em Enfermagem",
-      "enviadas": 1158,
-      "taxa_resposta": 22.1,
-      "pct_amostra": 54.5,
-      "nps": 61.7
+      "enviadas": 1157,
+      "taxa_resposta": 22.0,
+      "pct_amostra": 54.1,
+      "nps": 61.6
     },
     {
       "especialidade": "Nutrição",
       "enviadas": 84,
       "taxa_resposta": 23.8,
-      "pct_amostra": 4.3,
+      "pct_amostra": 4.2,
       "nps": 60.0
     },
     {
       "especialidade": "Fisioterapia",
       "enviadas": 468,
-      "taxa_resposta": 12.4,
-      "pct_amostra": 12.3,
-      "nps": 55.2
+      "taxa_resposta": 12.6,
+      "pct_amostra": 12.5,
+      "nps": 52.5
     },
     {
       "especialidade": "Auxiliar de Enfermagem",
       "enviadas": 109,
       "taxa_resposta": 25.7,
-      "pct_amostra": 6.0,
+      "pct_amostra": 5.9,
       "nps": 50.0
     },
     {
@@ -1258,13 +1324,13 @@
   "satisfacao_por_especialidade": [
     {
       "especialidade": "Enfermeiro (a)",
-      "n": 51,
-      "app_isa_atende": 4.22,
-      "comunicacao": 4.25,
+      "n": 52,
+      "app_isa_atende": 4.17,
+      "comunicacao": 4.21,
       "experiencia_geral": 4.33,
-      "gestao_escalas": 4.31,
+      "gestao_escalas": 4.27,
       "pontualidade_pagamento": 4.31,
-      "suporte_chat": 4.04
+      "suporte_chat": 4.02
     },
     {
       "especialidade": "Psicologia",
@@ -1277,23 +1343,13 @@
       "suporte_chat": 4.0
     },
     {
-      "especialidade": "Fisioterapia",
-      "n": 58,
-      "app_isa_atende": 4.19,
-      "comunicacao": 3.91,
-      "experiencia_geral": 4.14,
-      "gestao_escalas": 4.26,
-      "pontualidade_pagamento": 4.45,
-      "suporte_chat": 3.72
-    },
-    {
       "especialidade": "Tecnico em Enfermagem",
-      "n": 256,
+      "n": 255,
       "app_isa_atende": 4.16,
-      "comunicacao": 4.0,
+      "comunicacao": 4.01,
       "experiencia_geral": 4.14,
-      "gestao_escalas": 4.14,
-      "pontualidade_pagamento": 4.48,
+      "gestao_escalas": 4.15,
+      "pontualidade_pagamento": 4.49,
       "suporte_chat": 3.77
     },
     {
@@ -1305,6 +1361,16 @@
       "gestao_escalas": 4.0,
       "pontualidade_pagamento": 4.57,
       "suporte_chat": 4.14
+    },
+    {
+      "especialidade": "Fisioterapia",
+      "n": 59,
+      "app_isa_atende": 4.19,
+      "comunicacao": 3.9,
+      "experiencia_geral": 4.12,
+      "gestao_escalas": 4.25,
+      "pontualidade_pagamento": 4.46,
+      "suporte_chat": 3.71
     },
     {
       "especialidade": "Auxiliar de Enfermagem",
