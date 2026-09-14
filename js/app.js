@@ -231,18 +231,23 @@
      vai bem, diz que a meta do mês está defasada. */
   const ATT_DEFASADA = 150;
 
-  /* O mes do calendario, preso ao ultimo mes que tem meta cadastrada. Sem o
-     teto, em janeiro o card pediria uma meta de 2027 que ninguem cadastrou e
-     ficaria vazio; com ele, para em dezembro e continua mostrando o alvo do
-     semestre. */
-  function mesDeHoje() {
+  /* O mes do card de metas: o de hoje assim que ele tiver o primeiro numero,
+     e ate la o ultimo mes apurado.
+
+     Apontar direto para o mes do calendario deixava o card com seis tracos
+     durante o mes inteiro — o NPS so fecha no fim, e a linha do Zendesk do mes
+     corrente nasce vazia. Um card sem numero nao serve a uma reuniao. Assim
+     ele nunca fica preso num mes velho: vira sozinho no dia em que o mes novo
+     ganha o primeiro dado. */
+  function mesDoFarol() {
     const hoje = new Date();
     const atual = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0");
-    const comMeta = Array.from(new Set(
-      (S.metas.objetivos || []).flatMap(o => Object.keys(o.metas || {})))).sort();
-    if (!comMeta.length) return atual;
-    const ultimo = comMeta[comMeta.length - 1];
-    return atual > ultimo ? ultimo : atual;
+    const temNumero = m => (S.metas.objetivos || []).some(o => realizado(o, m) !== null);
+    if (temNumero(atual)) return atual;
+    const anteriores = Object.keys(S.nps.meses || {})
+      .concat(zenMensal().map(r => r.mes))
+      .filter(m => m <= atual).sort().reverse();
+    return anteriores.find(temNumero) || atual;
   }
 
   function status(o, mes) {
@@ -478,8 +483,7 @@
   }
 
   function farol() {
-    // o card de metas vive no mes do calendario, nao no ultimo mes apurado
-    const mes = mesDeHoje(), box = $("#farol");
+    const mes = mesDoFarol(), box = $("#farol");
     const sub = $("#metas-sub");
     if (sub) sub.textContent = editandoMetas
       ? "Mexa nos números; o painel acompanha"
@@ -641,8 +645,8 @@
         if (input.dataset.campo === "final") o.alvo_final = valor;
         else {
           o.metas = o.metas || {};
-          // grava no mes que o card esta mostrando, que e o de hoje
-          const mes = mesDeHoje();
+          // grava no mes que o card esta mostrando
+          const mes = mesDoFarol();
           if (valor === null) delete o.metas[mes]; else o.metas[mes] = valor;
         }
         desenharMes();   // farol, hero, medidor e as linhas de meta dos gráficos

@@ -981,23 +981,22 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
    Ele nasceu num card de largura inteira, com uma frase de contexto por linha.
    Do lado do hero não cabe: a frase quebrava em cinco linhas e o nome da meta
-   ficava mais alto que o número. Aqui a linha vira nome, número e atingimento
-   em três colunas, e o contexto sai.
+   ficava mais alto que o número. Aqui a linha é nome de um lado, número e meta
+   do outro — e só isso.
 
-   A barra que morou aqui por uma versão saiu: gastava uma linha inteira por
-   meta — seis linhas só de barra — para dizer o que o número ao lado já diz.
+   O atingimento e a palavra do farol ficam de fora: a cor do ponto já dá o
+   recado, e a porcentagem numa quarta coluna espremia as três primeiras. Quem
+   quiser o número exato tem o realizado e a meta um debaixo do outro.
 --------------------------------------------------------------------------- */
 .grid-nps > .card .farol-row {
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
   gap: 10px; padding: 10px 0;
 }
 .grid-nps > .card .farol-ctx { display: none; }
-.grid-nps > .card .farol-name { font-size: 13px; line-height: 1.25; }
+.grid-nps > .card .farol-status { display: none; }
+.grid-nps > .card .farol-name { font-size: 13.5px; line-height: 1.25; }
 .grid-nps > .card .farol-nums { min-width: 0; }
-.grid-nps > .card .farol-real { font-size: 16px; }
-.grid-nps > .card .farol-status { min-width: 0; }
-.grid-nps > .card .farol-att { font-size: 15px; }
-.grid-nps > .card .farol-word { font-size: 9px; letter-spacing: .8px; }
+.grid-nps > .card .farol-real { font-size: 17px; }
 
 /* na edição o contexto volta, porque ele diz o que cada campo é, e a barra
    sai para os dois campos caberem na linha */
