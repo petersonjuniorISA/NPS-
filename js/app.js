@@ -407,8 +407,9 @@
     $("#hero-facts").innerHTML = [
       ["Promotores", k.promotores, C.positive, "promotor"],
       ["Neutros", k.neutros, C.amber, "neutro"],
-      ["Detratores", k.detratores, C.negative, "detrator"],
-      ["Respostas", k.total_respostas, null, ""]
+      // "Respostas" nao entra: a frase logo acima do bloco ja abre com ela
+      // ("470 respostas de 2434 convites")
+      ["Detratores", k.detratores, C.negative, "detrator"]
     ].map(([rot, val, cor, classe]) => {
       const clicavel = temComentario && classe && temNps();
       return '<div class="fact' + (clicavel ? " fact-clicavel" : "") + '"' +
@@ -441,10 +442,11 @@
       fill.style.stroke = pct >= 100 ? C.positive : pct >= 85 ? C.teal : C.negative;
       aoPintar(() => fill.setAttribute("stroke-dashoffset", CIRC * (1 - Math.min(1, pct / 100))));
       conta($("#meter-pct"), pct, 0, "%");
+      /* So a meta do mes e o alvo de dezembro. "Realizado" saiu: e o numero
+         gigante ao lado do medidor, escrito duas vezes na mesma linha. */
       const objNps = objetivo("nps") || {};
       $("#meter-list").innerHTML =
-        "<div><span>Realizado</span><b>" + fmt(kMes.nps_geral,1) + "</b></div>" +
-        "<div><span>Meta do mês</span><b>" + fmt(meta,1) + "</b></div>" +
+        "<div><span>Meta do mês</span><b>" + fmt(meta, 1) + "</b></div>" +
         "<div><span>Alvo de dezembro</span><b>" + fmt(objNps.alvo_final, 0) + "</b></div>";
     } else {
       const fill = $("#meter-fill");
@@ -488,23 +490,24 @@
           '<div class="farol-meta">' + campoMeta + "</div></div>" +
         '<div class="farol-status"><div class="farol-att tabular ' +
           (editandoMetas ? "" : (st.defasada ? "stale" : st.cls)) + '">' + campoAlvo + "</div>" +
-          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>"));
+          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>" +
+        /* A barra e o atingimento que o `status()` ja calculava e que a coluna
+           estreita escondia: quanto do caminho a meta andou. Ela para em 100%
+           porque uma barra estourando a propria caixa nao diz nada a mais —
+           o numero ao lado e que conta se passou. */
+        (editandoMetas ? "" :
+          '<div class="farol-barra"><div class="barra-trilho"><i class="' +
+          (st.defasada ? "stale" : st.cls) + '" style="width:' +
+          (st.att === null ? 0 : Math.min(100, st.att)) + '%"></i></div>' +
+          '<span class="barra-att tabular ' + (st.defasada ? "stale" : st.cls) + '">' +
+          st.texto + "</span></div>")));
     });
 
     if (editandoMetas) ligarCamposDeMeta();
     rodapeDeMetas();
   }
 
-/* A evolucao do NPS, dentro do proprio quadro do indice.
-
-     Eram dois graficos com a mesma serie: um pequeno aqui e o grande logo
-     abaixo. Ler o numero do mes e a trajetoria dele em lugares diferentes nao
-     ajudava ninguem — agora o quadro responde as duas perguntas de uma vez.
-
-     A paleta e outra porque o fundo e escuro: as cores do painel claro
-     sumiriam aqui. Indice em branco, meta em cinza claro, e as tres fatias em
-     tons que aguentam o azul. */
-  /* O coral e a cor que o iNPS ja tinha no Metabase: quem conhece o historico
+/* O coral e a cor que o iNPS ja tinha no Metabase: quem conhece o historico
      de indicadores de la reconhece a linha sem precisar ler a legenda. Ele
      aguenta o fundo escuro do quadro, onde as cores do painel claro sumiriam.
      A meta segue de branco apagado, e os numeros escritos ficam em branco —
@@ -533,16 +536,9 @@
     const meta = meses.map(m => objNps.metas[m] ?? null);
     const H = HERO_CORES;
 
-    /* A faixa do eixo sai dos proprios numeros, com folga. Fixar 0 a 100
-       achatava a serie inteira no terco de baixo: o NPS anda entre 35 e 62, e
-       era essa variacao que precisava ocupar a altura. */
     /** Meses em que o realizado e a meta estao a menos de tres pontos. */
     const colados = (v, j) => meta[j] !== null && meta[j] !== undefined &&
                               Math.abs(v - meta[j]) < 3;
-
-    const todos = real.concat(meta).filter(v => v !== null && v !== undefined);
-    const menor = Math.min(...todos), maior = Math.max(...todos);
-    const folga = Math.max(8, (maior - menor) * .25);
 
     grafico("chart-hero", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
@@ -594,11 +590,14 @@
               return linhas;
             } } } },
         scales: {
-          y: { suggestedMin: Math.max(-100, menor - folga),
-               suggestedMax: Math.min(100, maior + folga),
+          /* Fixo de 0 a 100. A escala apertada nos numeros mostrava melhor a
+             variacao, mas para quem olha de longe a altura da linha precisa
+             querer dizer "quanto do caminho" — e isso so vale numa escala que
+             nao se mexe quando os dados mudam. */
+          y: { min: 0, max: 100,
                grid: { color: "rgba(255,255,255,.10)" },
                border: { display: false },
-               ticks: { color: "rgba(255,255,255,.55)", font: { size: 10 }, maxTicksLimit: 6 } },
+               ticks: { color: "rgba(255,255,255,.55)", font: { size: 10 }, stepSize: 25 } },
           x: { grid: { display: false }, border: { color: "rgba(255,255,255,.18)" },
                ticks: { color: "rgba(255,255,255,.6)", font: { size: 11 } } }
         } }) });

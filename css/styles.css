@@ -254,7 +254,7 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   text-transform: uppercase; color: var(--teal); margin-bottom: 8px;
 }
 .hero-number {
-  font-family: var(--serif); font-size: 56px; font-weight: 700;
+  font-family: var(--serif); font-size: 46px; font-weight: 700;
   line-height: 1; letter-spacing: -1.5px;
   display: flex; align-items: baseline; gap: var(--md); flex-wrap: wrap;
 }
@@ -265,32 +265,33 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 }
 .hero-tag.up { background: rgba(0,198,67,.2); color: #7BEBA4; }
 .hero-tag.down { background: rgba(233,59,90,.2); color: #FFA9B8; }
-.hero-desc { font-size: 13px; color: rgba(255,255,255,.66); margin-top: 10px; max-width: 400px; }
+.hero-desc { font-size: 12.5px; color: rgba(255,255,255,.66); margin-top: 8px; max-width: 400px; }
 
 .hero-facts { display: flex; gap: var(--xl); margin-top: var(--md); padding-top: var(--md); border-top: 1px solid rgba(255,255,255,.15); flex-wrap: wrap; }
 /* Atravessando o quadro inteiro, os quatro fatos viram quatro colunas. Dentro
    da coluna de texto, com 234px, eles empilhavam um por linha. */
 .hero-facts-largo {
   grid-column: 1 / -1;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-  gap: var(--md) var(--lg);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--sm) var(--lg);
+  margin-top: var(--sm); padding-top: var(--md);
 }
-.fact-value { font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1; }
+.fact-value { font-family: var(--serif); font-size: 19px; font-weight: 700; line-height: 1; }
 .fact-label { font-size: 10.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 5px; }
 .fact-value .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
 
 /* Medidor */
 .meter { display: flex; align-items: center; gap: var(--md); }
-.meter-ring { position: relative; width: 106px; height: 106px; flex-shrink: 0; }
-.meter-ring svg { width: 106px; height: 106px; }
+.meter-ring { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
+.meter-ring svg { width: 90px; height: 90px; }
 .meter-ring svg { transform: rotate(-90deg); }
 .meter-track { stroke: rgba(255,255,255,.16); }
 .meter-fill { stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.3,1); }
 .meter-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.meter-pct { font-family: var(--serif); font-size: 23px; font-weight: 700; line-height: 1; }
-.meter-cap { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 4px; }
-.meter-list { font-size: 12px; color: rgba(255,255,255,.7); }
-.meter-list div { display: flex; justify-content: space-between; gap: var(--md); padding: 3px 0; }
+.meter-pct { font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1; }
+.meter-cap { font-size: 8.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 4px; }
+.meter-list { font-size: 11.5px; color: rgba(255,255,255,.7); }
+.meter-list div { display: flex; justify-content: space-between; gap: var(--md); padding: 2px 0; }
 .meter-list b { color: var(--white); font-weight: 600; }
 
 /* ---------------- Farol ---------------- */
@@ -966,42 +967,52 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
 /* ---------------------------------------------------------------------------
    Farol na coluna estreita
+
    Ele nasceu num card de largura inteira, com uma frase de contexto por linha.
    Do lado do hero não cabe: a frase quebrava em cinco linhas e o nome da meta
-   ficava mais alto que o número. Aqui a linha fica de duas colunas — nome de
-   um lado, número do outro — e o contexto sai.
+   ficava mais alto que o número. Aqui a linha vira nome de um lado, número do
+   outro, e o contexto sai — mas o atingimento não some junto: ele desce para
+   uma barra embaixo, que é o que se lê de longe.
 --------------------------------------------------------------------------- */
-.grid-wide > .card .farol-row,
 .grid-nps > .card .farol-row {
   grid-template-columns: auto 1fr auto;
-  gap: 10px; padding: 11px 0;
+  gap: 4px 10px; padding: 12px 0;
 }
-.grid-wide > .card .farol-ctx,
 .grid-nps > .card .farol-ctx { display: none; }
-.grid-wide > .card .farol-name,
-.grid-nps > .card .farol-name { font-size: 13px; line-height: 1.25; }
-.grid-wide > .card .farol-nums,
+.grid-nps > .card .farol-name { font-size: 13.5px; line-height: 1.25; }
 .grid-nps > .card .farol-nums { min-width: 0; }
-.grid-wide > .card .farol-real,
-.grid-nps > .card .farol-real { font-size: 16px; }
-.grid-wide > .card .farol-status,
+.grid-nps > .card .farol-real { font-size: 17px; }
+/* o atingimento e a palavra do farol vivem na barra, não numa quarta coluna */
 .grid-nps > .card .farol-status { display: none; }
 
-/* na edição o contexto volta, porque ele diz o que cada campo é */
-.grid-wide > .card .farol.editando .farol-row,
+.farol-barra { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+.barra-trilho {
+  flex: 1; height: 5px; border-radius: 999px;
+  background: var(--gray-inactive); overflow: hidden;
+}
+.barra-trilho i { display: block; height: 100%; border-radius: 999px; transition: width .8s cubic-bezier(.2,.8,.3,1); }
+.barra-trilho i.ok { background: var(--positive); }
+.barra-trilho i.risco { background: var(--warning); }
+.barra-trilho i.off { background: var(--negative); }
+.barra-trilho i.stale { background: var(--gray-disabled, #C8C9CC); }
+.barra-att { font-size: 11.5px; font-weight: 700; min-width: 38px; text-align: right; }
+.barra-att.ok { color: var(--positive-ink); }
+.barra-att.risco { color: var(--warning-ink); }
+.barra-att.off { color: var(--negative); }
+.barra-att.stale { color: var(--gray-disabled, #C8C9CC); }
+
+/* na edição o contexto volta, porque ele diz o que cada campo é, e a barra
+   sai para os dois campos caberem na linha */
 .grid-nps > .card .farol.editando .farol-row { grid-template-columns: auto 1fr auto auto; }
-.grid-wide > .card .farol.editando .farol-ctx,
 .grid-nps > .card .farol.editando .farol-ctx { display: block; font-size: 11px; }
-.grid-wide > .card .farol.editando .farol-status,
 .grid-nps > .card .farol.editando .farol-status { display: block; min-width: 0; }
-.grid-wide > .card .farol.editando .farol-word,
 .grid-nps > .card .farol.editando .farol-word { font-size: 9.5px; }
 
 /* O quadro do NPS divide a linha com as metas: o indice e o alvo dele sao a
    mesma pergunta, e separa-los em duas alturas da pagina obriga a rolar para
    comparar. O quadro fica com a fatia maior, porque leva o grafico dentro. */
 .grid-nps { grid-template-columns: 1.5fr 1fr; align-items: stretch; }
-.grid-nps .hero { margin-bottom: 0; padding: var(--lg) var(--lg) var(--md); }
+.grid-nps .hero { margin-bottom: 0; padding: var(--md) var(--lg) var(--md); gap: var(--md) var(--lg); }
 
 /* O quadro e mais alto que a lista de metas — leva o grafico dentro. Em vez
    de deixar meia coluna de fundo vazia ao lado, o card acompanha a altura e
