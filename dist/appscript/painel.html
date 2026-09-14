@@ -49,7 +49,7 @@
   --radius: 16px;
   --shadow: 0 4px 32px rgba(0, 68, 116, .07);
 
-  --sidebar-w: 236px;
+  --sidebar-w: 204px;
   --serif: 'Titillium Web', system-ui, sans-serif;
   --sans: 'Open Sans', system-ui, sans-serif;
 
@@ -84,7 +84,7 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   background: var(--azul-fundo);
   position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column;
-  padding: var(--xl) 0 var(--lg);
+  padding: var(--lg) 0 var(--md);
   overflow: hidden;
 }
 .sidebar::before {
@@ -94,8 +94,8 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 }
 .sidebar > * { position: relative; z-index: 1; }
 
-.brand { padding: 0 var(--lg) var(--xl); }
-.brand-logo { display: block; width: 68px; height: auto; }
+.brand { padding: 0 var(--md) var(--lg); }
+.brand-logo { display: block; width: 56px; height: auto; }
 .brand-fallback {
   font-family: var(--serif); font-size: 22px; font-weight: 700;
   color: var(--teal); letter-spacing: .5px;
@@ -103,23 +103,23 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 
 .nav { display: flex; flex-direction: column; }
 .nav-item {
-  display: flex; align-items: center; gap: var(--sm) 12px;
-  padding: 12px var(--lg);
+  display: flex; align-items: center; gap: var(--sm) 11px;
+  padding: 9px var(--md);
   border: none; background: none; width: 100%; text-align: left;
-  font-family: var(--sans); font-size: 14px; font-weight: 400;
+  font-family: var(--sans); font-size: 13.5px; font-weight: 400;
   color: rgba(255,255,255,.72);
   cursor: pointer;
   border-left: 3px solid transparent;
   transition: color .15s, background .15s;
 }
-.nav-item svg { width: 17px; height: 17px; stroke-width: 1.8; flex-shrink: 0; }
+.nav-item svg { width: 16px; height: 16px; stroke-width: 1.8; flex-shrink: 0; }
 .nav-item:hover { color: var(--white); background: rgba(255,255,255,.05); }
 .nav-item.active {
   color: var(--white); font-weight: 600;
   background: rgba(255,255,255,.08);
   border-left-color: var(--pink);
 }
-.nav-sep { height: 1px; background: rgba(255,255,255,.12); margin: var(--md) var(--lg); }
+.nav-sep { height: 1px; background: rgba(255,255,255,.12); margin: var(--sm) var(--md); }
 
 
 /* ---------------- Barra lateral compacta ----------------
@@ -143,7 +143,7 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 }
 
 /* ---------------- Estrutura ---------------- */
-.main { flex: 1; min-width: 0; padding-bottom: var(--xxl); }
+.main { flex: 1; min-width: 0; padding-bottom: var(--xl); }
 
 /* O fundo e a borda atravessam a tela toda; o conteudo respeita a mesma
    largura maxima do corpo, senao numa tela larga o "atualizado em" fica
@@ -156,20 +156,20 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 }
 .topbar-inner {
   max-width: 1600px; margin: 0 auto;
-  padding: var(--lg) var(--xl);
+  padding: var(--md) var(--lg);
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--md) var(--lg); flex-wrap: wrap;
 }
-.topbar h1 { font-size: 24px; line-height: 30px; color: var(--featured); }
-.topbar-sub { font-size: 14px; color: var(--gray-body); margin-top: 2px; }
+.topbar h1 { font-size: 21px; line-height: 27px; color: var(--featured); }
+.topbar-sub { font-size: 13px; color: var(--gray-body); margin-top: 1px; }
 .topbar-actions { display: flex; align-items: center; gap: var(--sm); }
 
-.page-wrap { padding: var(--xl); max-width: 1600px; margin: 0 auto; }
+.page-wrap { padding: var(--lg); max-width: 1600px; margin: 0 auto; }
 /* Dentro de um iframe estreito (Google Sites) o respiro de 32px vira desperdicio:
    e espaco que ja falta. Abaixo de 1200px o painel encolhe as bordas. */
 @media (max-width: 1200px) {
-  .topbar-inner { padding-left: var(--lg); padding-right: var(--lg); }
-  .page-wrap { padding: var(--lg); }
+  .topbar-inner { padding-left: var(--md); padding-right: var(--md); }
+  .page-wrap { padding: var(--md); }
 }
 .page { display: none; }
 .page.active { display: block; }
@@ -228,11 +228,11 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   border: .5px solid var(--gray-outline);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: var(--lg);
+  padding: var(--md);
 }
-.card-head { margin-bottom: var(--lg); display: flex; align-items: baseline; justify-content: space-between; gap: var(--md); }
-.card-title { font-family: var(--serif); font-size: 18px; font-weight: 600; line-height: 24px; color: var(--featured); }
-.card-sub { font-size: 13px; color: var(--gray-body); margin-top: 2px; }
+.card-head { margin-bottom: var(--md); display: flex; align-items: baseline; justify-content: space-between; gap: var(--md); }
+.card-title { font-family: var(--serif); font-size: 16px; font-weight: 600; line-height: 22px; color: var(--featured); }
+.card-sub { font-size: 12.5px; color: var(--gray-body); margin-top: 1px; }
 
 .grid { display: grid; gap: var(--md); }
 .grid-2 { grid-template-columns: 1fr 1fr; }
@@ -399,7 +399,11 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 
 /* ---------------- Gráficos ---------------- */
 .chart { position: relative; width: 100%; }
-.h200 { height: 200px; } .h240 { height: 240px; } .h260 { height: 260px; } .h300 { height: 300px; } .h280 { height: 280px; } .h320 { height: 320px; } .h340 { height: 340px; }
+/* Cada degrau cedeu uns 20px na passada de compactacao — menos o h320, que
+   ficou onde estava. Ele veste os tres graficos de seis series com um numero
+   em cada ponto (as duas evolucoes e o card semanal): a 296px, cinco rotulos
+   saiam do canvas. Foi medido, nao estimado. */
+.h200 { height: 184px; } .h240 { height: 220px; } .h260 { height: 240px; } .h300 { height: 276px; } .h280 { height: 258px; } .h320 { height: 320px; } .h340 { height: 314px; }
 
 /* ---------------- Tabelas ---------------- */
 .table-scroll { overflow-x: auto; }
@@ -421,10 +425,10 @@ table.tbl tbody tr.on { background: var(--teal-soft); }
 /* Leitura automatica sob os graficos de evolucao */
 .leitura {
   display: flex; gap: 10px; align-items: flex-start;
-  margin-top: var(--md); padding: 12px 14px;
+  margin-top: var(--md); padding: 10px 12px;
   background: var(--gray-bg); border-radius: 10px;
   border-left: 3px solid var(--teal);
-  font-size: 13px; line-height: 1.6; color: var(--featured);
+  font-size: 12.5px; line-height: 1.55; color: var(--featured);
 }
 .leitura:empty { display: none; }
 .leitura b { font-weight: 600; }
@@ -607,8 +611,8 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 /* ---------------- Suporte ---------------- */
 .sup-card { display: flex; flex-direction: column; }
 .sup-num {
-  font-family: var(--serif); font-size: 34px; font-weight: 700; line-height: 1.1;
-  color: var(--featured); margin: 6px 0 2px;
+  font-family: var(--serif); font-size: 30px; font-weight: 700; line-height: 1.1;
+  color: var(--featured); margin: 4px 0 2px;
   display: flex; align-items: baseline; gap: var(--sm); flex-wrap: wrap;
 }
 .sup-num .delta { font-family: var(--sans); font-size: 12px; font-weight: 600; }
@@ -873,9 +877,9 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
 .nav-sub-item {
   display: block; width: 100%; text-align: left;
-  padding: 9px var(--lg) 9px 52px;
+  padding: 7px var(--md) 7px 43px;
   border: none; background: none; cursor: pointer;
-  font-family: var(--sans); font-size: 13px; font-weight: 400;
+  font-family: var(--sans); font-size: 12.5px; font-weight: 400;
   color: rgba(255,255,255,.6);
   border-left: 3px solid transparent;
   transition: color .15s, background .15s, border-color .15s;
@@ -892,7 +896,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   background: rgba(255,255,255,.06);
   border-left-color: var(--teal);
 }
-.nav-sub-item.active::before { background: var(--teal); width: 2px; left: 32px; }
+.nav-sub-item.active::before { background: var(--teal); width: 2px; left: 23px; }
 
 /* ---------------------------------------------------------------------------
    Cartão do Onboarding — mesmo formato do Farol: número, meta, barra do
