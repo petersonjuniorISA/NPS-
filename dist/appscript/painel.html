@@ -1896,12 +1896,20 @@ window.NPS_CONFIG = {
     /* A faixa do eixo sai dos proprios numeros, com folga. Fixar 0 a 100
        achatava a serie inteira no terco de baixo: o NPS anda entre 35 e 62, e
        era essa variacao que precisava ocupar a altura. */
+    /** Meses em que o realizado e a meta estao a menos de tres pontos. */
+    const colados = (v, j) => meta[j] !== null && meta[j] !== undefined &&
+                              Math.abs(v - meta[j]) < 3;
+
     const todos = real.concat(meta).filter(v => v !== null && v !== undefined);
     const menor = Math.min(...todos), maior = Math.max(...todos);
     const folga = Math.max(8, (maior - menor) * .25);
 
     grafico("chart-hero", { type: "line",
       data: { labels: meses.map(mesCurto), datasets: [
+        /* Onde o realizado encostou na meta, os dois numeros cairiam no mesmo
+           ponto. Quem desce e o realizado: a meta fica sempre em cima do mes,
+           no mesmo lugar em todos eles, e ler a linha cinza vira um so
+           movimento de olho. */
         { label: "NPS", data: real, borderColor: H.branco,
           backgroundColor: "rgba(255,255,255,.10)", fill: true, tension: .35, borderWidth: 3,
           // trecho apurado a mao fica tracejado: mesma serie, confiabilidade diferente
@@ -1910,19 +1918,12 @@ window.NPS_CONFIG = {
           pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
           pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : H.branco),
           pointBorderColor: "rgba(255,255,255,.55)", pointBorderWidth: 2, spanGaps: true,
-          rotulo: { casas: 1, cor: H.branco } },
+          rotulo: { casas: 1, cor: H.branco, desloca: (v, j) => colados(v, j) ? 28 : 0 } },
         /* A meta de cada mes escrita, nao so a de dezembro: e ela que diz se o
-           mes que vem ja pede mais do que este entregou.
-
-           Menos onde o realizado encostou nela: ali sairia o mesmo numero em
-           branco e em cinza, e os dois iam disputar o mesmo lugar. Quando a
-           diferenca e menor que tres pontos, o numero do realizado ja conta a
-           historia dos dois. */
+           mes que vem ja pede mais do que este entregou. */
         { label: "Meta", data: meta, borderColor: H.cinza, borderWidth: 1.6,
           backgroundColor: "transparent", tension: 0, pointRadius: 0, spanGaps: true,
-          rotulo: { casas: 0, cor: H.cinza,
-                    pular: (v, j) => real[j] !== null && real[j] !== undefined &&
-                                     Math.abs(real[j] - v) < 3 } } ] },
+          rotulo: { casas: 0, cor: H.cinza } } ] },
       options: opcoes({ layout: { padding: { top: 22, right: 40 } },
         plugins: {
           legend: { display: true, position: "bottom",
@@ -4033,10 +4034,6 @@ window.NPS_CONFIG = {
           const v = ds.data[j];
           if (v === null || v === undefined) return;
           if (cfg.soUltimo && j !== ultimo) return;
-          // `pular` cala o rotulo em pontos escolhidos — serve para quando
-          // duas series carregam o mesmo numero e escreve-lo duas vezes so
-          // faria as duas brigarem por lugar
-          if (cfg.pular && cfg.pular(v, j)) return;
           const txt = cfg.tempo ? tempoDeMinutos(v)
                     : fmt(v, cfg.casas ?? 1) + (cfg.sufixo || "");
 
@@ -4062,7 +4059,11 @@ window.NPS_CONFIG = {
             // `desloca` tira o número de cima da própria linha: numa série reta
             // como a da meta, o texto no fim cai exatamente sobre ela
             px: ponto.x,
-            py: ponto.y + (cfg.desloca || 0) + (cfg.soUltimo ? 0 : (barraV ? -11 : -13)),
+            /* `desloca` aceita numero ou funcao do ponto: ha serie que precisa
+               sair do lugar so em alguns meses — os em que ela encosta noutra
+               e os dois numeros cairiam um sobre o outro. */
+            py: ponto.y + (typeof cfg.desloca === "function" ? cfg.desloca(v, j) : (cfg.desloca || 0))
+                        + (cfg.soUltimo ? 0 : (barraV ? -11 : -13)),
             direita: !!cfg.soUltimo   // fim de linha sai para a direita do ponto
           });
         });
