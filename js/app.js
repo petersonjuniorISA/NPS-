@@ -245,19 +245,6 @@
     return atual > ultimo ? ultimo : atual;
   }
 
-  /* O ultimo mes com numero apurado de um objetivo, para quando o mes corrente
-     ainda nao fechou. Nao entra em conta nenhuma: serve de referencia escrita. */
-  function ultimoApurado(o, antesDe) {
-    const meses = Object.keys(S.nps.meses || {})
-      .concat(zenMensal().map(r => r.mes))
-      .filter(m => m < antesDe).sort().reverse();
-    for (const m of meses) {
-      const v = realizado(o, m);
-      if (v !== null && v !== undefined) return { mes: m, valor: v };
-    }
-    return null;
-  }
-
   function status(o, mes) {
     const meta = metaDoMes(o.id, mes), real = realizado(o, mes);
     // Em TMA e TMR a meta e um teto: cumprir e ficar ABAIXO dela. Usar
@@ -502,21 +489,14 @@
     box.classList.toggle("editando", editandoMetas);
     (S.metas.objetivos || []).forEach(o => {
       const st = status(o, mes);
-      /* Mes em curso: o numero do mes ainda nao existe, mas a meta dele sim, e
-         o ultimo apurado tambem. Os dois entram, cada um com o nome embaixo. */
-      const correndo = !editandoMetas && st.real === null && st.meta !== null;
-      const ult = correndo ? ultimoApurado(o, mes) : null;
-
       const campoMeta = editandoMetas
         ? '<input class="meta-input" type="text" data-obj="' + o.id + '" data-campo="mes" value="' +
           (o.metas && o.metas[mes] !== undefined && o.metas[mes] !== null ? o.metas[mes] : "") +
           '" aria-label="Meta de ' + o.label + '">'
-        : correndo ? "meta de " + mesLabel(mes).toLowerCase()
         : "meta " + mostrarObjetivo(o, st.meta);
       const campoAlvo = editandoMetas
         ? '<input class="meta-input" type="text" data-obj="' + o.id + '" data-campo="final" value="' +
           (o.alvo_final ?? "") + '" aria-label="Alvo de dezembro de ' + o.label + '">'
-        : correndo ? (ult ? mostrarObjetivo(o, ult.valor) : "—")
         : st.texto;
 
       box.appendChild(el("div", "farol-row",
@@ -527,17 +507,12 @@
             : st.defasada
               ? "Já passou o alvo de dezembro (" + fmt(o.alvo_final, 0) + unidade(o) + "). A meta precisa ser revista."
               : (o.contexto || "")) + "</div></div>" +
-        '<div class="farol-nums"><div class="farol-real tabular' +
-          (correndo ? " alvo" : "") + '">' +
-          mostrarObjetivo(o, correndo ? st.meta : st.real) + "</div>" +
+        '<div class="farol-nums"><div class="farol-real tabular">' +
+          mostrarObjetivo(o, st.real) + "</div>" +
           '<div class="farol-meta">' + campoMeta + "</div></div>" +
         '<div class="farol-status"><div class="farol-att tabular ' +
-          (editandoMetas || correndo ? "" : (st.defasada ? "stale" : st.cls)) + '">' +
-          campoAlvo + "</div>" +
-          '<div class="farol-word">' +
-          (editandoMetas ? "dezembro"
-           : correndo ? (ult ? "último · " + mesCurto(ult.mes).toLowerCase() : "sem apuração")
-           : st.palavra) + "</div></div>"));
+          (editandoMetas ? "" : (st.defasada ? "stale" : st.cls)) + '">' + campoAlvo + "</div>" +
+          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>"));
     });
 
     if (editandoMetas) ligarCamposDeMeta();
