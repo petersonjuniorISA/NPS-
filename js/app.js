@@ -404,7 +404,16 @@
 
   function heroi() {
     const k = dados().kpi, mes = S.mes;
-    $("#hero-month").textContent = mesLabel(mes) + " de " + mes.slice(0, 4);
+    /* O cabecalho mostra o mes de hoje, nao o do dado: o painel e a foto de
+       agora, e ficar com o nome de agosto no alto em pleno setembro faz o
+       quadro inteiro parecer parado.
+
+       O numero abaixo continua sendo o do ultimo mes apurado — e nao ha como
+       ser outro, setembro nao tem resposta. Por isso a etiqueta ao lado dele
+       passa a dizer de que mes ele e: sem isso o quadro afirmaria que o NPS
+       de setembro e 61,1. */
+    const mesTopo = mesDoFarol();
+    $("#hero-month").textContent = mesLabel(mesTopo) + " de " + mesTopo.slice(0, 4);
     conta($("#hero-nps"), k.nps_geral, 1);
     $("#hero-desc").textContent =
       !temNps() ? "Ainda não há respostas de NPS em " + mesLabel(mes).toLowerCase() + "."
@@ -422,6 +431,12 @@
     } else {
       tag.className = "hero-tag";
       tag.textContent = temNps() ? "primeiro mês da série" : "sem respostas ainda";
+    }
+    // o mes do numero e outro: a etiqueta deixa de falar da serie e passa a
+    // dizer de onde o numero veio, que e a informacao que falta
+    if (mesTopo !== mes && temNps()) {
+      tag.className = "hero-tag";
+      tag.textContent = "fechamento de " + mesLabel(mes).toLowerCase();
     }
 
     const total = k.promotores + k.neutros + k.detratores || 1;
@@ -471,7 +486,7 @@
          gigante ao lado do medidor, escrito duas vezes na mesma linha. */
       const objNps = objetivo("nps") || {};
       $("#meter-list").innerHTML =
-        "<div><span>Meta do mês</span><b>" + fmt(meta, 1) + "</b></div>" +
+        "<div><span>Meta de " + mesLabel(mes).toLowerCase() + "</span><b>" + fmt(meta, 1) + "</b></div>" +
         "<div><span>Alvo de dezembro</span><b>" + fmt(objNps.alvo_final, 0) + "</b></div>";
     } else {
       const fill = $("#meter-fill");
