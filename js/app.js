@@ -490,17 +490,7 @@
           '<div class="farol-meta">' + campoMeta + "</div></div>" +
         '<div class="farol-status"><div class="farol-att tabular ' +
           (editandoMetas ? "" : (st.defasada ? "stale" : st.cls)) + '">' + campoAlvo + "</div>" +
-          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>" +
-        /* A barra e o atingimento que o `status()` ja calculava e que a coluna
-           estreita escondia: quanto do caminho a meta andou. Ela para em 100%
-           porque uma barra estourando a propria caixa nao diz nada a mais —
-           o numero ao lado e que conta se passou. */
-        (editandoMetas ? "" :
-          '<div class="farol-barra"><div class="barra-trilho"><i class="' +
-          (st.defasada ? "stale" : st.cls) + '" style="width:' +
-          (st.att === null ? 0 : Math.min(100, st.att)) + '%"></i></div>' +
-          '<span class="barra-att tabular ' + (st.defasada ? "stale" : st.cls) + '">' +
-          st.texto + "</span></div>")));
+          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>"));
     });
 
     if (editandoMetas) ligarCamposDeMeta();
@@ -590,11 +580,13 @@
               return linhas;
             } } } },
         scales: {
-          /* Fixo de 0 a 100. A escala apertada nos numeros mostrava melhor a
-             variacao, mas para quem olha de longe a altura da linha precisa
-             querer dizer "quanto do caminho" — e isso so vale numa escala que
-             nao se mexe quando os dados mudam. */
-          y: { min: 0, max: 100,
+          /* Fixo de 0 a 75. Fixo porque, para quem olha de longe, a altura da
+             linha precisa querer dizer "quanto do caminho" — e isso so vale
+             numa escala que nao se mexe quando o dado muda. E 75 porque o
+             indice anda entre 38 e 62 e a meta termina em 60: o teto de 100
+             era um quarto da altura reservado a numero que nao vai aparecer
+             neste semestre. */
+          y: { min: 0, max: 75,
                grid: { color: "rgba(255,255,255,.10)" },
                border: { display: false },
                ticks: { color: "rgba(255,255,255,.55)", font: { size: 10 }, stepSize: 25 } },

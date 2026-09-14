@@ -156,15 +156,15 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 }
 .topbar-inner {
   max-width: 1600px; margin: 0 auto;
-  padding: var(--md) var(--lg);
+  padding: 12px 18px;
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--md) var(--lg); flex-wrap: wrap;
 }
-.topbar h1 { font-size: 21px; line-height: 27px; color: var(--featured); }
+.topbar h1 { font-size: 19px; line-height: 25px; color: var(--featured); }
 .topbar-sub { font-size: 13px; color: var(--gray-body); margin-top: 1px; }
 .topbar-actions { display: flex; align-items: center; gap: var(--sm); }
 
-.page-wrap { padding: var(--lg); max-width: 1600px; margin: 0 auto; }
+.page-wrap { padding: 18px; max-width: 1600px; margin: 0 auto; }
 /* Dentro de um iframe estreito (Google Sites) o respiro de 32px vira desperdicio:
    e espaco que ja falta. Abaixo de 1200px o painel encolhe as bordas. */
 @media (max-width: 1200px) {
@@ -228,13 +228,13 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   border: .5px solid var(--gray-outline);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: var(--md);
+  padding: 14px;
 }
-.card-head { margin-bottom: var(--md); display: flex; align-items: baseline; justify-content: space-between; gap: var(--md); }
-.card-title { font-family: var(--serif); font-size: 16px; font-weight: 600; line-height: 22px; color: var(--featured); }
+.card-head { margin-bottom: 12px; display: flex; align-items: baseline; justify-content: space-between; gap: var(--md); }
+.card-title { font-family: var(--serif); font-size: 15px; font-weight: 600; line-height: 21px; color: var(--featured); }
 .card-sub { font-size: 12.5px; color: var(--gray-body); margin-top: 1px; }
 
-.grid { display: grid; gap: var(--md); }
+.grid { display: grid; gap: 12px; }
 .grid-2 { grid-template-columns: 1fr 1fr; }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -266,7 +266,7 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   text-transform: uppercase; color: var(--teal); margin-bottom: 8px;
 }
 .hero-number {
-  font-family: var(--serif); font-size: 46px; font-weight: 700;
+  font-family: var(--serif); font-size: 40px; font-weight: 700;
   line-height: 1; letter-spacing: -1.5px;
   display: flex; align-items: baseline; gap: var(--md); flex-wrap: wrap;
 }
@@ -288,19 +288,19 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   gap: var(--sm) var(--lg);
   margin-top: var(--sm); padding-top: var(--md);
 }
-.fact-value { font-family: var(--serif); font-size: 19px; font-weight: 700; line-height: 1; }
+.fact-value { font-family: var(--serif); font-size: 18px; font-weight: 700; line-height: 1; }
 .fact-label { font-size: 10.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 5px; }
 .fact-value .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
 
 /* Medidor */
 .meter { display: flex; align-items: center; gap: var(--md); }
-.meter-ring { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
-.meter-ring svg { width: 90px; height: 90px; }
+.meter-ring { position: relative; width: 78px; height: 78px; flex-shrink: 0; }
+.meter-ring svg { width: 78px; height: 78px; }
 .meter-ring svg { transform: rotate(-90deg); }
 .meter-track { stroke: rgba(255,255,255,.16); }
 .meter-fill { stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.3,1); }
 .meter-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.meter-pct { font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1; }
+.meter-pct { font-family: var(--serif); font-size: 18px; font-weight: 700; line-height: 1; }
 .meter-cap { font-size: 8.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 4px; }
 .meter-list { font-size: 11.5px; color: rgba(255,255,255,.7); }
 .meter-list div { display: flex; justify-content: space-between; gap: var(--md); padding: 2px 0; }
@@ -991,36 +991,23 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
    Ele nasceu num card de largura inteira, com uma frase de contexto por linha.
    Do lado do hero não cabe: a frase quebrava em cinco linhas e o nome da meta
-   ficava mais alto que o número. Aqui a linha vira nome de um lado, número do
-   outro, e o contexto sai — mas o atingimento não some junto: ele desce para
-   uma barra embaixo, que é o que se lê de longe.
+   ficava mais alto que o número. Aqui a linha vira nome, número e atingimento
+   em três colunas, e o contexto sai.
+
+   A barra que morou aqui por uma versão saiu: gastava uma linha inteira por
+   meta — seis linhas só de barra — para dizer o que o número ao lado já diz.
 --------------------------------------------------------------------------- */
 .grid-nps > .card .farol-row {
-  grid-template-columns: auto 1fr auto;
-  gap: 4px 10px; padding: 12px 0;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 10px; padding: 10px 0;
 }
 .grid-nps > .card .farol-ctx { display: none; }
-.grid-nps > .card .farol-name { font-size: 13.5px; line-height: 1.25; }
+.grid-nps > .card .farol-name { font-size: 13px; line-height: 1.25; }
 .grid-nps > .card .farol-nums { min-width: 0; }
-.grid-nps > .card .farol-real { font-size: 17px; }
-/* o atingimento e a palavra do farol vivem na barra, não numa quarta coluna */
-.grid-nps > .card .farol-status { display: none; }
-
-.farol-barra { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
-.barra-trilho {
-  flex: 1; height: 5px; border-radius: 999px;
-  background: var(--gray-inactive); overflow: hidden;
-}
-.barra-trilho i { display: block; height: 100%; border-radius: 999px; transition: width .8s cubic-bezier(.2,.8,.3,1); }
-.barra-trilho i.ok { background: var(--positive); }
-.barra-trilho i.risco { background: var(--warning); }
-.barra-trilho i.off { background: var(--negative); }
-.barra-trilho i.stale { background: var(--gray-disabled, #C8C9CC); }
-.barra-att { font-size: 11.5px; font-weight: 700; min-width: 38px; text-align: right; }
-.barra-att.ok { color: var(--positive-ink); }
-.barra-att.risco { color: var(--warning-ink); }
-.barra-att.off { color: var(--negative); }
-.barra-att.stale { color: var(--gray-disabled, #C8C9CC); }
+.grid-nps > .card .farol-real { font-size: 16px; }
+.grid-nps > .card .farol-status { min-width: 0; }
+.grid-nps > .card .farol-att { font-size: 15px; }
+.grid-nps > .card .farol-word { font-size: 9px; letter-spacing: .8px; }
 
 /* na edição o contexto volta, porque ele diz o que cada campo é, e a barra
    sai para os dois campos caberem na linha */
@@ -1033,7 +1020,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
    mesma pergunta, e separa-los em duas alturas da pagina obriga a rolar para
    comparar. O quadro fica com a fatia maior, porque leva o grafico dentro. */
 .grid-nps { grid-template-columns: 1.5fr 1fr; align-items: stretch; }
-.grid-nps .hero { margin-bottom: 0; padding: var(--md) var(--lg) var(--md); gap: var(--md) var(--lg); }
+.grid-nps .hero { margin-bottom: 0; padding: 14px 18px; gap: 12px 18px; }
 
 /* O quadro e mais alto que a lista de metas — leva o grafico dentro. Em vez
    de deixar meia coluna de fundo vazia ao lado, o card acompanha a altura e
@@ -1046,11 +1033,11 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   grid-column: 1 / -1;
   /* O que se perdeu de largura volta em altura: sao seis series e oito meses
      na mesma area, e o que separa uma linha da outra e o espaco vertical. */
-  height: 440px; margin-top: var(--md);
+  height: 370px; margin-top: 12px;
   padding-top: var(--md); border-top: 1px solid rgba(255, 255, 255, .15);
 }
 .hero-chart canvas { width: 100% !important; }
-@media (max-width: 1080px) { .hero-chart { height: 320px; } }
+@media (max-width: 1080px) { .hero-chart { height: 290px; } }
 
 .card-metas .card-title { white-space: nowrap; }
 
@@ -1905,17 +1892,7 @@ window.NPS_CONFIG = {
           '<div class="farol-meta">' + campoMeta + "</div></div>" +
         '<div class="farol-status"><div class="farol-att tabular ' +
           (editandoMetas ? "" : (st.defasada ? "stale" : st.cls)) + '">' + campoAlvo + "</div>" +
-          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>" +
-        /* A barra e o atingimento que o `status()` ja calculava e que a coluna
-           estreita escondia: quanto do caminho a meta andou. Ela para em 100%
-           porque uma barra estourando a propria caixa nao diz nada a mais —
-           o numero ao lado e que conta se passou. */
-        (editandoMetas ? "" :
-          '<div class="farol-barra"><div class="barra-trilho"><i class="' +
-          (st.defasada ? "stale" : st.cls) + '" style="width:' +
-          (st.att === null ? 0 : Math.min(100, st.att)) + '%"></i></div>' +
-          '<span class="barra-att tabular ' + (st.defasada ? "stale" : st.cls) + '">' +
-          st.texto + "</span></div>")));
+          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>"));
     });
 
     if (editandoMetas) ligarCamposDeMeta();
@@ -2005,11 +1982,13 @@ window.NPS_CONFIG = {
               return linhas;
             } } } },
         scales: {
-          /* Fixo de 0 a 100. A escala apertada nos numeros mostrava melhor a
-             variacao, mas para quem olha de longe a altura da linha precisa
-             querer dizer "quanto do caminho" — e isso so vale numa escala que
-             nao se mexe quando os dados mudam. */
-          y: { min: 0, max: 100,
+          /* Fixo de 0 a 75. Fixo porque, para quem olha de longe, a altura da
+             linha precisa querer dizer "quanto do caminho" — e isso so vale
+             numa escala que nao se mexe quando o dado muda. E 75 porque o
+             indice anda entre 38 e 62 e a meta termina em 60: o teto de 100
+             era um quarto da altura reservado a numero que nao vai aparecer
+             neste semestre. */
+          y: { min: 0, max: 75,
                grid: { color: "rgba(255,255,255,.10)" },
                border: { display: false },
                ticks: { color: "rgba(255,255,255,.55)", font: { size: 10 }, stepSize: 25 } },
