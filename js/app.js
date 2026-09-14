@@ -2541,11 +2541,23 @@
   function comentariosDe(filtro) {
     const f = filtro || {};
     return ((S.com && S.com.comentarios) || []).filter(c =>
-      (!f.tema || c.tema === f.tema) && (!f.classe || c.classe === f.classe));
+      (!f.tema || c.tema === f.tema) && (!f.classe || c.classe === f.classe) &&
+      (!f.mes || c.mes === f.mes));
   }
 
+  const NOME_CLASSE = { promotor: "Promotores", neutro: "Neutros", detrator: "Detratores" };
+
+  /* Meses que tem comentario da classe aberta. O tema nao entra na conta de
+     proposito: se entrasse, trocar de tema mudaria os botoes de mes debaixo do
+     dedo de quem esta lendo. */
+  const mesesComComentario = classe =>
+    Array.from(new Set(comentariosDe({ classe }).map(c => c.mes))).sort();
+
   function abrirComentarios(filtro) {
-    S.comFiltro = Object.assign({ classe: "" }, filtro || {});
+    S.comFiltro = Object.assign({ classe: "", tema: null, mes: null }, filtro || {});
+    const meses = mesesComComentario(S.comFiltro.classe);
+    S.comFiltro.mes = meses.includes(S.mes) ? S.mes : meses[meses.length - 1] || null;
+
     montarFiltrosCom();
     desenharComentarios();
 
@@ -2565,48 +2577,58 @@
         temas.map(t => '<option value="' + t + '">' + t + "</option>").join("");
     }
     if (sel) sel.value = S.comFiltro.tema || "";
-    $$("#seg-com-classe button").forEach(b =>
-      b.classList.toggle("active", (b.dataset.classe || "") === (S.comFiltro.classe || "")));
+
+    // os botões de mês, iguais aos dos gráficos
+    const caixa = $("#com-meses");
+    if (!caixa) return;
+    const meses = mesesComComentario(S.comFiltro.classe);
+    caixa.innerHTML = meses.map(m =>
+      '<button class="' + (m === S.comFiltro.mes ? "active" : "") + '" data-mes="' + m + '">' +
+      mesCurto(m) + "</button>").join("");
+    $$("#com-meses button").forEach(b => b.addEventListener("click", () => {
+      S.comFiltro.mes = b.dataset.mes;
+      montarFiltrosCom();
+      desenharComentarios();
+      $("#com-corpo").scrollTop = 0;
+    }));
   }
 
   function desenharComentarios() {
-    const lista = comentariosDe(S.comFiltro);
+    const f = S.comFiltro;
+    const lista = comentariosDe(f);
     const caixa = $("#com-corpo");
+
     /* O título repete o recorte de quem clicou: quem veio de "Detratores"
-       precisa ver que está lendo detratores, não a caixa toda. */
-    const NOME_CLASSE = { promotor: "Promotores", neutro: "Neutros", detrator: "Detratores" };
-    const partes = [NOME_CLASSE[S.comFiltro.classe], S.comFiltro.tema].filter(Boolean);
-    $("#com-titulo").textContent = partes.length
-      ? "Comentários · " + partes.join(" · ") : "Comentários do NPS";
+       precisa ver que está lendo detratores, e aqui não há como trocar. */
+    $("#com-titulo").textContent = NOME_CLASSE[f.classe]
+      ? "Comentários · " + NOME_CLASSE[f.classe] : "Comentários do NPS";
+    $("#com-sub").innerHTML = f.mes
+      ? "O que escreveram junto da nota em <b>" + mesLabel(f.mes).toLowerCase() + "</b>"
+      : "O que os ISAs escreveram junto da nota";
+
+    const cont = $("#com-cont");
+    if (cont) cont.textContent = !lista.length ? ""
+      : lista.length + (lista.length === 1 ? " comentário" : " comentários") +
+        (f.tema ? " em " + f.tema.toLowerCase() : "");
 
     if (!S.com) {
       caixa.innerHTML = '<div class="empty">Os comentários ainda não foram coletados. ' +
         "Rode <code>py scripts/fetch_comentarios.py</code>.</div>";
-    } else if (!lista.length) {
-      caixa.innerHTML = '<div class="empty">Nenhum comentário para este recorte.</div>';
-    } else {
-      const meses = {};
-      lista.forEach(c => (meses[c.mes] = meses[c.mes] || []).push(c));
-      caixa.innerHTML = Object.keys(meses).sort().reverse().map(mes => {
-        const doMes = meses[mes];
-        const cont = { promotor: 0, neutro: 0, detrator: 0 };
-        doMes.forEach(c => { if (cont[c.classe] !== undefined) cont[c.classe]++; });
-        return '<div class="com-mes"><div class="com-mes-cab">' +
-          "<b>" + mesLabel(mes) + " de " + mes.slice(0, 4) + "</b>" +
-          '<span class="com-cont">' + doMes.length + " comentários · " +
-          cont.promotor + " promotores, " + cont.neutro + " neutros, " +
-          cont.detrator + " detratores</span></div>" +
-          '<div class="com-lista">' +
-          doMes.map(c =>
-            '<div class="com-item ' + (c.classe || "") + '">' +
-            '<div class="com-meta"><span class="com-tag">' + c.tema + "</span>" +
-            (c.nps === null ? "" : '<span class="com-nota tabular">NPS ' + c.nps + "</span>") +
-            (c.nota_tema === null || c.nota_tema === undefined ? ""
-              : '<span class="com-nota tabular">nota ' + c.nota_tema + "</span>") +
-            "</div><p>" + escapar(c.texto) + "</p></div>").join("") +
-          "</div></div>";
-      }).join("");
+      return;
     }
+    if (!lista.length) {
+      caixa.innerHTML = '<div class="empty">Nenhum comentário para este recorte.</div>';
+      return;
+    }
+    caixa.innerHTML = '<div class="com-lista">' +
+      lista.map(c =>
+        '<div class="com-item ' + (c.classe || "") + '">' +
+        '<div class="com-meta"><span class="com-tag">' + c.tema + "</span>" +
+        (c.nps === null ? "" : '<span class="com-nota tabular">NPS ' + c.nps + "</span>") +
+        (c.nota_tema === null || c.nota_tema === undefined ? ""
+          : '<span class="com-nota tabular">nota ' + c.nota_tema + "</span>") +
+        "</div><p>" + escapar(c.texto) + "</p></div>").join("") +
+      "</div>";
   }
 
   function fecharComentarios() {
@@ -2628,12 +2650,7 @@
     if (!painel) return;
     painel.querySelectorAll("[data-fechar]").forEach(el =>
       el.addEventListener("click", fecharComentarios));
-    $$("#seg-com-classe button").forEach(b => b.addEventListener("click", () => {
-      S.comFiltro.classe = b.dataset.classe || "";
-      montarFiltrosCom();
-      desenharComentarios();
-      $("#com-corpo").scrollTop = 0;
-    }));
+    // o seletor de classe saiu: a classe vem travada do clique que abriu
     const sel = $("#com-tema");
     if (sel) sel.addEventListener("change", () => {
       S.comFiltro.tema = sel.value || null;

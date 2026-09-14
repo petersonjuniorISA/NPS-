@@ -663,23 +663,28 @@ table.tbl tbody tr:hover td.heat { background-image: linear-gradient(rgba(0,0,0,
 .com-fundo { position: absolute; inset: 0; background: rgba(0, 25, 45, .42); }
 body.sem-rolagem { overflow: hidden; }
 
-/* Tela cheia, não gaveta: o combinado era "abre uma outra tela". Numa faixa
-   de 620px cada comentário quebrava em oito linhas e a leitura virava rolagem
-   infinita; com a largura toda eles ficam em colunas e o mês inteiro cabe. */
-.com-tela {
-  position: absolute; inset: 0;
+/* Card, não tela cheia. Tela cheia trocava tudo o que estava na frente: para
+   voltar ao número que motivou o clique era preciso fechar. Aqui o painel
+   continua atrás, como nos gráficos. A largura é generosa porque o comentário
+   é curto e cabe em colunas — numa faixa estreita cada um quebrava em oito
+   linhas e a leitura virava rolagem infinita. */
+.com-card {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(1180px, calc(100vw - 48px)); height: min(760px, calc(100vh - 64px));
   background: var(--gray-bg, #F4F6F9);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 68, 116, .26);
   display: flex; flex-direction: column;
-  animation: com-entra .18s ease-out;
+  animation: com-entra .16s ease-out;
 }
-@keyframes com-entra { from { transform: scale(.99); opacity: .4; } }
+@keyframes com-entra { from { transform: translate(-50%, -48%); opacity: .5; } }
 
 .com-cab {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-  padding: 22px 32px 16px; background: #fff;
+  padding: 18px 22px 14px; background: #fff;
   border-bottom: 1px solid var(--gray-outline, #DDD);
 }
-.com-titulo { font: 600 20px/1.2 "Titillium Web", sans-serif; color: var(--featured, #202020); }
+.com-titulo { font: 600 19px/1.2 "Titillium Web", sans-serif; color: var(--featured, #202020); }
 .com-sub { margin-top: 4px; font-size: 12px; color: var(--gray-body, #666E80); }
 .com-fechar {
   border: 0; background: transparent; cursor: pointer; line-height: 1;
@@ -687,7 +692,7 @@ body.sem-rolagem { overflow: hidden; }
 }
 .com-fechar:hover { color: var(--pink, #ED1E79); }
 
-.com-corpo { overflow-y: auto; padding: 0 32px 40px; }
+.com-corpo { overflow-y: auto; padding: 14px 22px 22px; flex: 1; }
 .com-mes { margin-top: 26px; }
 .com-mes-cab {
   position: sticky; top: 0; background: var(--gray-bg, #F4F6F9);
@@ -696,7 +701,7 @@ body.sem-rolagem { overflow: hidden; }
   border-bottom: 1px solid var(--gray-outline, #DDD);
 }
 /* os comentários do mês em colunas — o texto é curto e a largura sobra */
-.com-lista { columns: 3 320px; column-gap: 20px; margin-top: 4px; }
+.com-lista { columns: 3 300px; column-gap: 18px; margin-top: 0; }
 .com-mes-cab b { font: 600 15px/1 "Titillium Web", sans-serif; color: var(--blue-dark, #004474); }
 .com-cont { font-size: 11px; color: var(--gray-body, #666E80); }
 
@@ -749,8 +754,8 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
 
 /* filtros da tela de comentários */
 .com-filtros {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 12px 32px; border-bottom: 1px solid var(--gray-inactive, #E8EAED);
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 10px 22px; border-bottom: 1px solid var(--gray-inactive, #E8EAED);
   background: var(--gray-bg, #F4F6F9);
 }
 .com-select {
@@ -3951,11 +3956,23 @@ window.NPS_CONFIG = {
   function comentariosDe(filtro) {
     const f = filtro || {};
     return ((S.com && S.com.comentarios) || []).filter(c =>
-      (!f.tema || c.tema === f.tema) && (!f.classe || c.classe === f.classe));
+      (!f.tema || c.tema === f.tema) && (!f.classe || c.classe === f.classe) &&
+      (!f.mes || c.mes === f.mes));
   }
 
+  const NOME_CLASSE = { promotor: "Promotores", neutro: "Neutros", detrator: "Detratores" };
+
+  /* Meses que tem comentario da classe aberta. O tema nao entra na conta de
+     proposito: se entrasse, trocar de tema mudaria os botoes de mes debaixo do
+     dedo de quem esta lendo. */
+  const mesesComComentario = classe =>
+    Array.from(new Set(comentariosDe({ classe }).map(c => c.mes))).sort();
+
   function abrirComentarios(filtro) {
-    S.comFiltro = Object.assign({ classe: "" }, filtro || {});
+    S.comFiltro = Object.assign({ classe: "", tema: null, mes: null }, filtro || {});
+    const meses = mesesComComentario(S.comFiltro.classe);
+    S.comFiltro.mes = meses.includes(S.mes) ? S.mes : meses[meses.length - 1] || null;
+
     montarFiltrosCom();
     desenharComentarios();
 
@@ -3975,48 +3992,58 @@ window.NPS_CONFIG = {
         temas.map(t => '<option value="' + t + '">' + t + "</option>").join("");
     }
     if (sel) sel.value = S.comFiltro.tema || "";
-    $$("#seg-com-classe button").forEach(b =>
-      b.classList.toggle("active", (b.dataset.classe || "") === (S.comFiltro.classe || "")));
+
+    // os botões de mês, iguais aos dos gráficos
+    const caixa = $("#com-meses");
+    if (!caixa) return;
+    const meses = mesesComComentario(S.comFiltro.classe);
+    caixa.innerHTML = meses.map(m =>
+      '<button class="' + (m === S.comFiltro.mes ? "active" : "") + '" data-mes="' + m + '">' +
+      mesCurto(m) + "</button>").join("");
+    $$("#com-meses button").forEach(b => b.addEventListener("click", () => {
+      S.comFiltro.mes = b.dataset.mes;
+      montarFiltrosCom();
+      desenharComentarios();
+      $("#com-corpo").scrollTop = 0;
+    }));
   }
 
   function desenharComentarios() {
-    const lista = comentariosDe(S.comFiltro);
+    const f = S.comFiltro;
+    const lista = comentariosDe(f);
     const caixa = $("#com-corpo");
+
     /* O título repete o recorte de quem clicou: quem veio de "Detratores"
-       precisa ver que está lendo detratores, não a caixa toda. */
-    const NOME_CLASSE = { promotor: "Promotores", neutro: "Neutros", detrator: "Detratores" };
-    const partes = [NOME_CLASSE[S.comFiltro.classe], S.comFiltro.tema].filter(Boolean);
-    $("#com-titulo").textContent = partes.length
-      ? "Comentários · " + partes.join(" · ") : "Comentários do NPS";
+       precisa ver que está lendo detratores, e aqui não há como trocar. */
+    $("#com-titulo").textContent = NOME_CLASSE[f.classe]
+      ? "Comentários · " + NOME_CLASSE[f.classe] : "Comentários do NPS";
+    $("#com-sub").innerHTML = f.mes
+      ? "O que escreveram junto da nota em <b>" + mesLabel(f.mes).toLowerCase() + "</b>"
+      : "O que os ISAs escreveram junto da nota";
+
+    const cont = $("#com-cont");
+    if (cont) cont.textContent = !lista.length ? ""
+      : lista.length + (lista.length === 1 ? " comentário" : " comentários") +
+        (f.tema ? " em " + f.tema.toLowerCase() : "");
 
     if (!S.com) {
       caixa.innerHTML = '<div class="empty">Os comentários ainda não foram coletados. ' +
         "Rode <code>py scripts/fetch_comentarios.py</code>.</div>";
-    } else if (!lista.length) {
-      caixa.innerHTML = '<div class="empty">Nenhum comentário para este recorte.</div>';
-    } else {
-      const meses = {};
-      lista.forEach(c => (meses[c.mes] = meses[c.mes] || []).push(c));
-      caixa.innerHTML = Object.keys(meses).sort().reverse().map(mes => {
-        const doMes = meses[mes];
-        const cont = { promotor: 0, neutro: 0, detrator: 0 };
-        doMes.forEach(c => { if (cont[c.classe] !== undefined) cont[c.classe]++; });
-        return '<div class="com-mes"><div class="com-mes-cab">' +
-          "<b>" + mesLabel(mes) + " de " + mes.slice(0, 4) + "</b>" +
-          '<span class="com-cont">' + doMes.length + " comentários · " +
-          cont.promotor + " promotores, " + cont.neutro + " neutros, " +
-          cont.detrator + " detratores</span></div>" +
-          '<div class="com-lista">' +
-          doMes.map(c =>
-            '<div class="com-item ' + (c.classe || "") + '">' +
-            '<div class="com-meta"><span class="com-tag">' + c.tema + "</span>" +
-            (c.nps === null ? "" : '<span class="com-nota tabular">NPS ' + c.nps + "</span>") +
-            (c.nota_tema === null || c.nota_tema === undefined ? ""
-              : '<span class="com-nota tabular">nota ' + c.nota_tema + "</span>") +
-            "</div><p>" + escapar(c.texto) + "</p></div>").join("") +
-          "</div></div>";
-      }).join("");
+      return;
     }
+    if (!lista.length) {
+      caixa.innerHTML = '<div class="empty">Nenhum comentário para este recorte.</div>';
+      return;
+    }
+    caixa.innerHTML = '<div class="com-lista">' +
+      lista.map(c =>
+        '<div class="com-item ' + (c.classe || "") + '">' +
+        '<div class="com-meta"><span class="com-tag">' + c.tema + "</span>" +
+        (c.nps === null ? "" : '<span class="com-nota tabular">NPS ' + c.nps + "</span>") +
+        (c.nota_tema === null || c.nota_tema === undefined ? ""
+          : '<span class="com-nota tabular">nota ' + c.nota_tema + "</span>") +
+        "</div><p>" + escapar(c.texto) + "</p></div>").join("") +
+      "</div>";
   }
 
   function fecharComentarios() {
@@ -4038,12 +4065,7 @@ window.NPS_CONFIG = {
     if (!painel) return;
     painel.querySelectorAll("[data-fechar]").forEach(el =>
       el.addEventListener("click", fecharComentarios));
-    $$("#seg-com-classe button").forEach(b => b.addEventListener("click", () => {
-      S.comFiltro.classe = b.dataset.classe || "";
-      montarFiltrosCom();
-      desenharComentarios();
-      $("#com-corpo").scrollTop = 0;
-    }));
+    // o seletor de classe saiu: a classe vem travada do clique que abriu
     const sel = $("#com-tema");
     if (sel) sel.addEventListener("change", () => {
       S.comFiltro.tema = sel.value || null;
@@ -4313,22 +4335,22 @@ window.NPS_CONFIG = {
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>
-  <aside class="com-tela" role="dialog" aria-modal="true" aria-labelledby="com-titulo">
+  <!-- Card, não tela cheia: o painel continua atrás, e o recorte da classe
+       vem travado do clique que abriu — sem seletor para desfazê-lo. -->
+  <aside class="com-card" role="dialog" aria-modal="true" aria-labelledby="com-titulo">
     <header class="com-cab">
       <div>
         <div class="com-titulo" id="com-titulo">Comentários do NPS</div>
-        <div class="com-sub">O que os ISAs escreveram junto da nota, do mês mais recente para trás</div>
+        <div class="com-sub" id="com-sub"></div>
       </div>
-      <button class="com-fechar" type="button" data-fechar aria-label="Fechar">&times;</button>
+      <div class="pop-acoes">
+        <div class="seg" id="com-meses"></div>
+        <button class="com-fechar" type="button" data-fechar aria-label="Fechar">&times;</button>
+      </div>
     </header>
     <div class="com-filtros">
-      <div class="seg" id="seg-com-classe">
-        <button class="active" data-classe="">Todos</button>
-        <button data-classe="promotor">Promotores</button>
-        <button data-classe="neutro">Neutros</button>
-        <button data-classe="detrator">Detratores</button>
-      </div>
       <select id="com-tema" class="com-select" aria-label="Filtrar por tema"></select>
+      <span class="com-cont" id="com-cont"></span>
     </div>
     <div class="com-corpo" id="com-corpo"></div>
   </aside>

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=137">
+<link rel="stylesheet" href="css/styles.css?v=138">
 </head>
 <body>
 
@@ -333,27 +333,27 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=137"></script>
-<script src="js/app.js?v=137"></script>
+<script src="js/config.js?v=138"></script>
+<script src="js/app.js?v=138"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>
-  <aside class="com-tela" role="dialog" aria-modal="true" aria-labelledby="com-titulo">
+  <!-- Card, não tela cheia: o painel continua atrás, e o recorte da classe
+       vem travado do clique que abriu — sem seletor para desfazê-lo. -->
+  <aside class="com-card" role="dialog" aria-modal="true" aria-labelledby="com-titulo">
     <header class="com-cab">
       <div>
         <div class="com-titulo" id="com-titulo">Comentários do NPS</div>
-        <div class="com-sub">O que os ISAs escreveram junto da nota, do mês mais recente para trás</div>
+        <div class="com-sub" id="com-sub"></div>
       </div>
-      <button class="com-fechar" type="button" data-fechar aria-label="Fechar">&times;</button>
+      <div class="pop-acoes">
+        <div class="seg" id="com-meses"></div>
+        <button class="com-fechar" type="button" data-fechar aria-label="Fechar">&times;</button>
+      </div>
     </header>
     <div class="com-filtros">
-      <div class="seg" id="seg-com-classe">
-        <button class="active" data-classe="">Todos</button>
-        <button data-classe="promotor">Promotores</button>
-        <button data-classe="neutro">Neutros</button>
-        <button data-classe="detrator">Detratores</button>
-      </div>
       <select id="com-tema" class="com-select" aria-label="Filtrar por tema"></select>
+      <span class="com-cont" id="com-cont"></span>
     </div>
     <div class="com-corpo" id="com-corpo"></div>
   </aside>
