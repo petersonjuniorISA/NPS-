@@ -504,9 +504,17 @@
      A paleta e outra porque o fundo e escuro: as cores do painel claro
      sumiriam aqui. Indice em branco, meta em cinza claro, e as tres fatias em
      tons que aguentam o azul. */
-  /* No fundo escuro do quadro as cores do painel claro sumiriam: o indice vai
-     de branco e a meta de branco apagado. */
-  const HERO_CORES = { branco: "#FFFFFF", cinza: "rgba(255,255,255,.5)" };
+  /* O coral e a cor que o iNPS ja tinha no Metabase: quem conhece o historico
+     de indicadores de la reconhece a linha sem precisar ler a legenda. Ele
+     aguenta o fundo escuro do quadro, onde as cores do painel claro sumiriam.
+     A meta segue de branco apagado, e os numeros escritos ficam em branco —
+     texto colorido a 11px sobre o azul perde legibilidade. */
+  const HERO_CORES = {
+    coral: "#EF8C8C",
+    coralFundo: "rgba(239,140,140,.16)",
+    branco: "#FFFFFF",
+    cinza: "rgba(255,255,255,.5)"
+  };
 
   /* A trajetoria do indice contra a meta, dentro do quadro escuro.
 
@@ -542,14 +550,16 @@
            ponto. Quem desce e o realizado: a meta fica sempre em cima do mes,
            no mesmo lugar em todos eles, e ler a linha cinza vira um so
            movimento de olho. */
-        { label: "NPS", data: real, borderColor: H.branco,
-          backgroundColor: "rgba(255,255,255,.10)", fill: true, tension: .35, borderWidth: 3,
+        { label: "NPS", data: real, borderColor: H.coral,
+          backgroundColor: H.coralFundo, fill: true, tension: .35, borderWidth: 3,
           // trecho apurado a mao fica tracejado: mesma serie, confiabilidade diferente
           segment: { borderDash: ctx => (S.nps.meses_do_notion || []).includes(meses[ctx.p1DataIndex])
                                         ? [6, 4] : undefined },
+          // o mes escolhido vira um ponto branco na linha coral: rosa sobre
+          // coral seriam dois vermelhos disputando a mesma leitura
           pointRadius: meses.map(m => m === S.mes ? 7 : 4.5),
-          pointBackgroundColor: meses.map(m => m === S.mes ? C.pink : H.branco),
-          pointBorderColor: "rgba(255,255,255,.55)", pointBorderWidth: 2, spanGaps: true,
+          pointBackgroundColor: meses.map(m => m === S.mes ? H.branco : H.coral),
+          pointBorderColor: H.coral, pointBorderWidth: 2, spanGaps: true,
           rotulo: { casas: 1, cor: H.branco, desloca: (v, j) => colados(v, j) ? 28 : 0 } },
         /* A meta de cada mes escrita, nao so a de dezembro: e ela que diz se o
            mes que vem ja pede mais do que este entregou. */
