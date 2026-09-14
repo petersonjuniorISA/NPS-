@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=127">
+<link rel="stylesheet" href="css/styles.css?v=130">
 </head>
 <body>
 
@@ -81,7 +81,6 @@
               <span class="hero-tag" id="hero-tag"></span>
             </div>
             <p class="hero-desc" id="hero-desc"></p>
-            <div class="hero-facts" id="hero-facts"></div>
           </div>
 
           <div class="meter">
@@ -98,6 +97,10 @@
             </div>
             <div class="meter-list" id="meter-list"></div>
           </div>
+
+          <!-- Fora da coluna de texto de proposito: aqui eles atravessam a
+               largura do quadro e cabem lado a lado, em vez de empilhar. -->
+          <div class="hero-facts hero-facts-largo" id="hero-facts"></div>
 
           <div class="hero-chart">
             <canvas id="chart-hero"></canvas>
@@ -326,8 +329,8 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="js/config.js?v=127"></script>
-<script src="js/app.js?v=127"></script>
+<script src="js/config.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
 
 <div class="com-painel" id="com-painel" aria-hidden="true">
   <div class="com-fundo" data-fechar></div>

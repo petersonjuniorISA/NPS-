@@ -251,7 +251,7 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
   padding: var(--xl) var(--xl) var(--lg);
   color: var(--white);
   margin-bottom: var(--md);
-  display: grid; grid-template-columns: 1fr auto; gap: var(--xxl); align-items: center;
+  display: grid; grid-template-columns: 1fr auto; gap: var(--lg) var(--xl); align-items: center;
 }
 .hero::before {
   content: ""; position: absolute; inset: 0;
@@ -263,10 +263,10 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 
 .hero-label {
   font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
-  text-transform: uppercase; color: var(--teal); margin-bottom: 12px;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 8px;
 }
 .hero-number {
-  font-family: var(--serif); font-size: 64px; font-weight: 700;
+  font-family: var(--serif); font-size: 56px; font-weight: 700;
   line-height: 1; letter-spacing: -1.5px;
   display: flex; align-items: baseline; gap: var(--md); flex-wrap: wrap;
 }
@@ -277,24 +277,32 @@ h1, h2, h3, .num-display { font-family: var(--serif); font-weight: 700; }
 }
 .hero-tag.up { background: rgba(0,198,67,.2); color: #7BEBA4; }
 .hero-tag.down { background: rgba(233,59,90,.2); color: #FFA9B8; }
-.hero-desc { font-size: 13px; color: rgba(255,255,255,.66); margin-top: 12px; max-width: 400px; }
+.hero-desc { font-size: 13px; color: rgba(255,255,255,.66); margin-top: 10px; max-width: 400px; }
 
-.hero-facts { display: flex; gap: var(--xl); margin-top: var(--lg); padding-top: var(--lg); border-top: 1px solid rgba(255,255,255,.15); flex-wrap: wrap; }
-.fact-value { font-family: var(--serif); font-size: 22px; font-weight: 700; line-height: 1; }
-.fact-label { font-size: 10.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 6px; }
+.hero-facts { display: flex; gap: var(--xl); margin-top: var(--md); padding-top: var(--md); border-top: 1px solid rgba(255,255,255,.15); flex-wrap: wrap; }
+/* Atravessando o quadro inteiro, os quatro fatos viram quatro colunas. Dentro
+   da coluna de texto, com 234px, eles empilhavam um por linha. */
+.hero-facts-largo {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: var(--md) var(--lg);
+}
+.fact-value { font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1; }
+.fact-label { font-size: 10.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 5px; }
 .fact-value .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
 
 /* Medidor */
-.meter { display: flex; align-items: center; gap: var(--lg); }
-.meter-ring { position: relative; width: 128px; height: 128px; flex-shrink: 0; }
+.meter { display: flex; align-items: center; gap: var(--md); }
+.meter-ring { position: relative; width: 106px; height: 106px; flex-shrink: 0; }
+.meter-ring svg { width: 106px; height: 106px; }
 .meter-ring svg { transform: rotate(-90deg); }
 .meter-track { stroke: rgba(255,255,255,.16); }
 .meter-fill { stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.3,1); }
 .meter-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.meter-pct { font-family: var(--serif); font-size: 26px; font-weight: 700; line-height: 1; }
-.meter-cap { font-size: 9.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 5px; }
-.meter-list { font-size: 12.5px; color: rgba(255,255,255,.7); }
-.meter-list div { display: flex; justify-content: space-between; gap: var(--lg); padding: 5px 0; }
+.meter-pct { font-family: var(--serif); font-size: 23px; font-weight: 700; line-height: 1; }
+.meter-cap { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-top: 4px; }
+.meter-list { font-size: 12px; color: rgba(255,255,255,.7); }
+.meter-list div { display: flex; justify-content: space-between; gap: var(--md); padding: 3px 0; }
 .meter-list b { color: var(--white); font-weight: 600; }
 
 /* ---------------- Farol ---------------- */
@@ -1005,7 +1013,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
    mesma pergunta, e separa-los em duas alturas da pagina obriga a rolar para
    comparar. O quadro fica com a fatia maior, porque leva o grafico dentro. */
 .grid-nps { grid-template-columns: 1.5fr 1fr; align-items: stretch; }
-.grid-nps .hero { margin-bottom: 0; }
+.grid-nps .hero { margin-bottom: 0; padding: var(--lg) var(--lg) var(--md); }
 
 /* O quadro e mais alto que a lista de metas — leva o grafico dentro. Em vez
    de deixar meia coluna de fundo vazia ao lado, o card acompanha a altura e
@@ -1018,7 +1026,7 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
   grid-column: 1 / -1;
   /* O que se perdeu de largura volta em altura: sao seis series e oito meses
      na mesma area, e o que separa uma linha da outra e o espaco vertical. */
-  height: 440px; margin-top: var(--lg);
+  height: 440px; margin-top: var(--md);
   padding-top: var(--md); border-top: 1px solid rgba(255, 255, 255, .15);
 }
 .hero-chart canvas { width: 100% !important; }
@@ -1103,7 +1111,6 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
               <span class="hero-tag" id="hero-tag"></span>
             </div>
             <p class="hero-desc" id="hero-desc"></p>
-            <div class="hero-facts" id="hero-facts"></div>
           </div>
 
           <div class="meter">
@@ -1120,6 +1127,10 @@ details.nota > summary:hover { color: var(--blue-dark, #004474); }
             </div>
             <div class="meter-list" id="meter-list"></div>
           </div>
+
+          <!-- Fora da coluna de texto de proposito: aqui eles atravessam a
+               largura do quadro e cabem lado a lado, em vez de empilhar. -->
+          <div class="hero-facts hero-facts-largo" id="hero-facts"></div>
 
           <div class="hero-chart">
             <canvas id="chart-hero"></canvas>
