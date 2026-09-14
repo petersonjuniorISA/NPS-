@@ -231,6 +231,33 @@
      vai bem, diz que a meta do mês está defasada. */
   const ATT_DEFASADA = 150;
 
+  /* O mes do calendario, preso ao ultimo mes que tem meta cadastrada. Sem o
+     teto, em janeiro o card pediria uma meta de 2027 que ninguem cadastrou e
+     ficaria vazio; com ele, para em dezembro e continua mostrando o alvo do
+     semestre. */
+  function mesDeHoje() {
+    const hoje = new Date();
+    const atual = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0");
+    const comMeta = Array.from(new Set(
+      (S.metas.objetivos || []).flatMap(o => Object.keys(o.metas || {})))).sort();
+    if (!comMeta.length) return atual;
+    const ultimo = comMeta[comMeta.length - 1];
+    return atual > ultimo ? ultimo : atual;
+  }
+
+  /* O ultimo mes com numero apurado de um objetivo, para quando o mes corrente
+     ainda nao fechou. Nao entra em conta nenhuma: serve de referencia escrita. */
+  function ultimoApurado(o, antesDe) {
+    const meses = Object.keys(S.nps.meses || {})
+      .concat(zenMensal().map(r => r.mes))
+      .filter(m => m < antesDe).sort().reverse();
+    for (const m of meses) {
+      const v = realizado(o, m);
+      if (v !== null && v !== undefined) return { mes: m, valor: v };
+    }
+    return null;
+  }
+
   function status(o, mes) {
     const meta = metaDoMes(o.id, mes), real = realizado(o, mes);
     // Em TMA e TMR a meta e um teto: cumprir e ficar ABAIXO dela. Usar
@@ -241,19 +268,25 @@
     const defasada = att !== null && att >= ATT_DEFASADA;
     return {
       meta, real, att, defasada,
-      cls: att === null ? "risco" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off",
+      // sem atingimento nao ha farol: mes por medir nao e mes em risco
+      cls: att === null ? "neutro" : att >= 100 ? "ok" : att >= 85 ? "risco" : "off",
       // o que mostrar no lugar do número quando ele perde o sentido
       texto: att === null ? "—"
            : defasada ? (menorMelhor ? meta / real : real / meta).toFixed(1).replace(".", ",") + "×"
            : att + "%",
-      palavra: att === null ? (meta === null && real !== null ? "sem meta no mês" : "sem dado")
+      palavra: att === null ? (meta === null && real !== null ? "sem meta no mês"
+                            : meta !== null ? "mês em curso" : "sem dado")
              : defasada ? "meta defasada"
              : att >= 100 ? "no alvo" : att >= 85 ? "atenção" : "atrasado"
     };
   }
   const unidade = o => (o.unidade === "%" ? "%" : "");
-  /** Formata o realizado/meta de um objetivo respeitando a unidade. */
-  const mostrarObjetivo = (o, v) => o.unidade === "tempo" ? tempoDeMinutos(v) : fmt(v, o.casas) + unidade(o);
+  /* Formata o realizado/meta de um objetivo respeitando a unidade. Sem valor
+     nao leva unidade: "—%" nao e um numero ausente, e um numero estranho. */
+  const mostrarObjetivo = (o, v) =>
+    v === null || v === undefined ? "—"
+    : o.unidade === "tempo" ? tempoDeMinutos(v)
+    : fmt(v, o.casas) + unidade(o);
 
   /** Especialidades com amostra suficiente vs. as que não sustentam leitura. */
   function especialidades() {
@@ -458,7 +491,8 @@
   }
 
   function farol() {
-    const mes = S.mes, box = $("#farol");
+    // o card de metas vive no mes do calendario, nao no ultimo mes apurado
+    const mes = mesDeHoje(), box = $("#farol");
     const sub = $("#metas-sub");
     if (sub) sub.textContent = editandoMetas
       ? "Mexa nos números; o painel acompanha"
@@ -468,14 +502,21 @@
     box.classList.toggle("editando", editandoMetas);
     (S.metas.objetivos || []).forEach(o => {
       const st = status(o, mes);
+      /* Mes em curso: o numero do mes ainda nao existe, mas a meta dele sim, e
+         o ultimo apurado tambem. Os dois entram, cada um com o nome embaixo. */
+      const correndo = !editandoMetas && st.real === null && st.meta !== null;
+      const ult = correndo ? ultimoApurado(o, mes) : null;
+
       const campoMeta = editandoMetas
         ? '<input class="meta-input" type="text" data-obj="' + o.id + '" data-campo="mes" value="' +
           (o.metas && o.metas[mes] !== undefined && o.metas[mes] !== null ? o.metas[mes] : "") +
           '" aria-label="Meta de ' + o.label + '">'
+        : correndo ? "meta de " + mesLabel(mes).toLowerCase()
         : "meta " + mostrarObjetivo(o, st.meta);
       const campoAlvo = editandoMetas
         ? '<input class="meta-input" type="text" data-obj="' + o.id + '" data-campo="final" value="' +
           (o.alvo_final ?? "") + '" aria-label="Alvo de dezembro de ' + o.label + '">'
+        : correndo ? (ult ? mostrarObjetivo(o, ult.valor) : "—")
         : st.texto;
 
       box.appendChild(el("div", "farol-row",
@@ -486,11 +527,17 @@
             : st.defasada
               ? "Já passou o alvo de dezembro (" + fmt(o.alvo_final, 0) + unidade(o) + "). A meta precisa ser revista."
               : (o.contexto || "")) + "</div></div>" +
-        '<div class="farol-nums"><div class="farol-real tabular">' + mostrarObjetivo(o, st.real) + "</div>" +
+        '<div class="farol-nums"><div class="farol-real tabular' +
+          (correndo ? " alvo" : "") + '">' +
+          mostrarObjetivo(o, correndo ? st.meta : st.real) + "</div>" +
           '<div class="farol-meta">' + campoMeta + "</div></div>" +
         '<div class="farol-status"><div class="farol-att tabular ' +
-          (editandoMetas ? "" : (st.defasada ? "stale" : st.cls)) + '">' + campoAlvo + "</div>" +
-          '<div class="farol-word">' + (editandoMetas ? "dezembro" : st.palavra) + "</div></div>"));
+          (editandoMetas || correndo ? "" : (st.defasada ? "stale" : st.cls)) + '">' +
+          campoAlvo + "</div>" +
+          '<div class="farol-word">' +
+          (editandoMetas ? "dezembro"
+           : correndo ? (ult ? "último · " + mesCurto(ult.mes).toLowerCase() : "sem apuração")
+           : st.palavra) + "</div></div>"));
     });
 
     if (editandoMetas) ligarCamposDeMeta();
@@ -619,7 +666,9 @@
         if (input.dataset.campo === "final") o.alvo_final = valor;
         else {
           o.metas = o.metas || {};
-          if (valor === null) delete o.metas[S.mes]; else o.metas[S.mes] = valor;
+          // grava no mes que o card esta mostrando, que e o de hoje
+          const mes = mesDeHoje();
+          if (valor === null) delete o.metas[mes]; else o.metas[mes] = valor;
         }
         desenharMes();   // farol, hero, medidor e as linhas de meta dos gráficos
       });
