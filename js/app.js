@@ -807,10 +807,11 @@
   /* Séries de dimensão de um eixo qualquer — serve tanto para os meses na
      tela quanto para as semanas dentro do card flutuante.
 
-     Número em todo ponto, como era no Notion. Só na ponta da linha dizia para
-     onde a dimensão chegou, mas não o caminho: com seis linhas embaraçadas
-     numa faixa de meio ponto, saber qual subiu e qual desceu dependia de
-     seguir a cor com o olho. */
+     Sem número nos pontos. Ele já morou aqui, e funcionava enquanto o gráfico
+     tinha a largura inteira; lado a lado com a evolução por especialidade são
+     seis linhas em 560px, e vinte e um números sobre elas viravam a própria
+     poluição que o desenho evita. O valor de cada ponto está no tooltip, que
+     mostra as seis séries de uma vez ao passar o mouse no mês. */
   function seriesDeDimensao(eixo) {
     return DIMENSOES.map((d, i) => {
       const cor = CORES_SERIE[i % CORES_SERIE.length];
@@ -823,7 +824,6 @@
         borderColor: cor, backgroundColor: "transparent", borderWidth: 2.2, tension: .3,
         pointRadius: 4, pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 1.5,
         spanGaps: true,
-        rotulo: { casas: 2, cor: cor },
         segment: { borderDash: ctx => eixo[ctx.p1DataIndex].parcial ? [5, 4] : undefined }
       };
     });
@@ -843,7 +843,7 @@
       options: opcoes({
         onClick: (e, els) => popDimensoes(els, eixo),
         plugins: { legend: legenda(10) },
-        layout: { padding: { top: 28, right: 12 } },
+        layout: { padding: { top: 10, right: 12 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), .12, 0, 5),
                     { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
@@ -874,7 +874,7 @@
         const ds = seriesDeDimensao(eixoSem);
         return { type: "line",
           data: { labels: eixoSem.map(p => p.label), datasets: ds },
-          options: opcoes({ layout: { padding: { top: 28, right: 12 } },
+          options: opcoes({ layout: { padding: { top: 10, right: 12 } },
             plugins: { legend: legenda(10) },
             scales: { y: Object.assign(faixa(ds.map(d => d.data), .12, 0, 5),
                         { grid: { color: C.grid } }),
@@ -883,8 +883,8 @@
     });
   }
 
-  /** As 5 especialidades de maior volume, no eixo que vier, com número em
-      todo ponto — pelo mesmo motivo das dimensões. */
+  /** As 5 especialidades de maior volume, no eixo que vier. Sem número nos
+      pontos, pelo mesmo motivo das dimensões: o tooltip os traz. */
   function seriesDeEspecialidade(eixo, escolhidas) {
     return escolhidas.map((nome, i) => {
       const cor = CORES_SERIE[i % CORES_SERIE.length];
@@ -897,7 +897,6 @@
         borderColor: cor, backgroundColor: "transparent", borderWidth: 2.2, tension: .3,
         pointRadius: 4, pointBackgroundColor: cor, pointBorderColor: "#fff", pointBorderWidth: 1.5,
         spanGaps: true,
-        rotulo: { casas: 1, cor: cor },
         segment: { borderDash: ctx => eixo[ctx.p1DataIndex].parcial ? [5, 4] : undefined }
       };
     });
@@ -921,7 +920,7 @@
       options: opcoes({
         onClick: (e, els) => popEspecialidades(els, eixo, escolhidas),
         plugins: { legend: legenda(10) },
-        layout: { padding: { top: 28, right: 12 } },
+        layout: { padding: { top: 10, right: 12 } },
         scales: { y: Object.assign(faixa(datasets.map(d => d.data), 8, -100, 100),
                     { grid: { color: C.grid } }),
                   x: { grid: { display: false } } } }) });
@@ -952,7 +951,7 @@
         const ds = seriesDeEspecialidade(eixoSem, escolhidas);
         return { type: "line",
           data: { labels: eixoSem.map(p => p.label), datasets: ds },
-          options: opcoes({ layout: { padding: { top: 28, right: 12 } },
+          options: opcoes({ layout: { padding: { top: 10, right: 12 } },
             plugins: { legend: legenda(10) },
             scales: { y: Object.assign(faixa(ds.map(d => d.data), 8, -100, 100),
                         { grid: { color: C.grid } }),
