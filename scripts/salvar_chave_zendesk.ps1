@@ -6,10 +6,20 @@
 # Ou passando tudo direto:
 #     powershell -File scripts\salvar_chave_zendesk.ps1 -Subdominio isasaude -Email voce@isasaude.com -Token "abc..."
 #
-# Onde pegar o token:
-#     Zendesk > Admin Center > Apps e integracoes > APIs > Zendesk API
-#     Aba "Tokens de API" > Adicionar token de API
-#     O token aparece UMA vez so; se perder, gere outro.
+# Duas formas de provar quem voce e. O script aceita as duas:
+#
+#   TOKEN DE API  -  o caminho recomendado, mas gera-lo exige papel de admin:
+#                    Zendesk > Admin Center > Apps e integracoes > APIs >
+#                    Zendesk API > aba "Tokens de API" > Adicionar token.
+#                    O token aparece UMA vez so; se perder, gere outro.
+#
+#   SENHA         -  a senha da sua propria conta do Zendesk. Serve para
+#                    qualquer agente, sem depender de admin. So falha se o
+#                    admin tiver desligado "Password access" na mesma tela da
+#                    API - que vem ligado por padrao.
+#
+# Se voce nao tem admin, use a senha:
+#     powershell -File scripts\salvar_chave_zendesk.ps1 -UsarSenha
 #
 # O subdominio e o que vem antes de .zendesk.com. Em isasaude.zendesk.com,
 # o subdominio e "isasaude".
@@ -20,7 +30,9 @@
 param(
     [string]$Subdominio,
     [string]$Email,
-    [string]$Token
+    [string]$Token,
+    # pede a senha da conta em vez do token de API
+    [switch]$UsarSenha
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,21 +54,30 @@ if (-not $Email) {
     Write-Host "Precisa ser um usuario com permissao de API no Zendesk." -ForegroundColor DarkGray
     $Email = Read-Host "E-mail"
 }
+$Senha = $null
 if (-not $Token) {
     Write-Host ""
-    Write-Host "Token de API" -ForegroundColor Cyan
-    Write-Host "A tela NAO mostra o que voce cola - isso e proposital. Cole e de Enter." -ForegroundColor DarkGray
+    if ($UsarSenha) {
+        Write-Host "Senha da sua conta do Zendesk" -ForegroundColor Cyan
+    } else {
+        Write-Host "Token de API" -ForegroundColor Cyan
+        Write-Host "Se voce nao consegue gerar um token, saia daqui (Ctrl+C) e rode de novo" -ForegroundColor DarkGray
+        Write-Host "com -UsarSenha, para usar a senha da sua propria conta." -ForegroundColor DarkGray
+    }
+    Write-Host "A tela NAO mostra o que voce digita - isso e proposital. Digite e de Enter." -ForegroundColor DarkGray
     $segura = Read-Host -AsSecureString
-    $Token = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    $claro = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
         [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segura))
+    if ($UsarSenha) { $Senha = $claro } else { $Token = $claro }
 }
 
 $Subdominio = $Subdominio.Trim()
 $Email = $Email.Trim()
-$Token = $Token.Trim()
+if ($Token) { $Token = $Token.Trim() }
+if ($Senha) { $Senha = $Senha.Trim() }
 
-if (-not $Subdominio -or -not $Email -or -not $Token) {
-    Write-Host "Faltou preencher algum dos tres. Nenhum arquivo criado." -ForegroundColor Yellow
+if (-not $Subdominio -or -not $Email -or (-not $Token -and -not $Senha)) {
+    Write-Host "Faltou o subdominio, o e-mail ou o segredo. Nenhum arquivo criado." -ForegroundColor Yellow
     exit 1
 }
 # engano comum: colar a URL inteira no lugar do subdominio
@@ -65,7 +86,9 @@ if ($Subdominio -match "zendesk\.com|https?://") {
     Write-Host "Usando subdominio: $Subdominio" -ForegroundColor DarkGray
 }
 
-$json = @{ subdominio = $Subdominio; email = $Email; token = $Token } | ConvertTo-Json -Compress
+$cofre = @{ subdominio = $Subdominio; email = $Email }
+if ($Token) { $cofre.token = $Token } else { $cofre.senha = $Senha }
+$json = $cofre | ConvertTo-Json -Compress
 
 ($json | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString) |
     Set-Content -Path $arquivo -Encoding ascii

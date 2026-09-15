@@ -19,7 +19,13 @@ Credenciais
 -----------
     ZENDESK_SUBDOMINIO   ex.: isasaude          (de isasaude.zendesk.com)
     ZENDESK_EMAIL        e-mail do usuario da API
-    ZENDESK_TOKEN        token de API
+    ZENDESK_TOKEN        token de API        ─┐  um dos dois
+    ZENDESK_SENHA        senha da conta      ─┘
+
+O Zendesk aceita dois pares no Basic: `email/token:TOKEN` e `email:SENHA`.
+O token e o caminho recomendado, mas gera-lo exige papel de admin; a senha da
+propria conta serve a qualquer agente, desde que o admin nao tenha desligado
+"Password access" na API. Se houver os dois, o token ganha.
 
 Podem vir do ambiente ou do cofre DPAPI, gravado por
 scripts/salvar_chave_zendesk.ps1 — o mesmo esquema da chave do Metabase.
@@ -90,14 +96,28 @@ def credenciais():
     guardado = do_cofre()
     dados = {
         # o subdominio da ISA e conhecido; fica como padrao para sobrar so
-        # e-mail e token a preencher
+        # e-mail e o segredo a preencher
         "subdominio": (os.environ.get("ZENDESK_SUBDOMINIO")
                        or guardado.get("subdominio") or "isasaude"),
         "email": os.environ.get("ZENDESK_EMAIL") or guardado.get("email"),
         "token": os.environ.get("ZENDESK_TOKEN") or guardado.get("token"),
+        "senha": os.environ.get("ZENDESK_SENHA") or guardado.get("senha"),
     }
-    faltando = [k for k, v in dados.items() if not v]
+    # token OU senha: sao dois jeitos de provar a mesma coisa
+    faltando = [k for k in ("subdominio", "email") if not dados[k]]
+    if not dados["token"] and not dados["senha"]:
+        faltando.append("token ou senha")
     return dados, faltando
+
+
+def par_de_auth(cred):
+    """O par que vai no Basic. Com token quando ha token, com senha quando nao.
+
+    A barra antes de "token" nao e enfeite: e ela que diz ao Zendesk que o
+    segredo e um token de API e nao a senha da conta."""
+    if cred.get("token"):
+        return "%s/token:%s" % (cred["email"], cred["token"])
+    return "%s:%s" % (cred["email"], cred["senha"])
 
 
 # ---------------------------------------------------------------------- API ---
@@ -108,8 +128,7 @@ class SemPermissao(Exception):
 
 def chamar(url, cred):
     """GET autenticado, respeitando o 429 do Zendesk em vez de desistir."""
-    par = "%s/token:%s" % (cred["email"], cred["token"])
-    cabecalho = "Basic " + base64.b64encode(par.encode()).decode()
+    cabecalho = "Basic " + base64.b64encode(par_de_auth(cred).encode()).decode()
     for tentativa in range(4):
         req = urllib.request.Request(url)
         req.add_header("Authorization", cabecalho)
@@ -124,9 +143,15 @@ def chamar(url, cred):
                 time.sleep(min(espera, ESPERA_LIMITE))
                 continue
             if e.code == 401:
+                if cred.get("token"):
+                    raise SystemExit(
+                        "ERRO: o Zendesk recusou a credencial (401). Confira o e-mail e o "
+                        "token — e se 'Acesso por token' esta ligado na conta.")
                 raise SystemExit(
-                    "ERRO: o Zendesk recusou a credencial (401). Confira o e-mail e o "
-                    "token — e se o acesso por token esta ligado na conta.")
+                    "ERRO: o Zendesk recusou e-mail e senha (401).\n"
+                    "      Ou a senha esta errada, ou o admin desligou 'Password access'\n"
+                    "      em Admin Center > Apps e integracoes > APIs > Zendesk API.\n"
+                    "      Nesse caso so resta o token, que precisa de admin para gerar.")
             if e.code == 403:
                 # quem chamou decide o que fazer: na exportacao incremental isso
                 # e falta de papel de admin, e ha um caminho alternativo
@@ -419,8 +444,9 @@ def main():
     if faltando:
         print("AVISO: sem credencial do Zendesk (%s) — data/zendesk_tickets.json "
               "fica como está." % ", ".join(faltando))
-        print("  1) Pegue um token de API em Zendesk > Admin > Apps e integrações > API")
-        print("  2) Rode: powershell -File scripts\\salvar_chave_zendesk.ps1")
+        print("  Rode: powershell -File scripts\\salvar_chave_zendesk.ps1")
+        print("  Ele aceita token de API (precisa de admin) ou a senha da sua")
+        print("  própria conta, que serve para qualquer agente.")
         return 0   # nao derruba a atualizacao semanal por causa disso
 
     cfg = carregar_classes()
@@ -436,11 +462,13 @@ def main():
         if eu and not eu["admin"]:
             print("      O papel dela e '%s'; a leitura em massa pede admin." % eu["papel"])
         print()
-        print("      Peca a quem administra o Zendesk:")
-        print("      1. Admin Center > Apps e integracoes > APIs > Zendesk API")
-        print("         ligar 'Acesso por token' e gerar um token.")
-        print("      2. Que o token seja usado com o e-mail de uma conta admin —")
-        print("         com conta de agente a API nao devolve a base inteira.")
+        print("      A exportacao em massa pede admin; a listagem comum, que e o")
+        print("      caminho alternativo, tambem foi recusada.")
+        print()
+        print("      Peca a quem administra o Zendesk uma destas duas:")
+        print("      1. Papel de admin para esta conta, ou")
+        print("      2. Um token de API gerado por conta admin, em")
+        print("         Admin Center > Apps e integracoes > APIs > Zendesk API.")
         return 1
 
     if args.diagnostico:
