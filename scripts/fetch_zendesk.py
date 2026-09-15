@@ -173,7 +173,8 @@ def quem_sou(cred):
     except (SemPermissao, SystemExit):
         return None
     return {"nome": u.get("name"), "papel": u.get("role"),
-            "admin": bool(u.get("role") == "admin")}
+            "admin": bool(u.get("role") == "admin"),
+            "anonimo": u.get("id") is None or u.get("role") == "end-user"}
 
 
 def baixar_tickets(cred, desde):
@@ -451,6 +452,24 @@ def main():
 
     cfg = carregar_classes()
     eu = quem_sou(cred)
+    # Credencial invalida nao leva 401 aqui: o /users/me responde 200 com um
+    #   usuario anonimo, e o 401 so aparece na primeira leitura de verdade — com
+    #   uma mensagem que fala de senha errada quando o problema e outro.
+    if eu and eu.get("anonimo"):
+        print("ERRO: o Zendesk atendeu como ANONIMO — a credencial nao autenticou.")
+        print("      Ele devolveu o papel '%s' em vez de agente ou admin." % eu["papel"])
+        print()
+        if cred.get("token"):
+            print("      Confira o e-mail: o token so vale com o e-mail da conta")
+            print("      que o gerou.")
+        else:
+            print("      Causa mais provavel: a conta entra por SSO do Google, e nesse")
+            print("      caso nao existe senha local do Zendesk para a API usar.")
+            print("      O caminho e o token de API:")
+            print("        https://%s.zendesk.com/admin/apps-integrations/apis/"
+                  "zendesk-api/settings/tokens" % cred["subdominio"])
+            print("        powershell -File scripts\\salvar_chave_zendesk.ps1")
+        return 1
     if eu:
         print("Conectado como %s (%s)" % (eu["nome"], eu["papel"]))
     print("Baixando tickets de %s.zendesk.com desde %s..." % (cred["subdominio"], args.desde))
