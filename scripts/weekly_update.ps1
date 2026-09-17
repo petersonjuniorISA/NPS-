@@ -108,7 +108,12 @@ try {
     # porque o CSV continua valendo com o que ja tinha.
     & $python scripts\importar_explore.py
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Explore: nada importado - o zendesk_semanal.csv segue como estava."
+        Write-Warning "Explore semanal: nada importado - o zendesk_semanal.csv segue como estava."
+    }
+    # a aba padrao e outra exportacao: traz o retrato por assunto da aba de tickets
+    & $python scripts\importar_explore_assunto.py
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Explore por assunto: nada importado - o zendesk_explore.json segue como estava."
     }
 
     Write-Output "== Empacotando para o Apps Script =="
@@ -134,8 +139,8 @@ try {
     }
 
     Write-Output "== Verificando alteracoes =="
-    # o zendesk_semanal.csv entra porque o importador do Explore o reescreve
-    git add data\nps.json data\ocorrencias.json data\zendesk_semanal.csv
+    # os dois do Zendesk entram porque os importadores do Explore os reescrevem
+    git add data\nps.json data\ocorrencias.json data\zendesk_semanal.csv data\zendesk_explore.json
     $changes = git diff --cached --name-only
 
     if ($changes) {

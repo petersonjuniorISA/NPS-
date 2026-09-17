@@ -1,0 +1,22 @@
+{
+  "gerado_em": "2026-09-17T17:55:33-03:00",
+  "exportado_em": "2026-09-17",
+  "janela": "últimos 30 dias",
+  "total": 3087,
+  "csat_pct": 69.6,
+  "por_categoria": {
+    "Outros (Profissional)": 2142,
+    "Problemas no Aplicativo": 318,
+    "Pagamento": 273,
+    "Solicitacoes de Escala": 212,
+    "Ajuste de Rota": 99,
+    "Reclamacao Grave": 16,
+    "Treinamento": 10,
+    "Folga": 8,
+    "Reclamacao (Paciente)": 3,
+    "Chamada 55PBX": 2,
+    "Insumos Faltantes": 2,
+    "Contato Proativo": 1,
+    "Pagamento/Boleto (Paciente)": 1
+  }
+}

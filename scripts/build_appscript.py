@@ -44,6 +44,7 @@ DADOS = {
     "onboarding": "data/onboarding.json",
     "comentarios": "data/comentarios.json",
     "zendesk_tickets": "data/zendesk_tickets.json",
+    "zendesk_explore": "data/zendesk_explore.json",
 }
 
 
@@ -58,7 +59,7 @@ def compacta_json(texto):
 
 # fontes que dependem de credencial e podem nao existir ainda: entram como
 # null e o painel escolhe outro caminho, em vez de o empacotamento quebrar
-OPCIONAIS = ("zendesk_tickets",)
+OPCIONAIS = ("zendesk_tickets", "zendesk_explore")
 
 
 def montar_dados():

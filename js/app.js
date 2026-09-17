@@ -175,18 +175,19 @@
   }
 
   async function carregar() {
-    const [nps, metas, zen, oc, onb, com, zt] = await Promise.all([
+    const [nps, metas, zen, oc, onb, com, zt, zx] = await Promise.all([
       buscarJson("nps", "data/nps.json", null),
       buscarJson("metas", "data/metas.json", { objetivos: [] }),
       carregarZendesk(),
       buscarJson("ocorrencias", "data/ocorrencias.json", null),
       buscarJson("onboarding", "data/onboarding.json", null),
       buscarJson("comentarios", "data/comentarios.json", null),
-      buscarJson("zendesk_tickets", "data/zendesk_tickets.json", null)
+      buscarJson("zendesk_tickets", "data/zendesk_tickets.json", null),
+      buscarJson("zendesk_explore", "data/zendesk_explore.json", null)
     ]);
     if (!nps) throw new Error("Não consegui carregar os dados de NPS.");
     S.nps = nps; S.metas = metas; S.zendesk = zen; S.oc = oc;
-    S.onb = onb; S.com = com; S.zt = zt;
+    S.onb = onb; S.com = com; S.zt = zt; S.zx = zx;
   }
 
   async function carregarZendesk() {
@@ -2036,6 +2037,32 @@
      de escala), a outra e o ISA pedindo ajuda no chat. Ja emprestei os numeros
      de uma para a outra enquanto o Zendesk nao vinha; era numero certo com
      rotulo errado, que e pior do que numero nenhum. */
+  /** O retrato do Explore, quando existe exportacao. */
+  const retratoExplore = () =>
+    (S.zx && S.zx.por_categoria && Object.keys(S.zx.por_categoria).length) ? S.zx : null;
+
+  /* Tres cartoes do que o Explore mede de fato. A divisao humano x IA nao
+     entra: ela nao esta na exportacao, e um card vazio com o rotulo certo e
+     pior do que card nenhum. */
+  function cartoesVolumeExplore(r) {
+    const box = $("#tk-volume");
+    if (!box) return;
+    const maior = Object.keys(r.por_categoria)[0];
+    const cartoes = [
+      ["Tickets no período", fmt(r.total, 0), r.janela],
+      ["CSAT geral", r.csat_pct === null || r.csat_pct === undefined
+        ? "—" : fmt(r.csat_pct, 1) + "%", "Fatia de avaliações boas no Zendesk"],
+      ["Assunto mais frequente", maior || "—",
+       maior ? fmt(r.por_categoria[maior], 0) + " tickets · " +
+               fmt(100 * r.por_categoria[maior] / r.total, 1) + "% do total" : ""]
+    ];
+    box.innerHTML = cartoes.map(([rot, val, nota]) =>
+      '<div class="card">' +
+      '<div class="metric-label">' + rot + "</div>" +
+      '<div class="sup-num tabular">' + val + "</div>" +
+      '<div class="metric-note">' + nota + "</div></div>").join("");
+  }
+
   function baseTickets() {
     const zen = S.zt && S.zt.meses && Object.keys(S.zt.meses).length ? S.zt : null;
     return zen
@@ -2082,7 +2109,8 @@
     // o volume vem do Zendesk nos dois casos: contado pela API, ou digitado
     // no CSV enquanto a API nao existe
     if (base && atual) cartoesVolumeZendesk(meses, atual, base);
-    else if (!base) {
+    else if (retratoExplore()) cartoesVolumeExplore(retratoExplore());
+    else {
       const mensal = zenMensal();
       const mesVol = mensal.some(r => r.mes === S.mes) ? S.mes
                    : (mensal.length ? mensal[mensal.length - 1].mes : null);
@@ -2266,8 +2294,9 @@
   }
 
 
-/* Sem Zendesk nao ha fila para mostrar. O quadro diz o que falta em vez de
-     deixar a secao em branco — e em vez de preenche-la com outra coisa. */
+/* Sem a API do Zendesk a fila nao tem o que mostrar. Mas o Explore exporta um
+   retrato do periodo — volume, CSAT e a contagem por assunto — e um retrato
+   verdadeiro vale mais que um quadro dizendo que esta esperando. */
   function filaDeTickets(base) {
     const vazio = $("#tk-vazio"), corpo = $("#tk-fila");
     if (!vazio || !corpo) return;
@@ -2277,19 +2306,60 @@
       return;
     }
     corpo.hidden = true;
+
+    const r = retratoExplore();
+    if (!r) {
+      vazio.innerHTML =
+        '<div class="card aguardando">' +
+        '<div class="card-title">Esperando a exportação do Zendesk</div>' +
+        '<p>Volume, CSAT e distribuição por assunto saem do Zendesk Explore. ' +
+        'Baixe a aba padrão do painel <b>Eficiência Operacional</b> e rode ' +
+        '<code>py scripts/importar_explore_assunto.py</code>.</p></div>';
+      return;
+    }
     vazio.innerHTML =
-      '<div class="card aguardando">' +
-      '<div class="card-title">Esperando a conexão com o Zendesk</div>' +
-      '<p>Volume aberto, tempo de resolução e distribuição por assunto saem do ' +
-      'Zendesk, que é onde o ticket de suporte nasce. Enquanto a API não estiver ' +
-      'ligada, esta parte fica vazia de propósito: os tickets da Comunidade que ' +
-      'aparecem na aba <b>Ocorrências</b> são outra coisa — operação de cuidado, ' +
-      'não atendimento ao ISA — e mostrá-los aqui seria número certo com rótulo ' +
-      'errado.</p>' +
-      '<p class="passo">Para ligar: <code>powershell -File scripts\\salvar_chave_zendesk.ps1</code>' +
-      '<br>O token precisa ser gerado por alguém com papel de admin no Zendesk.</p>' +
+      '<div class="card">' +
+      '<div class="card-head"><div>' +
+      '<div class="card-title">Distribuição por assunto</div>' +
+      '<div class="card-sub">' + fmt(r.total, 0) + " tickets · " + r.janela +
+      ", exportado em " + dataCurta(r.exportado_em) + "</div>" +
+      "</div></div>" +
+      '<div class="chart" id="caixa-tk-explore"><canvas id="chart-tk-explore"></canvas></div>' +
       "</div>";
+    grafExploreAssunto(r);
   }
+
+  /** dd/mm a partir de "2026-09-17". */
+  const dataCurta = iso => {
+    const p = String(iso || "").split("-");
+    return p.length === 3 ? p[2] + "/" + p[1] : String(iso || "");
+  };
+
+  /* Barra deitada, nao linha: o dado e um total de periodo, e linha de um
+     ponto so sugeriria uma trajetoria que nao existe. Deitada porque os nomes
+     de categoria sao longos — em pe eles virariam texto na diagonal. */
+  function grafExploreAssunto(r) {
+    const nomes = Object.keys(r.por_categoria);
+    const valores = nomes.map(n => r.por_categoria[n]);
+    const caixa = $("#caixa-tk-explore");
+    // 26px por barra e o que deixa o rotulo respirar sem esticar a pagina
+    if (caixa) caixa.style.height = Math.max(180, nomes.length * 26 + 40) + "px";
+
+    grafico("chart-tk-explore", { type: "bar",
+      data: { labels: nomes, datasets: [{
+        label: "Tickets", data: valores,
+        backgroundColor: nomes.map((n, i) => i === 0 ? C.blue : "rgba(0,68,116,.55)"),
+        borderRadius: 4, maxBarThickness: 16,
+        rotulo: { casas: 0, cor: C.chumbo } }] },
+      options: opcoes({ indexAxis: "y",
+        layout: { padding: { right: 44 } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: c => fmt(c.parsed.x, 0) + " tickets · " +
+                      fmt(100 * c.parsed.x / r.total, 1) + "% do período" } } },
+        scales: { x: { beginAtZero: true, grid: { color: C.grid } },
+                  y: { grid: { display: false }, ticks: { font: { size: 11.5 } } } } }) });
+  }
+
 
   function cartoesTicket(meses, atual, base) {
     const bloco = m => base.meses[m];
