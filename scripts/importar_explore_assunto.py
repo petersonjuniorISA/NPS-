@@ -62,6 +62,23 @@ def achar(dado):
         "      Baixe-a no Explore e rode de novo, ou passe o caminho do arquivo.")
 
 
+
+def avisar_se_velho(caminho, dias=10):
+    """Exportacao parada e o modo silencioso de o painel envelhecer.
+
+    O importador reimporta o mesmo arquivo toda semana sem reclamar: a conta da
+    certo, o script sai com zero, e o numero da tela continua o de duas semanas
+    atras. O aviso e o que separa "rodou sem erro" de "o dado e desta semana".
+    """
+    idade = (datetime.datetime.now()
+             - datetime.datetime.fromtimestamp(os.path.getmtime(caminho))).days
+    if idade >= dias:
+        print()
+        print("AVISO: esta exportacao tem %d dias." % idade)
+        print("       Os numeros abaixo sao os de %s — nao os de hoje."
+              % datetime.date.fromtimestamp(os.path.getmtime(caminho)).strftime("%d/%m"))
+    return idade
+
 def texto(bruto):
     for cod in ("utf-8-sig", "utf-16", "latin-1"):
         try:
@@ -119,6 +136,7 @@ def main():
 
     caminho = achar(args.arquivo)
     print("Lendo %s" % os.path.basename(caminho))
+    avisar_se_velho(caminho)
     folhas = planilhas(caminho)
 
     nome_cat, cat = acha(folhas, "categoria")
