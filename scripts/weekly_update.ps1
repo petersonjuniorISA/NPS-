@@ -129,8 +129,20 @@ try {
         Write-Output "== Publicando no Apps Script =="
         npx --yes @google/clasp push --force
         if ($LASTEXITCODE -eq 0) {
-            npx --yes @google/clasp deploy --description "atualizacao semanal"
-            if ($LASTEXITCODE -ne 0) { Write-Warning "clasp deploy falhou - o codigo subiu, mas a implantacao nao foi atualizada." }
+            # Cada implantacao do Apps Script tem URL propria. Criar uma nova
+            # toda semana deixaria o link do Google Sites apontando para
+            # sempre a primeira, que nunca mais receberia dado novo. Com o -i
+            # a implantacao existente ganha uma versao nova e a URL nao muda.
+            $idArquivo = Join-Path $repoDir ".clasp-deployment"
+            $idImplantacao = if (Test-Path $idArquivo) { (Get-Content -Raw $idArquivo).Trim() } else { $null }
+            if ($idImplantacao) {
+                npx --yes @google/clasp deploy -i $idImplantacao -d "atualizacao semanal"
+                if ($LASTEXITCODE -ne 0) { Write-Warning "clasp deploy falhou - o codigo subiu, mas a implantacao nao foi atualizada." }
+            } else {
+                Write-Warning "Falta o arquivo .clasp-deployment com o ID da implantacao."
+                Write-Warning "Sem ele nao da para atualizar a implantacao existente, e criar uma"
+                Write-Warning "nova trocaria a URL do painel. Rode: npx @google/clasp list-deployments"
+            }
         } else {
             Write-Warning "clasp push falhou - o painel no Apps Script segue com os dados anteriores."
         }

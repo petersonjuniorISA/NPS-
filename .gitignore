@@ -13,3 +13,6 @@ data/ocorrencias_export_*.csv
 # credenciais e config do clasp (Apps Script)
 .clasp.json
 .clasprc.json
+.clasp.json
+.clasp-deployment
+.clasprc.json

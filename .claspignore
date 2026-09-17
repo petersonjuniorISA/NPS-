@@ -1,0 +1,6 @@
+# O clasp empurra tudo de rootDir que ele reconheca. Estes nao podem ir:
+#   Codigo.gs   - e a copia para colar a mao; junto com Codigo.js viraria
+#                 dois arquivos "Codigo" no mesmo projeto
+#   LEIA-ME.md  - documentacao, nao codigo
+**/Codigo.gs
+**/*.md
