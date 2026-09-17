@@ -95,6 +95,22 @@ try {
         Write-Warning $falhas[-1]
     }
 
+    # O anexo do Zendesk Explore chega por e-mail e e comitado por um Apps
+    # Script (scripts\gmail_explore.gs). O pull traz a exportacao da semana
+    # antes de importar; sem ele a maquina importaria a de sete dias atras.
+    Write-Output "== Buscando a exportacao do Zendesk Explore =="
+    git pull --rebase --autostash
+    if ($LASTEXITCODE -ne 0) {
+        $falhas += "git pull (codigo $LASTEXITCODE)"
+        Write-Warning $falhas[-1]
+    }
+    # Sem exportacao nenhuma ele sai com erro; isso nao pode derrubar a semana,
+    # porque o CSV continua valendo com o que ja tinha.
+    & $python scripts\importar_explore.py
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Explore: nada importado - o zendesk_semanal.csv segue como estava."
+    }
+
     Write-Output "== Empacotando para o Apps Script =="
     & $python scripts\build_appscript.py
     if ($LASTEXITCODE -ne 0) {
@@ -118,7 +134,8 @@ try {
     }
 
     Write-Output "== Verificando alteracoes =="
-    git add data\nps.json data\ocorrencias.json
+    # o zendesk_semanal.csv entra porque o importador do Explore o reescreve
+    git add data\nps.json data\ocorrencias.json data\zendesk_semanal.csv
     $changes = git diff --cached --name-only
 
     if ($changes) {

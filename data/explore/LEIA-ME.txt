@@ -1,0 +1,3 @@
+Nao apagar: e aqui que o Apps Script (scripts/gmail_explore.gs) larga a
+exportacao do Zendesk Explore que chegou por e-mail. O importador procura
+nesta pasta antes de olhar o Downloads.

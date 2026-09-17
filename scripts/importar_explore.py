@@ -52,6 +52,10 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
 DESTINO = os.path.join(RAIZ, "data", "zendesk_semanal.csv")
 DOWNLOADS = os.path.join(os.path.expanduser("~"), "Downloads")
+# onde o Apps Script larga a exportacao que chegou por e-mail. Fica versionada
+# de proposito: a atualizacao semanal a encontra depois de um git pull, sem
+# depender de nada sincronizado na maquina.
+ENTRADA = os.path.join(RAIZ, "data", "explore")
 PLANILHA = "TMA - TMR - FCR - Semana"
 
 MESES = {"janeiro": 1, "fevereiro": 2, "março": 3, "marco": 3, "abril": 4,
@@ -63,17 +67,24 @@ NOME_MES[3] = "Março"
 
 # ------------------------------------------------------------------ leitura ---
 def achar_arquivo(dado):
-    """O caminho passado, ou a exportacao mais recente na pasta de Downloads."""
+    """O caminho passado; senao o que o e-mail trouxe; senao o do Downloads.
+
+    A ordem importa: data/explore/ e o que chega sozinho pelo Apps Script toda
+    semana, e tem de ganhar do arquivo que alguem baixou a mao meses atras e
+    esqueceu na pasta de Downloads."""
     if dado:
         return dado
-    achados = glob.glob(os.path.join(DOWNLOADS, "*Tempo-de-resolu*.zip"))
-    achados += glob.glob(os.path.join(DOWNLOADS, "*TMA*TMR*FCR*.csv"))
-    if not achados:
-        raise SystemExit(
-            "ERRO: nao achei exportacao do Explore em %s.\n"
-            "      Baixe o dashboard e rode de novo, ou passe o caminho do arquivo."
-            % DOWNLOADS)
-    return max(achados, key=os.path.getmtime)
+    for pasta, padroes in ((ENTRADA, ("*.csv", "*.zip")),
+                           (DOWNLOADS, ("*Tempo-de-resolu*.zip", "*TMA*TMR*FCR*.csv"))):
+        achados = []
+        for p in padroes:
+            achados += glob.glob(os.path.join(pasta, p))
+        if achados:
+            return max(achados, key=os.path.getmtime)
+    raise SystemExit(
+        "ERRO: nao achei exportacao do Explore em %s nem em %s.\n"
+        "      Baixe o dashboard e rode de novo, ou passe o caminho do arquivo."
+        % (os.path.relpath(ENTRADA, RAIZ), DOWNLOADS))
 
 
 def texto_do_csv(bruto):
