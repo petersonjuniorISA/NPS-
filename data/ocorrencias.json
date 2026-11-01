@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-09-25T21:00:18.354546+00:00",
+  "gerado_em": "2026-11-01T01:44:10.145110+00:00",
   "fonte": "Metabase · consulta própria sobre a coleção tickets (report.isalab.com.br)",
   "recorte": "Departamentos da Comunidade, exceto Captação",
   "somente_finalizadas": false,
@@ -9960,27 +9960,27 @@
       ]
     },
     "2026-07": {
-      "total": 69,
-      "finalizadas": 55,
-      "em_aberto": 8,
+      "total": 68,
+      "finalizadas": 59,
+      "em_aberto": 3,
       "canceladas": 6,
-      "sla_medio_h": 191.4,
-      "sla_mediano_h": 171.1,
-      "sla_medio_dias": 8.0,
-      "sla_mediano_dias": 7.1,
-      "sla_max_h": 746.1,
+      "sla_medio_h": 287.8,
+      "sla_mediano_h": 188.9,
+      "sla_medio_dias": 12.0,
+      "sla_mediano_dias": 7.9,
+      "sla_max_h": 1613.4,
       "label": "Julho",
       "por_departamento": {
         "Comunidade - Treinamento": {
-          "total": 51,
-          "finalizadas": 44,
-          "em_aberto": 5,
+          "total": 50,
+          "finalizadas": 48,
+          "em_aberto": 0,
           "canceladas": 2,
-          "sla_medio_h": 184.6,
-          "sla_mediano_h": 139.0,
-          "sla_medio_dias": 7.7,
-          "sla_mediano_dias": 5.8,
-          "sla_max_h": 746.1
+          "sla_medio_h": 303.6,
+          "sla_mediano_h": 168.7,
+          "sla_medio_dias": 12.7,
+          "sla_mediano_dias": 7.0,
+          "sla_max_h": 1613.4
         },
         "Comunidade - SAC": {
           "total": 18,
@@ -9996,15 +9996,15 @@
       },
       "por_tipo": {
         "Solicitação de treinamento": {
-          "total": 37,
-          "finalizadas": 30,
-          "em_aberto": 5,
+          "total": 36,
+          "finalizadas": 34,
+          "em_aberto": 0,
           "canceladas": 2,
-          "sla_medio_h": 186.0,
-          "sla_mediano_h": 109.3,
-          "sla_medio_dias": 7.7,
-          "sla_mediano_dias": 4.6,
-          "sla_max_h": 746.1
+          "sla_medio_h": 353.8,
+          "sla_mediano_h": 177.3,
+          "sla_medio_dias": 14.7,
+          "sla_mediano_dias": 7.4,
+          "sla_max_h": 1613.4
         },
         "Reclamação": {
           "total": 15,
@@ -10048,15 +10048,15 @@
       },
       "por_motivo": {
         "Reciclagem": {
-          "total": 17,
-          "finalizadas": 12,
-          "em_aberto": 4,
+          "total": 16,
+          "finalizadas": 15,
+          "em_aberto": 0,
           "canceladas": 1,
-          "sla_medio_h": 159.1,
-          "sla_mediano_h": 143.2,
-          "sla_medio_dias": 6.6,
-          "sla_mediano_dias": 6.0,
-          "sla_max_h": 521.8
+          "sla_medio_h": 449.8,
+          "sla_mediano_h": 194.9,
+          "sla_medio_dias": 18.7,
+          "sla_mediano_dias": 8.1,
+          "sla_max_h": 1613.4
         },
         "Orientações": {
           "total": 14,
@@ -10082,14 +10082,14 @@
         },
         "Desenvolver nova habilidade": {
           "total": 9,
-          "finalizadas": 7,
-          "em_aberto": 1,
+          "finalizadas": 8,
+          "em_aberto": 0,
           "canceladas": 1,
-          "sla_medio_h": 223.9,
-          "sla_mediano_h": 161.9,
-          "sla_medio_dias": 9.3,
-          "sla_mediano_dias": 6.7,
-          "sla_max_h": 746.1
+          "sla_medio_h": 397.6,
+          "sla_mediano_h": 196.8,
+          "sla_medio_dias": 16.6,
+          "sla_mediano_dias": 8.2,
+          "sla_max_h": 1613.3
         },
         "Reclamações sobre atendimento da equipe administrativa": {
           "total": 5,
@@ -10149,15 +10149,15 @@
           "sla_max_h": 551.1
         },
         "tecnica": {
-          "total": 42,
-          "finalizadas": 31,
-          "em_aberto": 8,
+          "total": 41,
+          "finalizadas": 35,
+          "em_aberto": 3,
           "canceladas": 3,
-          "sla_medio_h": 192.0,
-          "sla_mediano_h": 171.1,
-          "sla_medio_dias": 8.0,
-          "sla_mediano_dias": 7.1,
-          "sla_max_h": 746.1
+          "sla_medio_h": 354.4,
+          "sla_mediano_h": 192.7,
+          "sla_medio_dias": 14.8,
+          "sla_mediano_dias": 8.0,
+          "sla_max_h": 1613.4
         },
         "sem_classificacao": {
           "total": 3,
@@ -10171,15 +10171,15 @@
           "sla_max_h": 282.6
         },
         "total": {
-          "total": 69,
-          "finalizadas": 55,
-          "em_aberto": 8,
+          "total": 68,
+          "finalizadas": 59,
+          "em_aberto": 3,
           "canceladas": 6,
-          "sla_medio_h": 191.4,
-          "sla_mediano_h": 171.1,
-          "sla_medio_dias": 8.0,
-          "sla_mediano_dias": 7.1,
-          "sla_max_h": 746.1
+          "sla_medio_h": 287.8,
+          "sla_mediano_h": 188.9,
+          "sla_medio_dias": 12.0,
+          "sla_mediano_dias": 7.9,
+          "sla_max_h": 1613.4
         }
       },
       "semanas": [
@@ -10398,15 +10398,15 @@
           }
         },
         {
-          "total": 23,
-          "finalizadas": 12,
-          "em_aberto": 8,
+          "total": 22,
+          "finalizadas": 16,
+          "em_aberto": 3,
           "canceladas": 3,
-          "sla_medio_h": 113.5,
-          "sla_mediano_h": 86.9,
-          "sla_medio_dias": 4.7,
-          "sla_mediano_dias": 3.6,
-          "sla_max_h": 451.1,
+          "sla_medio_h": 488.3,
+          "sla_mediano_h": 94.6,
+          "sla_medio_dias": 20.3,
+          "sla_mediano_dias": 3.9,
+          "sla_max_h": 1613.4,
           "inicio": "2026-07-27",
           "label": "27/07",
           "por_classe": {
@@ -10422,15 +10422,15 @@
               "sla_max_h": 94.9
             },
             "tecnica": {
-              "total": 18,
-              "finalizadas": 8,
-              "em_aberto": 8,
+              "total": 17,
+              "finalizadas": 12,
+              "em_aberto": 3,
               "canceladas": 2,
-              "sla_medio_h": 124.7,
-              "sla_mediano_h": 50.4,
-              "sla_medio_dias": 5.2,
-              "sla_mediano_dias": 2.1,
-              "sla_max_h": 451.1
+              "sla_medio_h": 620.8,
+              "sla_mediano_h": 190.7,
+              "sla_medio_dias": 25.9,
+              "sla_mediano_dias": 7.9,
+              "sla_max_h": 1613.4
             },
             "sem_classificacao": {
               "total": 1,
@@ -10439,15 +10439,15 @@
               "canceladas": 1
             },
             "total": {
-              "total": 23,
-              "finalizadas": 12,
-              "em_aberto": 8,
+              "total": 22,
+              "finalizadas": 16,
+              "em_aberto": 3,
               "canceladas": 3,
-              "sla_medio_h": 113.5,
-              "sla_mediano_h": 86.9,
-              "sla_medio_dias": 4.7,
-              "sla_mediano_dias": 3.6,
-              "sla_max_h": 451.1
+              "sla_medio_h": 488.3,
+              "sla_mediano_h": 94.6,
+              "sla_medio_dias": 20.3,
+              "sla_mediano_dias": 3.9,
+              "sla_max_h": 1613.4
             }
           }
         }
@@ -10455,26 +10455,26 @@
     },
     "2026-08": {
       "total": 150,
-      "finalizadas": 141,
-      "em_aberto": 5,
+      "finalizadas": 143,
+      "em_aberto": 3,
       "canceladas": 4,
-      "sla_medio_h": 234.4,
-      "sla_mediano_h": 214.1,
-      "sla_medio_dias": 9.8,
-      "sla_mediano_dias": 8.9,
-      "sla_max_h": 821.5,
+      "sla_medio_h": 251.5,
+      "sla_mediano_h": 216.7,
+      "sla_medio_dias": 10.5,
+      "sla_mediano_dias": 9.0,
+      "sla_max_h": 1463.3,
       "label": "Agosto",
       "por_departamento": {
         "Comunidade - Treinamento": {
           "total": 126,
-          "finalizadas": 121,
-          "em_aberto": 2,
+          "finalizadas": 123,
+          "em_aberto": 0,
           "canceladas": 3,
-          "sla_medio_h": 213.7,
-          "sla_mediano_h": 198.1,
-          "sla_medio_dias": 8.9,
+          "sla_medio_h": 234.0,
+          "sla_mediano_h": 198.5,
+          "sla_medio_dias": 9.7,
           "sla_mediano_dias": 8.3,
-          "sla_max_h": 821.5
+          "sla_max_h": 1463.3
         },
         "Comunidade - SAC": {
           "total": 24,
@@ -10491,14 +10491,14 @@
       "por_tipo": {
         "Solicitação de treinamento": {
           "total": 111,
-          "finalizadas": 106,
-          "em_aberto": 2,
+          "finalizadas": 108,
+          "em_aberto": 0,
           "canceladas": 3,
-          "sla_medio_h": 247.3,
+          "sla_medio_h": 269.8,
           "sla_mediano_h": 219.0,
-          "sla_medio_dias": 10.3,
+          "sla_medio_dias": 11.2,
           "sla_mediano_dias": 9.1,
-          "sla_max_h": 821.5
+          "sla_max_h": 1463.3
         },
         "Reclamação": {
           "total": 27,
@@ -10570,14 +10570,14 @@
         },
         "Reciclagem": {
           "total": 42,
-          "finalizadas": 40,
-          "em_aberto": 2,
+          "finalizadas": 42,
+          "em_aberto": 0,
           "canceladas": 0,
-          "sla_medio_h": 339.2,
-          "sla_mediano_h": 289.6,
-          "sla_medio_dias": 14.1,
-          "sla_mediano_dias": 12.1,
-          "sla_max_h": 821.5
+          "sla_medio_h": 392.7,
+          "sla_mediano_h": 292.4,
+          "sla_medio_dias": 16.4,
+          "sla_mediano_dias": 12.2,
+          "sla_max_h": 1463.3
         },
         "Conduta inadequada do profissional": {
           "total": 15,
@@ -10693,14 +10693,14 @@
         },
         "tecnica": {
           "total": 114,
-          "finalizadas": 106,
-          "em_aberto": 5,
+          "finalizadas": 108,
+          "em_aberto": 3,
           "canceladas": 3,
-          "sla_medio_h": 254.3,
+          "sla_medio_h": 276.7,
           "sla_mediano_h": 219.1,
-          "sla_medio_dias": 10.6,
+          "sla_medio_dias": 11.5,
           "sla_mediano_dias": 9.1,
-          "sla_max_h": 821.5
+          "sla_max_h": 1463.3
         },
         "sem_classificacao": {
           "total": 3,
@@ -10715,27 +10715,27 @@
         },
         "total": {
           "total": 150,
-          "finalizadas": 141,
-          "em_aberto": 5,
+          "finalizadas": 143,
+          "em_aberto": 3,
           "canceladas": 4,
-          "sla_medio_h": 234.4,
-          "sla_mediano_h": 214.1,
-          "sla_medio_dias": 9.8,
-          "sla_mediano_dias": 8.9,
-          "sla_max_h": 821.5
+          "sla_medio_h": 251.5,
+          "sla_mediano_h": 216.7,
+          "sla_medio_dias": 10.5,
+          "sla_mediano_dias": 9.0,
+          "sla_max_h": 1463.3
         }
       },
       "semanas": [
         {
           "total": 35,
-          "finalizadas": 31,
-          "em_aberto": 3,
+          "finalizadas": 33,
+          "em_aberto": 1,
           "canceladas": 1,
-          "sla_medio_h": 223.9,
-          "sla_mediano_h": 216.7,
-          "sla_medio_dias": 9.3,
-          "sla_mediano_dias": 9.0,
-          "sla_max_h": 337.2,
+          "sla_medio_h": 299.0,
+          "sla_mediano_h": 244.0,
+          "sla_medio_dias": 12.5,
+          "sla_mediano_dias": 10.2,
+          "sla_max_h": 1463.3,
           "inicio": "2026-08-03",
           "label": "03/08",
           "por_classe": {
@@ -10752,25 +10752,25 @@
             },
             "tecnica": {
               "total": 25,
-              "finalizadas": 21,
-              "em_aberto": 3,
+              "finalizadas": 23,
+              "em_aberto": 1,
               "canceladas": 1,
-              "sla_medio_h": 257.8,
-              "sla_mediano_h": 282.9,
-              "sla_medio_dias": 10.7,
-              "sla_mediano_dias": 11.8,
-              "sla_max_h": 337.2
+              "sla_medio_h": 362.6,
+              "sla_mediano_h": 286.4,
+              "sla_medio_dias": 15.1,
+              "sla_mediano_dias": 11.9,
+              "sla_max_h": 1463.3
             },
             "total": {
               "total": 35,
-              "finalizadas": 31,
-              "em_aberto": 3,
+              "finalizadas": 33,
+              "em_aberto": 1,
               "canceladas": 1,
-              "sla_medio_h": 223.9,
-              "sla_mediano_h": 216.7,
-              "sla_medio_dias": 9.3,
-              "sla_mediano_dias": 9.0,
-              "sla_max_h": 337.2
+              "sla_medio_h": 299.0,
+              "sla_mediano_h": 244.0,
+              "sla_medio_dias": 12.5,
+              "sla_mediano_dias": 10.2,
+              "sla_max_h": 1463.3
             }
           }
         },
@@ -10980,32 +10980,32 @@
       ]
     },
     "2026-09": {
-      "total": 65,
-      "finalizadas": 17,
-      "em_aberto": 44,
-      "canceladas": 4,
-      "sla_medio_h": 112.3,
-      "sla_mediano_h": 145.2,
-      "sla_medio_dias": 4.7,
-      "sla_mediano_dias": 6.1,
-      "sla_max_h": 239.4,
+      "total": 54,
+      "finalizadas": 47,
+      "em_aberto": 1,
+      "canceladas": 6,
+      "sla_medio_h": 178.4,
+      "sla_mediano_h": 173.5,
+      "sla_medio_dias": 7.4,
+      "sla_mediano_dias": 7.2,
+      "sla_max_h": 600.1,
       "label": "Setembro",
       "por_departamento": {
         "Comunidade - Treinamento": {
-          "total": 64,
-          "finalizadas": 16,
-          "em_aberto": 44,
-          "canceladas": 4,
-          "sla_medio_h": 110.3,
-          "sla_mediano_h": 110.7,
-          "sla_medio_dias": 4.6,
-          "sla_mediano_dias": 4.6,
-          "sla_max_h": 239.4
+          "total": 52,
+          "finalizadas": 46,
+          "em_aberto": 0,
+          "canceladas": 6,
+          "sla_medio_h": 179.2,
+          "sla_mediano_h": 173.7,
+          "sla_medio_dias": 7.5,
+          "sla_mediano_dias": 7.2,
+          "sla_max_h": 600.1
         },
         "Comunidade - SAC": {
-          "total": 1,
+          "total": 2,
           "finalizadas": 1,
-          "em_aberto": 0,
+          "em_aberto": 1,
           "canceladas": 0,
           "sla_medio_h": 145.2,
           "sla_mediano_h": 145.2,
@@ -11016,61 +11016,72 @@
       },
       "por_tipo": {
         "Solicitação de treinamento": {
-          "total": 56,
-          "finalizadas": 8,
-          "em_aberto": 44,
-          "canceladas": 4,
-          "sla_medio_h": 122.1,
-          "sla_mediano_h": 161.6,
-          "sla_medio_dias": 5.1,
-          "sla_mediano_dias": 6.7,
-          "sla_max_h": 239.4
+          "total": 42,
+          "finalizadas": 36,
+          "em_aberto": 0,
+          "canceladas": 6,
+          "sla_medio_h": 200.4,
+          "sla_mediano_h": 181.5,
+          "sla_medio_dias": 8.4,
+          "sla_mediano_dias": 7.6,
+          "sla_max_h": 600.1
         },
         "Reclamação": {
-          "total": 9,
-          "finalizadas": 9,
+          "total": 11,
+          "finalizadas": 10,
+          "em_aberto": 1,
+          "canceladas": 0,
+          "sla_medio_h": 102.9,
+          "sla_mediano_h": 81.9,
+          "sla_medio_dias": 4.3,
+          "sla_mediano_dias": 3.4,
+          "sla_max_h": 219.4
+        },
+        "Ajuste de rota": {
+          "total": 1,
+          "finalizadas": 1,
           "em_aberto": 0,
           "canceladas": 0,
-          "sla_medio_h": 103.6,
-          "sla_mediano_h": 67.0,
-          "sla_medio_dias": 4.3,
-          "sla_mediano_dias": 2.8,
-          "sla_max_h": 219.4
+          "sla_medio_h": 142.8,
+          "sla_mediano_h": 142.8,
+          "sla_medio_dias": 5.9,
+          "sla_mediano_dias": 5.9,
+          "sla_max_h": 142.8
         }
       },
       "por_motivo": {
         "Desenvolver nova habilidade": {
-          "total": 27,
-          "finalizadas": 2,
-          "em_aberto": 25,
+          "total": 20,
+          "finalizadas": 20,
+          "em_aberto": 0,
           "canceladas": 0,
-          "sla_medio_h": 2.2,
-          "sla_mediano_h": 2.2,
-          "sla_medio_dias": 0.1,
-          "sla_mediano_dias": 0.1,
-          "sla_max_h": 2.4
+          "sla_medio_h": 231.6,
+          "sla_mediano_h": 181.5,
+          "sla_medio_dias": 9.6,
+          "sla_mediano_dias": 7.6,
+          "sla_max_h": 600.1
         },
         "Reciclagem": {
-          "total": 24,
-          "finalizadas": 4,
-          "em_aberto": 17,
-          "canceladas": 3,
-          "sla_medio_h": 153.0,
-          "sla_mediano_h": 177.0,
-          "sla_medio_dias": 6.4,
-          "sla_mediano_dias": 7.4,
+          "total": 19,
+          "finalizadas": 14,
+          "em_aberto": 0,
+          "canceladas": 5,
+          "sla_medio_h": 158.8,
+          "sla_mediano_h": 184.4,
+          "sla_medio_dias": 6.6,
+          "sla_mediano_dias": 7.7,
           "sla_max_h": 239.4
         },
-        "Reclamação": {
-          "total": 5,
-          "finalizadas": 2,
-          "em_aberto": 2,
-          "canceladas": 1,
-          "sla_medio_h": 180.3,
-          "sla_mediano_h": 180.3,
-          "sla_medio_dias": 7.5,
-          "sla_mediano_dias": 7.5,
-          "sla_max_h": 191.8
+        "Reclamações sobre atendimento da equipe administrativa": {
+          "total": 4,
+          "finalizadas": 3,
+          "em_aberto": 1,
+          "canceladas": 0,
+          "sla_medio_h": 150.7,
+          "sla_mediano_h": 211.1,
+          "sla_medio_dias": 6.3,
+          "sla_mediano_dias": 8.8,
+          "sla_max_h": 211.3
         },
         "Conduta inadequada do profissional": {
           "total": 4,
@@ -11083,16 +11094,27 @@
           "sla_mediano_dias": 1.0,
           "sla_max_h": 219.4
         },
-        "Reclamações sobre atendimento da equipe administrativa": {
+        "Reclamação": {
           "total": 3,
-          "finalizadas": 3,
+          "finalizadas": 2,
+          "em_aberto": 0,
+          "canceladas": 1,
+          "sla_medio_h": 180.3,
+          "sla_mediano_h": 180.3,
+          "sla_medio_dias": 7.5,
+          "sla_mediano_dias": 7.5,
+          "sla_max_h": 191.8
+        },
+        "Dificuldade de comunicação": {
+          "total": 2,
+          "finalizadas": 2,
           "em_aberto": 0,
           "canceladas": 0,
-          "sla_medio_h": 150.7,
-          "sla_mediano_h": 211.1,
-          "sla_medio_dias": 6.3,
-          "sla_mediano_dias": 8.8,
-          "sla_max_h": 211.3
+          "sla_medio_h": 121.0,
+          "sla_mediano_h": 121.0,
+          "sla_medio_dias": 5.0,
+          "sla_mediano_dias": 5.0,
+          "sla_max_h": 145.2
         },
         "Técnica profissional": {
           "total": 1,
@@ -11104,52 +11126,52 @@
           "sla_medio_dias": 2.8,
           "sla_mediano_dias": 2.8,
           "sla_max_h": 67.0
-        },
-        "Dificuldade de comunicação": {
-          "total": 1,
-          "finalizadas": 1,
-          "em_aberto": 0,
-          "canceladas": 0,
-          "sla_medio_h": 145.2,
-          "sla_mediano_h": 145.2,
-          "sla_medio_dias": 6.1,
-          "sla_mediano_dias": 6.1,
-          "sla_max_h": 145.2
         }
       },
       "por_classe": {
         "comportamental": {
           "total": 13,
-          "finalizadas": 10,
-          "em_aberto": 2,
+          "finalizadas": 11,
+          "em_aberto": 1,
           "canceladas": 1,
-          "sla_medio_h": 122.6,
-          "sla_mediano_h": 157.0,
-          "sla_medio_dias": 5.1,
-          "sla_mediano_dias": 6.5,
+          "sla_medio_h": 120.3,
+          "sla_mediano_h": 145.2,
+          "sla_medio_dias": 5.0,
+          "sla_mediano_dias": 6.1,
           "sla_max_h": 219.4
         },
         "tecnica": {
-          "total": 52,
-          "finalizadas": 7,
-          "em_aberto": 42,
-          "canceladas": 3,
-          "sla_medio_h": 97.6,
-          "sla_mediano_h": 67.0,
-          "sla_medio_dias": 4.1,
-          "sla_mediano_dias": 2.8,
-          "sla_max_h": 239.4
+          "total": 40,
+          "finalizadas": 35,
+          "em_aberto": 0,
+          "canceladas": 5,
+          "sla_medio_h": 197.7,
+          "sla_mediano_h": 174.0,
+          "sla_medio_dias": 8.2,
+          "sla_mediano_dias": 7.2,
+          "sla_max_h": 600.1
+        },
+        "sem_classificacao": {
+          "total": 1,
+          "finalizadas": 1,
+          "em_aberto": 0,
+          "canceladas": 0,
+          "sla_medio_h": 142.8,
+          "sla_mediano_h": 142.8,
+          "sla_medio_dias": 5.9,
+          "sla_mediano_dias": 5.9,
+          "sla_max_h": 142.8
         },
         "total": {
-          "total": 65,
-          "finalizadas": 17,
-          "em_aberto": 44,
-          "canceladas": 4,
-          "sla_medio_h": 112.3,
-          "sla_mediano_h": 145.2,
-          "sla_medio_dias": 4.7,
-          "sla_mediano_dias": 6.1,
-          "sla_max_h": 239.4
+          "total": 54,
+          "finalizadas": 47,
+          "em_aberto": 1,
+          "canceladas": 6,
+          "sla_medio_h": 178.4,
+          "sla_mediano_h": 173.5,
+          "sla_medio_dias": 7.4,
+          "sla_mediano_dias": 7.2,
+          "sla_max_h": 600.1
         }
       },
       "semanas": [
@@ -11202,15 +11224,15 @@
           }
         },
         {
-          "total": 10,
-          "finalizadas": 5,
-          "em_aberto": 2,
+          "total": 9,
+          "finalizadas": 6,
+          "em_aberto": 0,
           "canceladas": 3,
-          "sla_medio_h": 71.0,
-          "sla_mediano_h": 46.5,
-          "sla_medio_dias": 3.0,
-          "sla_mediano_dias": 1.9,
-          "sla_max_h": 239.4,
+          "sla_medio_h": 159.2,
+          "sla_mediano_h": 56.7,
+          "sla_medio_dias": 6.6,
+          "sla_mediano_dias": 2.4,
+          "sla_max_h": 600.1,
           "inicio": "2026-09-07",
           "label": "07/09",
           "por_classe": {
@@ -11226,39 +11248,39 @@
               "sla_max_h": 46.5
             },
             "tecnica": {
-              "total": 6,
-              "finalizadas": 2,
-              "em_aberto": 2,
+              "total": 5,
+              "finalizadas": 3,
+              "em_aberto": 0,
               "canceladas": 2,
-              "sla_medio_h": 153.2,
-              "sla_mediano_h": 153.2,
-              "sla_medio_dias": 6.4,
-              "sla_mediano_dias": 6.4,
-              "sla_max_h": 239.4
+              "sla_medio_h": 302.1,
+              "sla_mediano_h": 239.4,
+              "sla_medio_dias": 12.6,
+              "sla_mediano_dias": 10.0,
+              "sla_max_h": 600.1
             },
             "total": {
-              "total": 10,
-              "finalizadas": 5,
-              "em_aberto": 2,
+              "total": 9,
+              "finalizadas": 6,
+              "em_aberto": 0,
               "canceladas": 3,
-              "sla_medio_h": 71.0,
-              "sla_mediano_h": 46.5,
-              "sla_medio_dias": 3.0,
-              "sla_mediano_dias": 1.9,
-              "sla_max_h": 239.4
+              "sla_medio_h": 159.2,
+              "sla_mediano_h": 56.7,
+              "sla_medio_dias": 6.6,
+              "sla_mediano_dias": 2.4,
+              "sla_max_h": 600.1
             }
           }
         },
         {
           "total": 7,
-          "finalizadas": 4,
-          "em_aberto": 3,
+          "finalizadas": 7,
+          "em_aberto": 0,
           "canceladas": 0,
-          "sla_medio_h": 196.8,
-          "sla_mediano_h": 211.2,
-          "sla_medio_dias": 8.2,
-          "sla_mediano_dias": 8.8,
-          "sla_max_h": 219.4,
+          "sla_medio_h": 292.9,
+          "sla_mediano_h": 219.4,
+          "sla_medio_dias": 12.2,
+          "sla_mediano_dias": 9.1,
+          "sla_max_h": 486.6,
           "inicio": "2026-09-14",
           "label": "14/09",
           "por_classe": {
@@ -11275,35 +11297,386 @@
             },
             "tecnica": {
               "total": 3,
-              "finalizadas": 0,
-              "em_aberto": 3,
-              "canceladas": 0
+              "finalizadas": 3,
+              "em_aberto": 0,
+              "canceladas": 0,
+              "sla_medio_h": 421.0,
+              "sla_mediano_h": 414.7,
+              "sla_medio_dias": 17.5,
+              "sla_mediano_dias": 17.3,
+              "sla_max_h": 486.6
             },
             "total": {
               "total": 7,
-              "finalizadas": 4,
-              "em_aberto": 3,
+              "finalizadas": 7,
+              "em_aberto": 0,
               "canceladas": 0,
-              "sla_medio_h": 196.8,
-              "sla_mediano_h": 211.2,
-              "sla_medio_dias": 8.2,
-              "sla_mediano_dias": 8.8,
-              "sla_max_h": 219.4
+              "sla_medio_h": 292.9,
+              "sla_mediano_h": 219.4,
+              "sla_medio_dias": 12.2,
+              "sla_mediano_dias": 9.1,
+              "sla_max_h": 486.6
             }
           }
         },
         {
-          "total": 41,
-          "finalizadas": 2,
-          "em_aberto": 39,
-          "canceladas": 0,
-          "sla_medio_h": 10.3,
-          "sla_mediano_h": 10.3,
-          "sla_medio_dias": 0.4,
-          "sla_mediano_dias": 0.4,
-          "sla_max_h": 18.6,
+          "total": 7,
+          "finalizadas": 6,
+          "em_aberto": 0,
+          "canceladas": 1,
+          "sla_medio_h": 177.3,
+          "sla_mediano_h": 205.4,
+          "sla_medio_dias": 7.4,
+          "sla_mediano_dias": 8.6,
+          "sla_max_h": 316.2,
           "inicio": "2026-09-21",
           "label": "21/09",
+          "por_classe": {
+            "comportamental": {
+              "total": 1,
+              "finalizadas": 1,
+              "em_aberto": 0,
+              "canceladas": 0,
+              "sla_medio_h": 96.8,
+              "sla_mediano_h": 96.8,
+              "sla_medio_dias": 4.0,
+              "sla_mediano_dias": 4.0,
+              "sla_max_h": 96.8
+            },
+            "tecnica": {
+              "total": 6,
+              "finalizadas": 5,
+              "em_aberto": 0,
+              "canceladas": 1,
+              "sla_medio_h": 193.4,
+              "sla_mediano_h": 314.0,
+              "sla_medio_dias": 8.1,
+              "sla_mediano_dias": 13.1,
+              "sla_max_h": 316.2
+            },
+            "total": {
+              "total": 7,
+              "finalizadas": 6,
+              "em_aberto": 0,
+              "canceladas": 1,
+              "sla_medio_h": 177.3,
+              "sla_mediano_h": 205.4,
+              "sla_medio_dias": 7.4,
+              "sla_mediano_dias": 8.6,
+              "sla_max_h": 316.2
+            }
+          }
+        },
+        {
+          "total": 24,
+          "finalizadas": 22,
+          "em_aberto": 1,
+          "canceladas": 1,
+          "sla_medio_h": 162.3,
+          "sla_mediano_h": 171.3,
+          "sla_medio_dias": 6.8,
+          "sla_mediano_dias": 7.1,
+          "sla_max_h": 211.8,
+          "inicio": "2026-09-28",
+          "label": "28/09",
+          "por_classe": {
+            "comportamental": {
+              "total": 1,
+              "finalizadas": 0,
+              "em_aberto": 1,
+              "canceladas": 0
+            },
+            "tecnica": {
+              "total": 22,
+              "finalizadas": 21,
+              "em_aberto": 0,
+              "canceladas": 1,
+              "sla_medio_h": 163.2,
+              "sla_mediano_h": 173.5,
+              "sla_medio_dias": 6.8,
+              "sla_mediano_dias": 7.2,
+              "sla_max_h": 211.8
+            },
+            "sem_classificacao": {
+              "total": 1,
+              "finalizadas": 1,
+              "em_aberto": 0,
+              "canceladas": 0,
+              "sla_medio_h": 142.8,
+              "sla_mediano_h": 142.8,
+              "sla_medio_dias": 5.9,
+              "sla_mediano_dias": 5.9,
+              "sla_max_h": 142.8
+            },
+            "total": {
+              "total": 24,
+              "finalizadas": 22,
+              "em_aberto": 1,
+              "canceladas": 1,
+              "sla_medio_h": 162.3,
+              "sla_mediano_h": 171.3,
+              "sla_medio_dias": 6.8,
+              "sla_mediano_dias": 7.1,
+              "sla_max_h": 211.8
+            }
+          }
+        }
+      ]
+    },
+    "2026-10": {
+      "total": 42,
+      "finalizadas": 12,
+      "em_aberto": 30,
+      "canceladas": 0,
+      "sla_medio_h": 123.6,
+      "sla_mediano_h": 107.7,
+      "sla_medio_dias": 5.1,
+      "sla_mediano_dias": 4.5,
+      "sla_max_h": 313.5,
+      "label": "Outubro",
+      "por_departamento": {
+        "Comunidade - Treinamento": {
+          "total": 40,
+          "finalizadas": 12,
+          "em_aberto": 28,
+          "canceladas": 0,
+          "sla_medio_h": 123.6,
+          "sla_mediano_h": 107.7,
+          "sla_medio_dias": 5.1,
+          "sla_mediano_dias": 4.5,
+          "sla_max_h": 313.5
+        },
+        "Comunidade - Onboarding": {
+          "total": 1,
+          "finalizadas": 0,
+          "em_aberto": 1,
+          "canceladas": 0
+        },
+        "Comunidade - SAC": {
+          "total": 1,
+          "finalizadas": 0,
+          "em_aberto": 1,
+          "canceladas": 0
+        }
+      },
+      "por_tipo": {
+        "Solicitação de treinamento": {
+          "total": 21,
+          "finalizadas": 3,
+          "em_aberto": 18,
+          "canceladas": 0,
+          "sla_medio_h": 135.9,
+          "sla_mediano_h": 142.6,
+          "sla_medio_dias": 5.7,
+          "sla_mediano_dias": 5.9,
+          "sla_max_h": 235.1
+        },
+        "Reclamação": {
+          "total": 18,
+          "finalizadas": 9,
+          "em_aberto": 9,
+          "canceladas": 0,
+          "sla_medio_h": 119.5,
+          "sla_mediano_h": 72.7,
+          "sla_medio_dias": 5.0,
+          "sla_mediano_dias": 3.0,
+          "sla_max_h": 313.5
+        },
+        "Comunicação com paciente": {
+          "total": 2,
+          "finalizadas": 0,
+          "em_aberto": 2,
+          "canceladas": 0
+        },
+        "Cadastro de Profissional": {
+          "total": 1,
+          "finalizadas": 0,
+          "em_aberto": 1,
+          "canceladas": 0
+        }
+      },
+      "por_motivo": {
+        "Desenvolver nova habilidade": {
+          "total": 9,
+          "finalizadas": 0,
+          "em_aberto": 9,
+          "canceladas": 0
+        },
+        "Conduta inadequada do profissional": {
+          "total": 8,
+          "finalizadas": 2,
+          "em_aberto": 6,
+          "canceladas": 0,
+          "sla_medio_h": 120.1,
+          "sla_mediano_h": 120.1,
+          "sla_medio_dias": 5.0,
+          "sla_mediano_dias": 5.0,
+          "sla_max_h": 170.1
+        },
+        "Reclamações sobre atendimento da equipe administrativa": {
+          "total": 6,
+          "finalizadas": 5,
+          "em_aberto": 1,
+          "canceladas": 0,
+          "sla_medio_h": 114.6,
+          "sla_mediano_h": 72.7,
+          "sla_medio_dias": 4.8,
+          "sla_mediano_dias": 3.0,
+          "sla_max_h": 313.5
+        },
+        "Reciclagem": {
+          "total": 6,
+          "finalizadas": 2,
+          "em_aberto": 4,
+          "canceladas": 0,
+          "sla_medio_h": 188.8,
+          "sla_mediano_h": 188.8,
+          "sla_medio_dias": 7.9,
+          "sla_mediano_dias": 7.9,
+          "sla_max_h": 235.1
+        },
+        "Reclamação": {
+          "total": 6,
+          "finalizadas": 1,
+          "em_aberto": 5,
+          "canceladas": 0,
+          "sla_medio_h": 29.9,
+          "sla_mediano_h": 29.9,
+          "sla_medio_dias": 1.2,
+          "sla_mediano_dias": 1.2,
+          "sla_max_h": 29.9
+        },
+        "Técnica profissional": {
+          "total": 2,
+          "finalizadas": 0,
+          "em_aberto": 2,
+          "canceladas": 0
+        },
+        "Dificuldade de comunicação": {
+          "total": 1,
+          "finalizadas": 1,
+          "em_aberto": 0,
+          "canceladas": 0,
+          "sla_medio_h": 0.1,
+          "sla_mediano_h": 0.1,
+          "sla_medio_dias": 0.0,
+          "sla_mediano_dias": 0.0,
+          "sla_max_h": 0.1
+        },
+        "Acesso ao prontuário": {
+          "total": 1,
+          "finalizadas": 1,
+          "em_aberto": 0,
+          "canceladas": 0,
+          "sla_medio_h": 262.3,
+          "sla_mediano_h": 262.3,
+          "sla_medio_dias": 10.9,
+          "sla_mediano_dias": 10.9,
+          "sla_max_h": 262.3
+        }
+      },
+      "por_classe": {
+        "comportamental": {
+          "total": 21,
+          "finalizadas": 9,
+          "em_aberto": 12,
+          "canceladas": 0,
+          "sla_medio_h": 93.7,
+          "sla_mediano_h": 70.0,
+          "sla_medio_dias": 3.9,
+          "sla_mediano_dias": 2.9,
+          "sla_max_h": 313.5
+        },
+        "tecnica": {
+          "total": 17,
+          "finalizadas": 2,
+          "em_aberto": 15,
+          "canceladas": 0,
+          "sla_medio_h": 188.8,
+          "sla_mediano_h": 188.8,
+          "sla_medio_dias": 7.9,
+          "sla_mediano_dias": 7.9,
+          "sla_max_h": 235.1
+        },
+        "sem_classificacao": {
+          "total": 4,
+          "finalizadas": 1,
+          "em_aberto": 3,
+          "canceladas": 0,
+          "sla_medio_h": 262.3,
+          "sla_mediano_h": 262.3,
+          "sla_medio_dias": 10.9,
+          "sla_mediano_dias": 10.9,
+          "sla_max_h": 262.3
+        },
+        "total": {
+          "total": 42,
+          "finalizadas": 12,
+          "em_aberto": 30,
+          "canceladas": 0,
+          "sla_medio_h": 123.6,
+          "sla_mediano_h": 107.7,
+          "sla_medio_dias": 5.1,
+          "sla_mediano_dias": 4.5,
+          "sla_max_h": 313.5
+        }
+      },
+      "semanas": [
+        {
+          "total": 4,
+          "finalizadas": 3,
+          "em_aberto": 1,
+          "canceladas": 0,
+          "sla_medio_h": 127.9,
+          "sla_mediano_h": 70.0,
+          "sla_medio_dias": 5.3,
+          "sla_mediano_dias": 2.9,
+          "sla_max_h": 313.5,
+          "inicio": "2026-09-28",
+          "label": "28/09",
+          "por_classe": {
+            "comportamental": {
+              "total": 3,
+              "finalizadas": 3,
+              "em_aberto": 0,
+              "canceladas": 0,
+              "sla_medio_h": 127.9,
+              "sla_mediano_h": 70.0,
+              "sla_medio_dias": 5.3,
+              "sla_mediano_dias": 2.9,
+              "sla_max_h": 313.5
+            },
+            "tecnica": {
+              "total": 1,
+              "finalizadas": 0,
+              "em_aberto": 1,
+              "canceladas": 0
+            },
+            "total": {
+              "total": 4,
+              "finalizadas": 3,
+              "em_aberto": 1,
+              "canceladas": 0,
+              "sla_medio_h": 127.9,
+              "sla_mediano_h": 70.0,
+              "sla_medio_dias": 5.3,
+              "sla_mediano_dias": 2.9,
+              "sla_max_h": 313.5
+            }
+          }
+        },
+        {
+          "total": 5,
+          "finalizadas": 2,
+          "em_aberto": 3,
+          "canceladas": 0,
+          "sla_medio_h": 248.7,
+          "sla_mediano_h": 248.7,
+          "sla_medio_dias": 10.4,
+          "sla_mediano_dias": 10.4,
+          "sla_max_h": 262.3,
+          "inicio": "2026-10-05",
+          "label": "05/10",
           "por_classe": {
             "comportamental": {
               "total": 2,
@@ -11312,26 +11685,177 @@
               "canceladas": 0
             },
             "tecnica": {
-              "total": 39,
-              "finalizadas": 2,
-              "em_aberto": 37,
+              "total": 2,
+              "finalizadas": 1,
+              "em_aberto": 1,
               "canceladas": 0,
-              "sla_medio_h": 10.3,
-              "sla_mediano_h": 10.3,
-              "sla_medio_dias": 0.4,
-              "sla_mediano_dias": 0.4,
-              "sla_max_h": 18.6
+              "sla_medio_h": 235.1,
+              "sla_mediano_h": 235.1,
+              "sla_medio_dias": 9.8,
+              "sla_mediano_dias": 9.8,
+              "sla_max_h": 235.1
+            },
+            "sem_classificacao": {
+              "total": 1,
+              "finalizadas": 1,
+              "em_aberto": 0,
+              "canceladas": 0,
+              "sla_medio_h": 262.3,
+              "sla_mediano_h": 262.3,
+              "sla_medio_dias": 10.9,
+              "sla_mediano_dias": 10.9,
+              "sla_max_h": 262.3
             },
             "total": {
-              "total": 41,
+              "total": 5,
               "finalizadas": 2,
-              "em_aberto": 39,
+              "em_aberto": 3,
               "canceladas": 0,
-              "sla_medio_h": 10.3,
-              "sla_mediano_h": 10.3,
-              "sla_medio_dias": 0.4,
-              "sla_mediano_dias": 0.4,
-              "sla_max_h": 18.6
+              "sla_medio_h": 248.7,
+              "sla_mediano_h": 248.7,
+              "sla_medio_dias": 10.4,
+              "sla_mediano_dias": 10.4,
+              "sla_max_h": 262.3
+            }
+          }
+        },
+        {
+          "total": 15,
+          "finalizadas": 2,
+          "em_aberto": 13,
+          "canceladas": 0,
+          "sla_medio_h": 156.4,
+          "sla_mediano_h": 156.4,
+          "sla_medio_dias": 6.5,
+          "sla_mediano_dias": 6.5,
+          "sla_max_h": 170.1,
+          "inicio": "2026-10-12",
+          "label": "12/10",
+          "por_classe": {
+            "comportamental": {
+              "total": 3,
+              "finalizadas": 1,
+              "em_aberto": 2,
+              "canceladas": 0,
+              "sla_medio_h": 170.1,
+              "sla_mediano_h": 170.1,
+              "sla_medio_dias": 7.1,
+              "sla_mediano_dias": 7.1,
+              "sla_max_h": 170.1
+            },
+            "tecnica": {
+              "total": 9,
+              "finalizadas": 1,
+              "em_aberto": 8,
+              "canceladas": 0,
+              "sla_medio_h": 142.6,
+              "sla_mediano_h": 142.6,
+              "sla_medio_dias": 5.9,
+              "sla_mediano_dias": 5.9,
+              "sla_max_h": 142.6
+            },
+            "sem_classificacao": {
+              "total": 3,
+              "finalizadas": 0,
+              "em_aberto": 3,
+              "canceladas": 0
+            },
+            "total": {
+              "total": 15,
+              "finalizadas": 2,
+              "em_aberto": 13,
+              "canceladas": 0,
+              "sla_medio_h": 156.4,
+              "sla_mediano_h": 156.4,
+              "sla_medio_dias": 6.5,
+              "sla_mediano_dias": 6.5,
+              "sla_max_h": 170.1
+            }
+          }
+        },
+        {
+          "total": 12,
+          "finalizadas": 4,
+          "em_aberto": 8,
+          "canceladas": 0,
+          "sla_medio_h": 72.3,
+          "sla_mediano_h": 51.3,
+          "sla_medio_dias": 3.0,
+          "sla_mediano_dias": 2.1,
+          "sla_max_h": 161.0,
+          "inicio": "2026-10-19",
+          "label": "19/10",
+          "por_classe": {
+            "comportamental": {
+              "total": 9,
+              "finalizadas": 4,
+              "em_aberto": 5,
+              "canceladas": 0,
+              "sla_medio_h": 72.3,
+              "sla_mediano_h": 51.3,
+              "sla_medio_dias": 3.0,
+              "sla_mediano_dias": 2.1,
+              "sla_max_h": 161.0
+            },
+            "tecnica": {
+              "total": 3,
+              "finalizadas": 0,
+              "em_aberto": 3,
+              "canceladas": 0
+            },
+            "total": {
+              "total": 12,
+              "finalizadas": 4,
+              "em_aberto": 8,
+              "canceladas": 0,
+              "sla_medio_h": 72.3,
+              "sla_mediano_h": 51.3,
+              "sla_medio_dias": 3.0,
+              "sla_mediano_dias": 2.1,
+              "sla_max_h": 161.0
+            }
+          }
+        },
+        {
+          "total": 6,
+          "finalizadas": 1,
+          "em_aberto": 5,
+          "canceladas": 0,
+          "sla_medio_h": 0.0,
+          "sla_mediano_h": 0.0,
+          "sla_medio_dias": 0.0,
+          "sla_mediano_dias": 0.0,
+          "sla_max_h": 0.0,
+          "inicio": "2026-10-26",
+          "label": "26/10",
+          "por_classe": {
+            "comportamental": {
+              "total": 4,
+              "finalizadas": 1,
+              "em_aberto": 3,
+              "canceladas": 0,
+              "sla_medio_h": 0.0,
+              "sla_mediano_h": 0.0,
+              "sla_medio_dias": 0.0,
+              "sla_mediano_dias": 0.0,
+              "sla_max_h": 0.0
+            },
+            "tecnica": {
+              "total": 2,
+              "finalizadas": 0,
+              "em_aberto": 2,
+              "canceladas": 0
+            },
+            "total": {
+              "total": 6,
+              "finalizadas": 1,
+              "em_aberto": 5,
+              "canceladas": 0,
+              "sla_medio_h": 0.0,
+              "sla_mediano_h": 0.0,
+              "sla_medio_dias": 0.0,
+              "sla_mediano_dias": 0.0,
+              "sla_max_h": 0.0
             }
           }
         }
